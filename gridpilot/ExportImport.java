@@ -59,17 +59,17 @@ public class ExportImport {
     }
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String message = datasetId==null?
-         "<html>This will export all datasets and executables of the chosen database<br>" +
-              "plus any files associated with the executables. Non-local files will<br>" +
-              "be downloded first.<br><br>" +
-              "Choose database to export from or choose none to cancel.<br></html>" :
-         "<html>This will export the dataset <br><br>" +
-               "\"" + datasetName + "\"<br><br>" +
-               "and its associated executable plus any files associated<br>" +
-               "with this executable. Non-local files will be downloded<br>" +
-               "first.<br><br>" +
-               "Notice: if the file <br><br>" +exportFileName + "<br><br>" +
-               "already exists in the chosen directory, it will be overwritten.<br></html>";
+         "This will export all datasets and executables of the chosen database\n" +
+              "plus any files associated with the executables. Non-local files will\n" +
+              "be downloded first.\n\n" +
+              "Choose database to export from or choose none to cancel.\n" :
+         "This will export the dataset \n\n" +
+               "\"" + datasetName + "\"\n\n" +
+               "and its associated executable plus any files associated\n" +
+               "with this executable. Non-local files will be downloded\n" +
+               "first.\n\n" +
+               "Notice: if the file \n\n" +exportFileName + "\n\n" +
+               "already exists in the chosen directory, it will be overwritten.\n";
     int choice = confirmBox.getConfirm("Export from database", message, choices);
     if(choice<0 || choice>=choices.length-1){
       return;

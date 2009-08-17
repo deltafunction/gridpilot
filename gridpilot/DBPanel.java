@@ -1006,9 +1006,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   protected void fileMenuSelected(){
-    int selectedRows = tableResults.getSelectedRows().length;
+    String [] selectedIds = getSelectedIdentifiers();
     boolean datasetPanel = getTableName().equalsIgnoreCase("dataset");
-    GridPilot.getClassMgr().getGlobalFrame().setImportExportMenu(datasetPanel, selectedRows);
+    GridPilot.getClassMgr().getGlobalFrame().setImportExportMenu(datasetPanel, selectedIds);
   }
 
   public void panelHidden(){

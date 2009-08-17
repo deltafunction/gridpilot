@@ -814,15 +814,15 @@ public class GlobalFrame extends GPFrame{
 
   }
 
-  protected void setImportExportMenu(boolean ds, int selectedRows){
+  protected void setImportExportMenu(boolean ds, String [] selectedIds){
     miExport.setVisible(ds);
     if(!ds){
       return;
     }
-    if(selectedRows==1){
+    if(selectedIds.length==1){
       miExport.setText("Export selected application");
     }
-    else if(selectedRows==0){
+    else if(selectedIds.length==0){
       miExport.setText("Export all application(s)");
     }
     else{
@@ -889,7 +889,15 @@ public class GlobalFrame extends GPFrame{
     try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), null, null);
+        DBPanel activePanel = getActiveDBPanel();
+        if(activePanel.getSelectedIdentifiers().length==1){
+          ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
+              activePanel.getDBName(), activePanel.getSelectedIdentifier());
+        }
+        else{
+          ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
+              null, null);
+        }
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
