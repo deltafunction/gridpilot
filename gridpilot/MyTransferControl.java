@@ -807,7 +807,7 @@ public class MyTransferControl extends TransferControl {
       }
       break;
     }
-    
+    Debug.debug("Submitted: "+MyUtil.arrayToString(ids), 3);
     return ids;
     
   }
@@ -1102,7 +1102,8 @@ public class MyTransferControl extends TransferControl {
      throws Exception{
     String ftPluginName = null;
     String [] checkArr = MyUtil.split(transferID, "::");
-    String [] arr = MyUtil.splitUrls(checkArr[checkArr.length-1]);
+    String [] arr = MyUtil.splitUrls(checkArr[checkArr.length-1].replaceFirst(
+        "^'", "").replaceFirst("'$", "").replaceAll("'\\s'", " "));
     Debug.debug("Finding status of transfer "+MyUtil.arrayToString(arr, "-->"), 3);
     GlobusURL srmUrl = new GlobusURL(arr[arr.length-1]);
     Debug.debug("Finding plugin for transfer "+transferID, 2);

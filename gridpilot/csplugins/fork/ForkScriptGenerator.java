@@ -305,7 +305,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
           logFile.addMessage("ERROR: could not get input file "+downloadFiles[i], e);
           continue;
         }
-        writeLine(buf, remoteCopyCommands.get(protocol)+" "+downloadFiles[i]+" file:///`pwd`/"+name);
+        writeLine(buf, remoteCopyCommands.get(protocol)+" "+downloadFiles[i]+" file:///`pwd`/"+
+            MyUtil.removeQuotes(name));
       }
       writeLine(buf, "");
     }

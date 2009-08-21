@@ -1661,10 +1661,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
 
     arg += "'"
-              +trparsstr+"', '"
-              +ofmapstr+"', '"
-              +odest+"', '"
-              +edest+"', '"
+              +dbEncode(trparsstr)+"', '"
+              +dbEncode(ofmapstr)+"', '"
+              +dbEncode(odest)+"', '"
+              +dbEncode(edest)+"', '"
               +dateString+"', '"
               +dateString+
           "')";
@@ -1797,7 +1797,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
         if(isNum || val==null || val.equals("") || val.equals("''")){
           val = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
           String message = "Generated new UUID "+val+" for dataset";
-          GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+          //GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+          //GridPilot.getClassMgr().getStatusBar().setLabel(message);
           GridPilot.getClassMgr().getLogFile().addInfo(message);
         }
         val = "'"+dbEncode(val)+"'";
@@ -2466,7 +2467,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
             // TODO: we're assuming a on-to-one lfn/guid mapping. Improve.
             String [][] val = MyUtil.getValues(dbName, "t_lfn", "guid", fileID, new String [] {"lfname"});
             if(val!=null && val.length>0){
-              file.setValue(fields[i], val[0][0]);
+              file.setValue(fields[i], dbDecode(val[0][0]));
             }
           }
           else if(fields[i].equalsIgnoreCase("pfname")){
@@ -2475,13 +2476,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
               String [][] res = MyUtil.getValues(dbName, "t_pfn", "guid", fileID, new String [] {"pfname"});
               pfns = new String [res.length];
               for(int j=0; j<res.length; ++j){
-                pfns[j] = res[j][0];
+                pfns[j] = dbDecode(res[j][0]);
                 if(findAllPFNs==Database.LOOKUP_PFNS_ONE){
                   break;
                 }
               }
               if(findAllPFNs==Database.LOOKUP_PFNS_ONE && pfns.length>0){
-                pfns = new String [] {pfns[0]};
+                pfns = new String [] {dbDecode(pfns[0])};
               }
             }
             file.setValue(fields[i], MyUtil.arrayToString(pfns));

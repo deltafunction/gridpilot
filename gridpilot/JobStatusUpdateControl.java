@@ -81,8 +81,8 @@ public class JobStatusUpdateControl{
     timerChecking = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent ae){
         synchronized(checkingThreads){
-          Debug.debug(checkingThreads.size()+":"+maxSimultaneousChecking +":"+
-             !toCheckJobs.isEmpty(), 3);
+          //Debug.debug(checkingThreads.size()+":"+maxSimultaneousChecking +":"+
+          //   !toCheckJobs.isEmpty(), 3);
           if(checkingThreads.size()<maxSimultaneousChecking && !toCheckJobs.isEmpty()){
             Thread t = new Thread(){
               public void run(){

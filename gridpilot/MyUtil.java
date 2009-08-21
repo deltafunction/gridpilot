@@ -1740,9 +1740,8 @@ private static String fixUrl(String _url){
    * @return
    */
   public static String [] removeBaseSystemAndVM(String [] rtes, String [] _osProvides){
-    Debug.debug("Removing VMs from " + arrayToString(rtes), 2);
+    Debug.debug("Removing "+MyUtil.arrayToString(_osProvides)+" and VMs from " + arrayToString(rtes), 2);
     Vector<String> newRTEs = new Vector<String>();
-    Set<String> providedRTEs = new HashSet<String>();
     String[] osProvides;
     if(_osProvides==null){
       osProvides = new String [0];
@@ -1757,13 +1756,13 @@ private static String fixUrl(String _url){
           !MyUtil.arrayContains(osProvides, rtes[i])){
         newRTEs.add(rtes[i]);
       }
+      else{
+        Debug.debug("NOT requiring " + rtes[i], 3);
+      }
     }
-    String rte;
-    for(Iterator<String> it=providedRTEs.iterator(); it.hasNext();){
-      rte = it.next();
-      newRTEs.remove(rte);
-    }
-    return newRTEs.toArray(new String [newRTEs.size()]);
+    String [] ret = newRTEs.toArray(new String [newRTEs.size()]);
+    Debug.debug("Returning RTEs: " + MyUtil.arrayToString(ret), 3);
+    return ret;
   }
 
   public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr,

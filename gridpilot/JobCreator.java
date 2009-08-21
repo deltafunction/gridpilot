@@ -375,7 +375,7 @@ public class JobCreator{
     return new boolean[]{skip, skipAll, showThis};
   }
 
-  private void createDBJobDefinitions(int idNum) throws Exception{
+  private void createDBJobDefinitions(int datasetNumber) throws Exception{
     String exeName = null;
     String exeVersion = null;
     String id = "-1";
@@ -390,11 +390,11 @@ public class JobCreator{
         statusBar.setLabel("Creating job definition # " + part);
         statusBar.incrementProgressBarValue(pb, 1);
 
-        exeName = dbPluginMgr.getDatasetExecutableName(datasetIdentifiers[idNum]);
-        exeVersion = dbPluginMgr.getDatasetExecutableVersion(datasetIdentifiers[idNum]);
-        id = datasetIdentifiers[idNum];
+        exeName = dbPluginMgr.getDatasetExecutableName(datasetIdentifiers[datasetNumber]);
+        exeVersion = dbPluginMgr.getDatasetExecutableVersion(datasetIdentifiers[datasetNumber]);
+        id = datasetIdentifiers[datasetNumber];
         Debug.debug("Got executable: "+exeName+":"+exeVersion+" <-- "+
-            datasetIdentifiers[idNum], 3);
+            datasetIdentifiers[datasetNumber], 3);
         Debug.debug("stdout/stderr length "+resStdOut.length, 2);
         Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
         Debug.debug("resCstAttr --> "+MyUtil.arrayToString(resCstAttr), 3);
@@ -422,15 +422,17 @@ public class JobCreator{
             SwingUtilities.invokeLater(showDialog);
           }
           if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Job definition " + part +
-              " cannot be created.\n\nClick Cancel to stop or OK to continue creating job definitions.", "", JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
+              " cannot be created.\n\nClick Cancel to stop or OK to continue creating job definitions.", "",
+              JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
             break;
           }
-          statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" NOT created.");
+          statusBar.setLabel("Job definition # " + Integer.toString(datasetNumber+1) + " : "+ part + " NOT created.");
         }
         else{
-          statusBar.setLabel("Job definition # " + part + " : "+Integer.toString(idNum+1)+" created.");
+          statusBar.setLabel("Job definition # " + Integer.toString(datasetNumber+1) + " : " + part + " created.");
         }
       }
+      statusBar.removeProgressBar(pb);
     }
   }
 
@@ -501,7 +503,7 @@ public class JobCreator{
       if(pos5>=0){
         sss.replace(pos5, pos5+2, MyUtil.arrayToString(inputFileURLs));
       }
-      // Fill in the path of the first input file URL
+      // Fill in the relative path of the first input file URL
       pos6 = sss.indexOf("$p");
       if(pos6>=0 && inputSource!=null){
         String path = inputFileURLs[0];
@@ -509,19 +511,28 @@ public class JobCreator{
           if(MyUtil.isLocalFileName(path)){
             if(path.startsWith("file:")){
               path = path.replaceFirst("^file:/*"+MyUtil.clearFile(inputSource), "");
+              path = path.replaceFirst("^file:/*"+myClearTildeLocally(MyUtil.clearFile(inputSource)), "");
             }
             else{
               path = path.replaceFirst("^"+MyUtil.clearFile(inputSource), "");
+              path = path.replaceFirst("^"+myClearTildeLocally(MyUtil.clearFile(inputSource)), "");
             }
           }
           else{
             path = path.replaceFirst("^"+inputSource, "");
-            path = path.replaceFirst("^"+MyUtil.clearFile(inputSource), "");
           }
         }
-        path = path.replaceFirst(inputFileNames[0], "");
-        Debug.debug("Path: "+path, 2);
-        sss.replace(pos6, pos6+2, path);
+        // If the outputLocation of the input dataset does not match
+        // the location of this input file, we cannot find a relative path.
+        if(path.equals(inputFileURLs[0])){
+          Debug.debug("Could not find relative path for "+path, 2);
+          sss.replace(pos6, pos6+2, "");
+        }
+        else{
+          path = path.replaceFirst(escapeRegChars(inputFileNames[0]), "");
+          Debug.debug("Path: "+path, 2);
+          sss.replace(pos6, pos6+2, path);
+        }
       }
       // Fill in the fields of the dataset
       pos = sss.indexOf("$1") + sss.indexOf("$2")+ sss.indexOf("$3") +
@@ -559,6 +570,22 @@ public class JobCreator{
       }
     }
     return doEvaluate(var, new String(sss));
+  }
+  
+  private String escapeRegChars(String str) {
+    String ret = str;
+    String [] regChars = {"(", ")", "{", "}", "[", "]",
+                          "^", "$",
+                          "*", "+", "?"};
+    for(int i=0; i<regChars.length; ++i){
+      ret = ret.replaceAll("\\"+regChars[i], "\\\\"+regChars[i]);
+    }
+    return ret;
+  }
+
+  private String myClearTildeLocally(String str){
+    String ret = MyUtil.clearTildeLocally(str).replaceAll("\\\\", "\\\\\\\\");
+    return ret;
   }
   
   private String doEvaluate(int var, String s) throws SyntaxException{
@@ -948,7 +975,7 @@ public class JobCreator{
             inputIds[currentPartition-1]).getValue("lfn");*/
         // Use the first pfn returned.
         // Notice: if "find all PFNs" is checked all PFNs will be looked up,
-        // slowing down job creation enormeously, and still only the first will be used.
+        // slowing down job creation enormously, and still only the first will be used.
         // So, it should NOT be checked.
         
         DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputIds[currentPartition-1], DBPluginMgr.LOOKUP_PFNS_ONE);
@@ -1006,7 +1033,7 @@ public class JobCreator{
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
           (jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
-        resJobParam[i] = MyUtil.arrayToString(inputFileNames);
+        resJobParam[i] = MyUtil.removeQuotes(MyUtil.arrayToString(inputFileNames));
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
           (jobParamNames[i].equalsIgnoreCase("inputFileURLs"))){

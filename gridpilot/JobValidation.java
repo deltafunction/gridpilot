@@ -329,8 +329,8 @@ public class JobValidation{
    */
   private boolean extractInfo(MyJobInfo job, String stdOut){
     StringTokenizer st = new StringTokenizer(stdOut.toString(), "\n");
-    Vector attributes = new Vector();
-    Vector values = new Vector();
+    Vector<String> attributes = new Vector<String>();
+    Vector<String> values = new Vector<String>();
     int lineNr = 0;
     int tagLen = gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG.length();
     while(st.hasMoreTokens()){

@@ -87,7 +87,7 @@ public class JobMgr{
   /** 
    * Counters of preprocessing jobs ordered by computing system.
    */
-  private int [] preprocessingJobsByCS;
+  private int [] preprocessedJobsByCS;
   
   private boolean [] hasChanged;
   private boolean useChanges = true;
@@ -165,8 +165,8 @@ public class JobMgr{
      return submittedJobsByCS;
    }
 
-   public int [] getPreprocessingJobsByCS(){
-     return preprocessingJobsByCS;
+   public int [] getPreprocessedJobsByCS(){
+     return preprocessedJobsByCS;
    }
 
    public DBPluginMgr getDBPluginMgr(){
@@ -483,7 +483,7 @@ public class JobMgr{
     
     String [] css = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
     submittedJobsByCS = new int[css.length];
-    preprocessingJobsByCS = new int[css.length];
+    preprocessedJobsByCS = new int[css.length];
     MyJobInfo job;
 
     for(int i=0; i<monitoredjobs.size(); ++i){
@@ -522,8 +522,8 @@ public class JobMgr{
           if(job.getDBStatus()==DBPluginMgr.SUBMITTED){
             ++submittedJobsByCS[j];
           }
-          if(job.getDBStatus()==DBPluginMgr.DEFINED || job.getDBStatus()==DBPluginMgr.PREPARED){
-            ++preprocessingJobsByCS[j];
+          if(job.getDBStatus()==DBPluginMgr.PREPARED){
+            ++preprocessedJobsByCS[j];
           }
         }
       }

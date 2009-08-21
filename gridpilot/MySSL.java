@@ -302,8 +302,10 @@ public class MySSL extends SSL{
       // Otherwise, ask for password
       else{
         try{
+          Debug.debug("Asking for private key password", 2);
           credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
               GridPilot.KEY_PASSWORD);
+          Debug.debug("Got password", 2);
         }
         catch(IllegalArgumentException e){
           // cancelling

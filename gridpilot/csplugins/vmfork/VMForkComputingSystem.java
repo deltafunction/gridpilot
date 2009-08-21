@@ -67,6 +67,11 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     hosts = new String [maxMachines];
     // Fill maxJobs with a constant number
     maxJobs = new int[maxMachines];
+    // We set the max number of jobs allowed by super.preprocess() to be the allowed
+    // preparing+running of the GridPilot config file. The number of actually running jobs
+    // will be controlled by SubmissionControl to be <= the max allowed running jobs.
+    jobsPerMachine = MyUtil.getMaxSimultaneousRunningJobs(csName) +
+       MyUtil.getMaxSimultaneousPreprocessingJobs(csName);
     Arrays.fill(maxJobs, jobsPerMachine);
     localRteDir = GridPilot.RUNTIME_DIR;
     remoteRteDir = localRteDir;
@@ -78,9 +83,6 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     rteMgr.fixLocalCatalog(GridPilot.class);
     transferStatusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
     termVmOnJobEnd = false;
-    jobsPerMachine = 1;
-    // We just set the max number of jobs to run inside the VM to the max number of jobs run by this CS.
-    jobsPerMachine = MyUtil.getMaxSimultaneousRunningJobs(csName);
     String tmp = configFile.getValue(csName, "enforce virtualization");
     if(tmp!=null){
       try{
@@ -157,6 +159,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
+    Debug.debug("Job depends on "+MyUtil.arrayToString(rtes), 2);
     String transID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
     String [] transInputFiles = dbPluginMgr.getExecutableInputs(transID);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
@@ -180,7 +183,13 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
     setBaseSystemName(rtes, job);
     if(job.getOpSysRTE()!=null){
-      job.setRTEs(MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE())));
+      String [] reducedRTEList = MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE()));
+      Debug.debug("Job dependencies --> "+MyUtil.arrayToString(reducedRTEList), 2);
+      job.setRTEs(reducedRTEList);
+      Debug.debug("Job dependencies --> "+MyUtil.arrayToString(job.getRTEs()), 2);
+    }
+    else{
+      job.setRTEs(rtes);
     }
     job.setMemory(defaultJobMB);
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
@@ -196,8 +205,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     includeManuallyBootedVMs();
     
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
-    ok = ok && super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
-                                         gridfactory.common.jobrun.ForkComputingSystem. */;
+    ok = ok && super.preProcess(job); /* This is what boots up a VM. Notice that super refers to
+                                         gridfactory.common.jobrun.ForkComputingSystem. */
 
     String commandSuffix = ".sh";
     String scriptFile = job.getName()+".gp"+commandSuffix;
@@ -237,7 +246,6 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   /**
    * If a VM RTE provides all of the requested RTEs, set this as the
    * opsys and opSysRTE.
-   * possible.
    * @param rtes requested RTEs
    * @param job the job in question
    */

@@ -3144,7 +3144,8 @@ public class DBPluginMgr extends DBCache implements Database{
    * Returns colors corresponding to getStatusNames for statistics panel.
    */
   public static Color [] getStatusColors(){
-    return new Color [] {Color.black, Color.blue, Color.green, Color.orange, Color.magenta, Color.red, Color.darkGray};
+    return new Color [] {Color.black, Color.lightGray, Color.blue, Color.green, Color.orange,
+        Color.magenta, Color.red, Color.darkGray};
   }
 
 
@@ -3154,6 +3155,7 @@ public class DBPluginMgr extends DBCache implements Database{
    */
   private static String [] dbStatusNames = new String [] {
       "Defined",
+      "Prepared",
       "Submitted",
       "Validated",
       "Undecided",
@@ -3168,6 +3170,7 @@ public class DBPluginMgr extends DBCache implements Database{
   public static String getStatusName(int status){
     switch(status){
       case DEFINED : return "Defined";
+      case PREPARED : return "Prepared";
       case SUBMITTED : return "Submitted";
       case VALIDATED : return "Validated";
       case FAILED : return "Failed";

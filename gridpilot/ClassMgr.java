@@ -47,8 +47,8 @@ public class ClassMgr{
   private GridPilot gridPilot;
   private HashMap dbMgrs = new HashMap();
   private HashMap ft = new HashMap();
-  private HashMap jobMgrs = new HashMap();
-  private Vector submittedJobs = new Vector();
+  private HashMap<String, JobMgr> jobMgrs = new HashMap<String, JobMgr>();
+  private Vector<MyJobInfo> monitoredJobs = new Vector<MyJobInfo>();
   private Vector submittedTransfers = new Vector();
   private SubmissionControl submissionControl;
   private MyTransferControl transferControl;
@@ -174,17 +174,17 @@ public class ClassMgr{
         logFile.addMessage("ERROR: could not create new JobMgr.", e);
       }
     }
-    return (JobMgr) jobMgrs.get(dbName);
+    return jobMgrs.get(dbName);
   }
   
-  public Vector getJobMgrs(){
-    Vector allJobMgrs = new Vector();
+  public Vector<JobMgr> getJobMgrs(){
+    Vector<JobMgr> allJobMgrs = new Vector<JobMgr>();
     if(jobMgrs==null || jobMgrs.size()==0){
       Debug.debug("No jobMgrs", 3);
     }
     else{
       //Debug.debug("getting jobMgrs, "+jobMgrs.size(), 3);
-      for(Iterator it=jobMgrs.values().iterator(); it.hasNext();){
+      for(Iterator<JobMgr> it=jobMgrs.values().iterator(); it.hasNext();){
         allJobMgrs.add(it.next());
       }
     }
@@ -359,11 +359,11 @@ public class ClassMgr{
     return transferStatisticsPanel;
   }
 
-  public Vector getMonitoredJobs(){
-    if(submittedJobs==null){
+  public Vector<MyJobInfo> getMonitoredJobs(){
+    if(monitoredJobs==null){
       Debug.debug("submittedJobs null", 3);
     }
-    return submittedJobs;
+    return monitoredJobs;
   }
 
   public MyJTable getTransferStatusTable() throws Exception{

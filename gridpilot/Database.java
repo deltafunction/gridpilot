@@ -10,13 +10,13 @@ import com.mysql.jdbc.NotImplemented;
 public interface Database{
     
   public static final int DEFINED = 1;
-  public static final int SUBMITTED = 2;
-  public static final int VALIDATED = 3;
-  public static final int UNDECIDED = 4;
-  public static final int FAILED = 5;
-  public static final int ABORTED = 6;
-  public static final int UNEXPECTED = 7;
-  public static final int PREPARED = 8;
+  public static final int PREPARED = 2;
+  public static final int SUBMITTED = 3;
+  public static final int VALIDATED = 4;
+  public static final int UNDECIDED = 5;
+  public static final int FAILED = 6;
+  public static final int ABORTED = 7;
+  public static final int UNEXPECTED = 8;
   
   // int argument lookupPFNs to getFile() must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns
   public static final int LOOKUP_PFNS_NONE = 0;

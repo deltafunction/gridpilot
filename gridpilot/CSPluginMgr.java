@@ -230,8 +230,8 @@ public class CSPluginMgr implements MyComputingSystem{
   }
 
   /**
-   * Runs this job on the computing system specified by job.ComputingSystem
-   * @see MyComputingSystem#submit(MyJobInfo)
+   * Runs this job on the computing system specified by job.
+   * Returns one of MyComputingSystem.RUN_*
    */
   public int run(final MyJobInfo job){
     
@@ -922,6 +922,7 @@ public class CSPluginMgr implements MyComputingSystem{
     return false;
   }
   public boolean submit(JobInfo job) {
+    // not used by GridPilot - see run()
     return false;
   }
 

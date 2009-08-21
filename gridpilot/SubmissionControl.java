@@ -18,15 +18,12 @@ import gridfactory.common.StatusBar;
 
 /**
  * Controls the job submission. <p>
- * Submitted jobs are put in a queue (<code>toSubmitJobs</code>). Each
- * <code>timeBetweenSubmissions</code>, a Timer checks if there is some jobs in
- * this queue (this timer is stopped when the queue is empty, and restarted when
- * new jobs arrive). <br>
- * If there are any, the first job is removed from <code>toSubmitJobs</code> and
- * put in <code>submittingJobs</code>
+ * Each <code>timeBetweenSubmissions</code>, a Timer checks if there is some jobs in
+ * the queue (the timer is stopped when the queue is empty, and restarted when
+ * new jobs arrive).
  */
 public class SubmissionControl{
-  private Vector monitoredJobs;
+  private Vector<MyJobInfo> monitoredJobs;
   private StatusBar statusBar;
   private StatusBar monitorStatusBar;
   private JProgressBar pbSubmission;
@@ -35,15 +32,18 @@ public class SubmissionControl{
   private MyLogFile logFile;
   private MyJTable statusTable;
   private CSPluginMgr csPluginMgr;
-  private Timer timer;
+  private Timer preprocessTimer;
+  private Timer submitTimer;
   private ImageIcon iconSubmitting;
   private ImageIcon iconProcessing;
   private ImageIcon iconWaiting;
   /** All jobs for which the submission is not done yet. */
-  private Vector toSubmitJobs = new Vector();
+  private Vector<MyJobInfo> toPreprocessJobs = new Vector<MyJobInfo>();
   /** All jobs for which the submission is in progress. */
-  private Vector submittingJobs = new Vector();
- /** Maximum number of simulaneous threads for submission. */
+  private Vector<MyJobInfo> preprocessingJobs = new Vector<MyJobInfo>();
+  /** All jobs for which the submission is in progress. */
+  private Vector<MyJobInfo> submittingJobs = new Vector<MyJobInfo>();
+ /** Maximum number of simultaneous threads for submission. */
   private int maxSimultaneousSubmissions = 5;
   /** Total maximum total number of simultaneously running jobs. */
   private int totalMaxRunning = 10;
@@ -71,9 +71,15 @@ public class SubmissionControl{
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
 
-    timer = new Timer(0, new ActionListener(){
+    preprocessTimer = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        trigSubmission();
+        trigPreprocess();
+      }
+    });
+    
+    submitTimer = new Timer(0, new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        trigSubmit();
       }
     });
     
@@ -146,8 +152,10 @@ public class SubmissionControl{
                               "Default value = " + timeBetweenSubmissions);
     }
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
-    timer.setInitialDelay(0);
-    timer.setDelay(timeBetweenSubmissions);
+    preprocessTimer.setInitialDelay(0);
+    preprocessTimer.setDelay(timeBetweenSubmissions);
+    submitTimer.setInitialDelay(0);
+    submitTimer.setDelay(timeBetweenSubmissions);
     URL imgURL=null;
     try{
       imgURL = GridPilot.class.getResource(GridPilot.ICONS_PATH + "submitting.png");
@@ -183,13 +191,13 @@ public class SubmissionControl{
    * Each job is reserved, the job is created, a row is added to statusTable
    * and submit is called. <p>
    */
-  public void submitJobDefinitions(/*vector of DBRecords*/Vector selectedJobs,
+  public void submitJobDefinitions(/*vector of DBRecords*/Vector <DBRecord>selectedJobs,
       String csName, DBPluginMgr dbPluginMgr){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
     synchronized(monitoredJobs){
-      Vector newJobs = new Vector();
+      Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
       // This label is not shown because this function is not called in a Thread.
-      // It seems to be quite dangereous to call this function in a thread, because
+      // It seems to be quite dangerous to call this function in a thread, because
       // if one does it, you can "load job from db" during reservation (when jobs
       // are not yet put in toSubmitJobs).
       statusBar.setLabel("Reserving. Please wait...");
@@ -212,8 +220,8 @@ public class SubmissionControl{
           // otherwise reservation doesn't work)
           MyJobInfo job = null;
           boolean isjobMonitored = false;
-          for(Iterator it=monitoredJobs.iterator(); it.hasNext();){
-            job = ((MyJobInfo) it.next());
+          for(Iterator<MyJobInfo> it=monitoredJobs.iterator(); it.hasNext();){
+            job = it.next();
             if(job.getIdentifier()==jobDefID){
               isjobMonitored = true;
               break;
@@ -257,8 +265,8 @@ public class SubmissionControl{
         // new rows in table
         statusTable.createRows(monitoredJobs.size());
         //jobControl.initChanges();
-        for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-          ((JobMgr) it.next()).initChanges();
+        for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+          it.next().initChanges();
         }
         // jobControl.updateJobsByStatus();
         statusBar.setLabel("Monitoring done.");
@@ -271,9 +279,9 @@ public class SubmissionControl{
   /**
    * Submits the specified jobs on the given computing system. <p>
    */
-  public void submitJobs(Vector jobs, String csName){
+  public void submitJobs(Vector<MyJobInfo> jobs, String csName){
     synchronized(monitoredJobs){
-      Vector newJobs = new Vector();
+      Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
       for(int i=0; i<jobs.size(); ++i){
         MyJobInfo job = (MyJobInfo) jobs.get(i);
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
@@ -302,9 +310,9 @@ public class SubmissionControl{
 
   /**
    * Submits the given jobs, on the computing system given by job.getComputingSystem. <p>
-   * These jobs are put in toSubmitJobs. <p>
+   * These jobs are put in toSubmitJobs.
    */
-  private void queue(Vector jobs){
+  private void queue(Vector<MyJobInfo> jobs){
     if(jobs==null || jobs.size()==0){
       return;
     }
@@ -312,8 +320,8 @@ public class SubmissionControl{
       jobs = MyUtil.shuffle(jobs);
     }
     MyJobInfo job;
-    for(Iterator it=jobs.iterator(); it.hasNext();){
-      job = (MyJobInfo) it.next();
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      job = it.next();
       statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
     }
     pbSubmission.setMaximum(pbSubmission.getMaximum() + jobs.size());
@@ -329,13 +337,13 @@ public class SubmissionControl{
       statusBar.setProgressBar(pbSubmission);
       isProgressBarSet = true;
     }
-    job = (MyJobInfo) jobs.get(0);
+    job = jobs.get(0);
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
     jobMgr.updateDBCells(jobs);
     jobMgr.updateJobCells(jobs);
-    toSubmitJobs.addAll(jobs);
-    if(!timer.isRunning()){
-      timer.restart();
+    toPreprocessJobs.addAll(jobs);
+    if(!preprocessTimer.isRunning()){
+      preprocessTimer.restart();
     }
     statusBar.setLabel("Adding done.");
     //statusBar.stopAnimation();
@@ -448,8 +456,8 @@ public class SubmissionControl{
       queue(submitables.get(dbName));
     }
     monitorStatusBar.setLabel("");
-    if(!timer.isRunning()){
-      timer.restart();
+    if(!preprocessTimer.isRunning()){
+      preprocessTimer.restart();
     }
   }
 
@@ -539,17 +547,19 @@ public class SubmissionControl{
   }
 
 /**
-  * Checks if there are not too many active submission threads and waiting jobs.
-  * If there are any left, create new submission threads.
+  * Checks if there are not too many active preprocessing threads and waiting jobs.
+  * If there are any slots left, create new preprocessing thread.
   */
-  private synchronized void trigSubmission(){
-    if(toSubmitJobs.isEmpty()){
+  private synchronized void trigPreprocess(){
+    if(toPreprocessJobs.isEmpty()){
       //timer.stop();
+      Debug.debug("No jobs in queue", 2);
+      preprocessTimer.stop();
       return;
     }
-    final MyJobInfo job = (MyJobInfo) toSubmitJobs.get(0);
+    Debug.debug("Timer kicking", 3);
+    final MyJobInfo job = toPreprocessJobs.get(0);
     int runOk = -1;
-    boolean stillToSubmitJobs = false;
     try{
       runOk = checkRunning(job);
     }
@@ -557,49 +567,71 @@ public class SubmissionControl{
       e.printStackTrace();
     }
     final int runOk1 = runOk;
-    if(runOk==CAN_PREPROCESS || runOk==CAN_RUN){
-      // prepare job (dowload input files to worker node if possible)
+    if(runOk==CAN_PREPROCESS){
+      // prepare job (download input files to worker node if possible)
       new Thread(){
         public void run(){
-          int dbStatus = submit(job, runOk1);
-          if(dbStatus==DBPluginMgr.PREPARED){
-            // transfer job from toSubmitJobs to submittingJobs
-            toSubmitJobs.remove(job);
-            submittingJobs.add(job);
-          }
-          else if(dbStatus==DBPluginMgr.SUBMITTED){
-            submittingJobs.remove(job);
-            statusBar.incrementProgressBarValue(pbSubmission, 1);
-            statusBar.cleanupProgressBar(pbSubmission);
-            if(statusBar.cleanupProgressBar(pbSubmission)==1){
-              isProgressBarSet = false;
-              monitorStatusBar.setLabel("Submission done.");
-            }
-            // remove iconSubmitting
-            statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
-          }
-          job.setDBStatus(dbStatus);
-          Vector updV = new Vector();
+          trySubmit(job, runOk1);
+          Vector<MyJobInfo> updV = new Vector<MyJobInfo>();
           updV.add(job);
           JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
           jobMgr.updateDBCells(updV);
-          for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-            ((JobMgr) it.next()).updateJobsByStatus();
+          for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+            it.next().updateJobsByStatus();
           }
         }
       }.start();
     }
     
-    try{
-      stillToSubmitJobs = toSubmitJobs.isEmpty();
-    }
-    catch(Exception e){
-    }
-    if(stillToSubmitJobs){
-      timer.stop();
+    if(toPreprocessJobs.isEmpty()){
+      Debug.debug("No more jobs in preprocessing queue, stopping timer.", 2);
+      preprocessTimer.stop();
     }
   }
   
+  /**
+   * Checks if there are not too many active submission threads and waiting jobs.
+   * If there are any slots left, create new submission thread.
+   */
+   private synchronized void trigSubmit(){
+     if(preprocessingJobs.isEmpty()){
+       //timer.stop();
+       Debug.debug("No jobs in queue", 2);
+       submitTimer.stop();
+       return;
+     }
+     Debug.debug("Timer kicking", 3);
+     final MyJobInfo job = preprocessingJobs.get(0);
+     int runOk = -1;
+     try{
+       runOk = checkRunning(job);
+     }
+     catch(Exception e){
+       e.printStackTrace();
+     }
+     final int runOk1 = runOk;
+     if(runOk==CAN_RUN){
+       // prepare job (download input files to worker node if possible)
+       new Thread(){
+         public void run(){
+           trySubmit(job, runOk1);
+           Vector<MyJobInfo> updV = new Vector<MyJobInfo>();
+           updV.add(job);
+           JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+           jobMgr.updateDBCells(updV);
+           for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+             it.next().updateJobsByStatus();
+           }
+         }
+       }.start();
+     }
+     
+     if(preprocessingJobs.isEmpty()){
+       Debug.debug("No more jobs in queue, stopping submission timer.", 2);
+       submitTimer.stop();
+     }
+   }
+   
   /**
    * Check if this job can be preprocessed, submitted or we should wait.
    * @param job
@@ -609,50 +641,75 @@ public class SubmissionControl{
    */
   private int checkRunning(MyJobInfo job){
     
+    if(submittingJobs.size()+preprocessingJobs.size()>=maxSimultaneousSubmissions){
+      Debug.debug("Cannot preprocess or run: "+
+          submittingJobs.size()+"+"+preprocessingJobs.size()+">="+maxSimultaneousSubmissions, 3);
+      return CANNOT_PREPROCESS_OR_RUN;
+    }
+    
     if(!checkDependenceOnOtherJobs(job)){
+      Debug.debug("Cannot preprocess or run. Waiting for required job to finish. ", 3);
       return CANNOT_PREPROCESS_OR_RUN;
     }
     
     int runningJobs = 0;
-    int preparingJobs = 0;
+    int preprocessedJobs = 0;
     JobMgr mgr = null;
     MyJobInfo tmpJob;
     int [] jobsByStatus = null;
     int [] rJobsByCS = new int[csNames.length];
     int [] pJobsByCS = new int[csNames.length];
     int [] submittedJobsByCS = new int[csNames.length];
-    int [] preparingJobsByCS = new int[csNames.length];
+    int [] preprocessedJobsByCS = new int[csNames.length];
     int jobCsIndex = -1;
     for(int i=0; i<csNames.length; ++i){
+      pJobsByCS[i] = 0;
       rJobsByCS[i] = 0;
     }
-    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-      mgr = ((JobMgr) it.next());
+    for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+      
+      mgr = it.next();
       mgr.updateJobsByStatus();
-      jobsByStatus = mgr.getJobsByStatus();
+      
+      preprocessedJobsByCS = mgr.getPreprocessedJobsByCS();
+      for(int i=0; i<csNames.length; ++i){
+        pJobsByCS[i] += preprocessedJobsByCS[i];
+        Debug.debug("Upping prepared job count for CS "+csNames[i]+" with "+preprocessedJobsByCS[i], 3);
+        if(csNames[i].equalsIgnoreCase(job.getCSName())){
+          jobCsIndex = i;
+        }
+      }
+      
       submittedJobsByCS = mgr.getSubmittedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         rJobsByCS[i] += submittedJobsByCS[i];
-        //Debug.debug("Upping running job count for CS "+csNames[i]+" with "+submittedJobsByCS[i], 3);
+        Debug.debug("Upping submitted job count for CS "+csNames[i]+" with "+submittedJobsByCS[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
         }
       }
-      for(int i=0; i<csNames.length; ++i){
-        pJobsByCS[i] += preparingJobsByCS[i];
-        //Debug.debug("Upping preparing job count for CS "+csNames[i]+" with "+preparingJobsByCS[i], 3);
-        if(csNames[i].equalsIgnoreCase(job.getCSName())){
-          jobCsIndex = i;
-        }
-      }
+
+      jobsByStatus = mgr.getJobsByStatus();
       runningJobs += (jobsByStatus[DBPluginMgr.STAT_STATUS_RUN]);
-      preparingJobs += (jobsByStatus[DBPluginMgr.STAT_STATUS_WAIT]);
+      // Jobs that have been preprocessed, but no yet submitted by the CS
+      preprocessedJobs += (jobsByStatus[DBPluginMgr.STAT_STATUS_WAIT]);
     }
-    for(Iterator it = submittingJobs.iterator(); it.hasNext();){
-      tmpJob = (MyJobInfo) it.next();
+    
+    for(Iterator<MyJobInfo> it = preprocessingJobs.iterator(); it.hasNext();){
+      tmpJob = it.next();
       for(int i=0; i<csNames.length; ++i){
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
-          Debug.debug("Upping job count for CS "+csNames[i], 3);
+          Debug.debug("Upping preprocessing job count for CS "+csNames[i], 3);
+          ++pJobsByCS[i];
+        }
+      }
+    }
+    
+    for(Iterator<MyJobInfo> it = submittingJobs.iterator(); it.hasNext();){
+      tmpJob = it.next();
+      for(int i=0; i<csNames.length; ++i){
+        if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
+          Debug.debug("Upping running job count for CS "+csNames[i], 3);
           ++rJobsByCS[i];
         }
       }
@@ -660,22 +717,35 @@ public class SubmissionControl{
     
     int ret = -1;
     
-    if(submittingJobs.size() >= maxSimultaneousSubmissions){
+    if(submittingJobs.size()+preprocessedJobs>=maxSimultaneousSubmissions){
       ret = CANNOT_PREPROCESS_OR_RUN;
     }
-    else if(submittingJobs.size() + runningJobs < totalMaxRunning &&
-        rJobsByCS[jobCsIndex] < maxRunningPerCS[jobCsIndex]){
+    else if(job.getDBStatus()==DBPluginMgr.PREPARED && 
+        runningJobs<totalMaxRunning &&
+        submittingJobs.size()+runningJobs<totalMaxRunning &&
+        rJobsByCS[jobCsIndex]<maxRunningPerCS[jobCsIndex]){
       ret = CAN_RUN;
     }
-    else if(submittingJobs.size() + preparingJobs < totalMaxPreprocessing &&
-        pJobsByCS[jobCsIndex] < maxPreprocessingPerCS[jobCsIndex]){
+    else if(preprocessingJobs.size()+preprocessedJobs<totalMaxPreprocessing &&
+        pJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
       ret = CAN_PREPROCESS;
     }
     
-    if(ret<=0){
-      Debug.debug("Found running jobs: "+MyUtil.arrayToString(csNames)+" --> "+MyUtil.arrayToString(rJobsByCS)+
+    //if(ret<=0){
+      Debug.debug("Found running jobs: "+
+          submittingJobs.size()+"+"+preprocessedJobs+"<"+maxSimultaneousSubmissions+":"+
+          runningJobs+"<"+totalMaxRunning+":"+
+          submittingJobs.size()+"+"+runningJobs+"<"+totalMaxRunning+":"+
+          preprocessingJobs.size()+"+"+preprocessedJobs+"<"+totalMaxPreprocessing+":"+
+          DBPluginMgr.getStatusName(job.getDBStatus())+":"+
+          MyUtil.arrayToString(csNames)+
+          " --> "+MyUtil.arrayToString(pJobsByCS)+
+          " --> "+MyUtil.arrayToString(maxPreprocessingPerCS)+
+          " --> "+MyUtil.arrayToString(rJobsByCS)+
           " --> "+MyUtil.arrayToString(maxRunningPerCS), 3);
-    }
+    //}
+
+    Debug.debug("Returning "+ret, 3);
     return ret;
   }
 
@@ -716,36 +786,53 @@ public class SubmissionControl{
    * Calls the plugin submission method (via PluginMgr). <br>
    * This method is started in a thread. <p>
    */
-  private int submit(final MyJobInfo job, int runOk){
-    int ret = -1;
+  private void trySubmit(final MyJobInfo job, int runOk){
+    
+    int dbStatus = job.getDBStatus();
+    
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     job.setName(dbPluginMgr.getJobDefName(job.getIdentifier()));
-    statusTable.setValueAt(job.getCSName(), job.getTableRow(),
-        JobMgr.FIELD_CS);
-    //statusTable.setValueAt(job.getName(), job.getTableRow(),
-    //                       JobMgr);
-    Debug.debug("Submitting : " + job.getName()+" : "+statusTable.getRowCount()+
-        " : "+job.getTableRow()+" : "+iconSubmitting, 3);
+    statusTable.setValueAt(job.getCSName(), job.getTableRow(), JobMgr.FIELD_CS);
+    //statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr);
+    Debug.debug("Trying to submit : " + job.getName()+" : "+
+        job.getIdentifier()+" : "+DBPluginMgr.getStatusName(dbStatus)+" : "+runOk+" : "+
+        statusTable.getRowCount()+" : "+job.getTableRow(), 3);
     
-    boolean preprocessOK = false;
-    int submitRes = MyComputingSystem.RUN_WAIT;
-    if(job.getDBStatus()==DBPluginMgr.DEFINED && (runOk==CAN_PREPROCESS || runOk==CAN_RUN)){
+    boolean ok = false;
+    int submitRes = -1;
+    
+    if(toPreprocessJobs.contains(job) && !preprocessingJobs.contains(job) &&
+        dbStatus==DBPluginMgr.DEFINED && runOk==CAN_PREPROCESS){
+      // transfer job from toPreprocessJobs to preprocessingJobs
+      Debug.debug("Will preprocess "+job.getIdentifier(), 2);
+      toPreprocessJobs.remove(job);
+      preprocessingJobs.add(job);
       statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
-      preprocessOK = csPluginMgr.preProcess(job);
-      ret = DBPluginMgr.PREPARED;
+      ok = csPluginMgr.preProcess(job);
+      dbStatus = DBPluginMgr.PREPARED;
+      if(!submitTimer.isRunning()){
+        submitTimer.restart();
+      }
+      Debug.debug("Preprocessing of "+job.getIdentifier()+" done.", 3);
     }
-    else if(job.getDBStatus()==DBPluginMgr.PREPARED && runOk==CAN_RUN){
-      preprocessOK = true;
+    else if(preprocessingJobs.contains(job) && !submittingJobs.contains(job) &&
+        dbStatus==DBPluginMgr.PREPARED && runOk==CAN_RUN){
+      Debug.debug("Will run "+job.getIdentifier(), 2);
+      // transfer job from preprocessingJobs to submittingJobs
+      preprocessingJobs.remove(job);
+      submittingJobs.add(job);
+      ok = true;
       statusTable.setValueAt(iconSubmitting, job.getTableRow(), JobMgr.FIELD_CONTROL);
       submitRes = csPluginMgr.run(job);
     }
 
-    if(preprocessOK && submitRes==MyComputingSystem.RUN_WAIT){
+    if(ok && submitRes==MyComputingSystem.RUN_WAIT){
+      Debug.debug("Waiting on CS for "+job.getIdentifier(), 2);
       job.setNeedsUpdate(true);
       job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
-      ret = DBPluginMgr.PREPARED;
+      dbStatus = DBPluginMgr.PREPARED;
     }
-    if(preprocessOK && submitRes==MyComputingSystem.RUN_OK){
+    if(ok && submitRes==MyComputingSystem.RUN_OK){
       Debug.debug("Job " + job.getName() + " submitted : \n" +
                   "\tCSJobId = " + job.getJobId() + "\n" +
                   "\tStdOut = " + job.getOutTmp() + "\n" +
@@ -766,19 +853,16 @@ public class SubmissionControl{
                            job.getOutTmp() + ", " + job.getErrTmp() +
                            ") failed", job);
       }
-      statusTable.setValueAt(job.getJobId(), job.getTableRow(),
-          JobMgr.FIELD_JOBID);
-      statusTable.setValueAt(job.getUserInfo(), job.getTableRow(),
-          JobMgr.FIELD_USER);
+      statusTable.setValueAt(job.getJobId(), job.getTableRow(), JobMgr.FIELD_JOBID);
+      statusTable.setValueAt(job.getUserInfo(), job.getTableRow(), JobMgr.FIELD_USER);
       statusTable.updateSelection();
       job.setNeedsUpdate(true);
       job.setCSStatus(MyJobInfo.CS_STATUS_WAIT);
-      ret = DBPluginMgr.SUBMITTED;
+      dbStatus = DBPluginMgr.SUBMITTED;
     }
-    else if(!preprocessOK || preprocessOK && submitRes==MyComputingSystem.RUN_FAILED){
-      ret = DBPluginMgr.FAILED;
-      statusTable.setValueAt("Not submitted!", job.getTableRow(),
-          JobMgr.FIELD_JOBID);
+    else if(submitRes==MyComputingSystem.RUN_FAILED){
+      dbStatus = DBPluginMgr.FAILED;
+      statusTable.setValueAt("Not submitted!", job.getTableRow(), JobMgr.FIELD_JOBID);
       job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
       job.setNeedsUpdate(false);
       JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
@@ -787,21 +871,31 @@ public class SubmissionControl{
       }
       else{
         logFile.addMessage("DB update status(" + job.getIdentifier() + ", " +
-            DBPluginMgr.getStatusName(job.getDBStatus()) +
-                           ") failed", job);
+            DBPluginMgr.getStatusName(dbStatus) +") failed", job);
       }
       jobMgr.updateDBCell(job);
       //jobControl.updateJobsByStatus();
     }
-    else{
-      return ret;
+    
+    job.setDBStatus(dbStatus);
+    
+    if(submittingJobs.contains(job) &&
+        (dbStatus==DBPluginMgr.SUBMITTED || dbStatus==DBPluginMgr.FAILED)){
+      submittingJobs.remove(job);
+      statusBar.incrementProgressBarValue(pbSubmission, 1);
+      if(statusBar.cleanupProgressBar(pbSubmission)==1){
+        isProgressBarSet = false;
+        monitorStatusBar.setLabel("Submission done.");
+      }
+      // remove iconSubmitting
+      statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
     }
-    return ret;
+
   }
 
   public boolean isSubmitting(){
     //return timer.isRunning();
-    return !submittingJobs.isEmpty() || !toSubmitJobs.isEmpty();
+    return !submittingJobs.isEmpty() || !toPreprocessJobs.isEmpty();
   }
 
   /**
@@ -809,8 +903,8 @@ public class SubmissionControl{
    * Empties toSubmitJobs, and set these jobs to Failed.
    */
   private void cancelSubmission(){
-    timer.stop();
-    Enumeration e = toSubmitJobs.elements();
+    submitTimer.stop();
+    Enumeration<MyJobInfo> e = toPreprocessJobs.elements();
     MyJobInfo job = null;
     JobMgr jobMgr = null;
     while(e.hasMoreElements()){
@@ -829,8 +923,8 @@ public class SubmissionControl{
             DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
       }
     }
-    jobMgr.updateDBCells(toSubmitJobs);
-    toSubmitJobs.removeAllElements();
+    jobMgr.updateDBCells(toPreprocessJobs);
+    toPreprocessJobs.removeAllElements();
     statusBar.removeProgressBar(pbSubmission);
     pbSubmission.setMaximum(0);
     pbSubmission.setValue(0);

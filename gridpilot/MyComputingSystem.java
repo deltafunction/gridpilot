@@ -41,8 +41,11 @@ import gridfactory.common.jobrun.ComputingSystem;
 
 public interface MyComputingSystem extends ComputingSystem {
   
+  /** The job was successfully submitted. */
   public static final int RUN_OK = 0;
+  /** The job cannot be run right now. */
   public static final int RUN_WAIT = 1;
+  /** The job failed submission. */
   public static final int RUN_FAILED = 2;
 
   /**

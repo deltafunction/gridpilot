@@ -21,6 +21,7 @@ import org.safehaus.uuid.UUIDGenerator;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -332,7 +333,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bReplicate =  MyUtil.mkButton("replicate.png", "Replicate file(s)", "Replicate files from or to a remote server");
     bSubmit =  MyUtil.mkButton("run.png", "Submit job(s)", "Submit job(s) to a computing backend");
     bMonitor =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s)");
-    bProcessDatasets =  MyUtil.mkButton("run.png", "Process", "Execute application(s)/dataset(s)");
+    bProcessDatasets =  MyUtil.mkButton("run.png", "Execute", "Execute application(s)/dataset(s)");
     bMonitorDatasets =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s) of application(s)/dataset(s)");
     bCleanupDatasets =  MyUtil.mkButton("clean.png", "Cleanup", "Cleanup job(s) and file(s) of application(s)/dataset(s)");
 
@@ -1943,36 +1944,44 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread.start();
   }
 
-  private boolean doDeleteFiles(String[] allIds, boolean cleanup) {
+  private boolean doDeleteFiles(String[] _ids, boolean cleanup) {
     boolean anyDeleted = false;
     
     HashMap<String, Vector<String>> datasetNameAndIds = new HashMap<String, Vector<String>>();
-    String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-    int [] rows = tableResults.getSelectedRows();
-    int fileDatasetNameColumn = -1;
-    // Find the dataset name column on the files tab
-    for(int i=0; i<tableResults.getColumnCount(); ++i){
-      if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
-        fileDatasetNameColumn = i;
-        break;
-      }
-    }
-    String dsn = null;
-    // Group the file IDs by dataset name
-    for(int i=0; i<allIds.length; ++i){
-      dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
-      if(!datasetNameAndIds.containsKey(dsn)){
-        datasetNameAndIds.put(dsn, new Vector<String>());
-      }
-      (datasetNameAndIds.get(dsn)).add(allIds[i]);
-    }          
     
-    Debug.debug("Deleting "+allIds.length+" rows. "+MyUtil.arrayToString(allIds), 2);
-    if(allIds.length!=0){
+    String dsn = null;
+    if(getTableName().equalsIgnoreCase("dataset")){
+      dsn = dbPluginMgr.getDatasetName(getSelectedIdentifier());
+      datasetNameAndIds.put(dsn, new Vector<String>());
+      Collections.addAll(datasetNameAndIds.get(dsn), _ids);
+    }
+    else if(getTableName().equalsIgnoreCase("file")){
+      String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+      int fileDatasetNameColumn = -1;
+      // Find the dataset name column on the files tab
+      for(int i=0; i<tableResults.getColumnCount(); ++i){
+        if(tableResults.getColumnName(i).equalsIgnoreCase(fileDatasetReference[1])){
+          fileDatasetNameColumn = i;
+          break;
+        }
+      }
+      int [] rows = tableResults.getSelectedRows();
+      // Group the file IDs by dataset name
+      for(int i=0; i<_ids.length; ++i){
+        dsn = (String) tableResults.getUnsortedValueAt(rows[i], fileDatasetNameColumn);
+        if(!datasetNameAndIds.containsKey(dsn)){
+          datasetNameAndIds.put(dsn, new Vector<String>());
+        }
+        (datasetNameAndIds.get(dsn)).add(_ids[i]);
+      }          
+    }
+    
+    Debug.debug("Deleting "+_ids.length+" rows. "+MyUtil.arrayToString(_ids), 2);
+    if(_ids.length!=0){
       GridPilot.getClassMgr().getStatusBar().setLabel(
          "Deleting file(s). Please wait...");
       JProgressBar pb = statusBar.setProgressBar();
-      statusBar.setProgressBarMax(pb, allIds.length);
+      statusBar.setProgressBarMax(pb, _ids.length);
       
       String [] ids = null;
       Vector<String> idVec = null;
@@ -2007,7 +2016,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
                   
-      for(int i=allIds.length-1; i>=0; i--){
+      for(int i=_ids.length-1; i>=0; i--){
         statusBar.incrementProgressBarValue(pb, 1);
         // Not necessary, we refresh below
         //tableResults.removeRow(rows[i]);
@@ -2632,7 +2641,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       jobDefIds = new String [jobDefs.values.length];
       for(int ii=0; ii<jobDefs.values.length; ++ii){
-        jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
+        toSubmitJobDefIds.add((String) jobDefs.get(ii).getValue(idField));
         ++jobCount;
       }
     }
@@ -2793,14 +2802,29 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           Debug.debug("cleaning jobs from dataset(s): "+MyUtil.arrayToString(ids), 3);
           String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
           for(int i=ids.length-1; i>=0; --i){
-            ok = ok && cleanupJobsFromDataset(i, ids[i]);
-            ok = ok && deleteJobDefsFromDataset(i, ids[i]);
-            ok = ok && deletefilesOfDataset(i, ids[i]);
             DBResult jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
                 new String [] {idField}, null, null);
-            jobCount = jobCount + jobDefs.size();
             DBResult files = dbPluginMgr.getFiles(ids[i]);
-            fileCount = fileCount + files.size();
+            try{
+              ok = ok && cleanupJobsFromDataset(i, ids[i]);
+            }
+            catch(Exception ee){
+              ee.printStackTrace();
+            }
+            try{
+              ok = ok && deleteJobDefsFromDataset(i, ids[i]);
+              jobCount = jobCount + jobDefs.size();
+            }
+            catch(Exception ee){
+              ee.printStackTrace();
+            }
+            try{
+              ok = ok && deletefilesOfDataset(i, ids[i]);
+              fileCount = fileCount + files.size();
+            }
+            catch(Exception ee){
+              ee.printStackTrace();
+            }
           }
           MyUtil.showMessage("Cleanup done", "<html>Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
               ".<br><br>&nbsp;&nbsp;job(s) cleaned: "+jobCount+"<br><br>"+
@@ -3094,7 +3118,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 }
                 uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
                 String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
-                GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+                //GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+                GridPilot.getClassMgr().getStatusBar().setLabel(message);
                 GridPilot.getClassMgr().getLogFile().addInfo(message);
                 dbPluginMgr.registerFileLocation(
                     datasetID, datasetName, uuid, lfn, pfn, size, null, false);

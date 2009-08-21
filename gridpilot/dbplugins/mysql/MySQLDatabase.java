@@ -1582,7 +1582,8 @@ public class MySQLDatabase extends DBCache implements Database {
               values[i].equals("''")){
             values[i] = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
             String message = "Generated new UUID "+values[i]+" for dataset";
-            GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+            //GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+            //GridPilot.getClassMgr().getStatusBar().setLabel(message);
             GridPilot.getClassMgr().getLogFile().addInfo(message);
           }
            values[i] = "'"+values[i]+"'";
