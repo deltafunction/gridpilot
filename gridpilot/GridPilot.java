@@ -288,17 +288,8 @@ public class GridPilot extends JApplet{
       getClassMgr().getLogFile().addMessage(getClassMgr().getConfigFile().getMissingMessage("Computing systems", "systems"));
     }
     else{
-      String enabled = "no";
       for(int i=0; i<CS_NAMES.length; ++i){
-        enabled = "no";
-        try{
-          enabled = GridPilot.getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Enabled");
-        }
-        catch(Exception e){
-          continue;
-        }
-        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-            !enabled.equalsIgnoreCase("true")){
+        if(!MyUtil.checkCSEnabled(CS_NAMES[i])){
           continue;
         }
         String host = getClassMgr().getConfigFile().getValue(CS_NAMES[i], "Host");
@@ -659,7 +650,7 @@ public class GridPilot extends JApplet{
     );
   }
   
-  public static void exit(final int exitCode){
+  public static synchronized void exit(final int exitCode){
     if(IS_EXITING){
       return;
     }

@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
@@ -60,19 +61,24 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       bootTimeout = Integer.parseInt(bt);
     }
     defaultVmMB = minVmMB+defaultJobMB;
-    // No need to run more than one VM - this CS is just for testing a single job before running it on GridFactory.
-    maxMachines = 1;
     shells = new HashMap<String, Shell>();
+    /*
+     * We set the max number of jobs allowed by super.reuseHost() to be the allowed
+     * number of running jobs of the config file. The number of preprocessing and running jobs
+     * will be attempted controlled by SubmissionControl, but enforced by super.reuseHost().
+     */
+    int maxRunningJobsPerHost = 1;
+    String maxRunningJobsPerHostStr = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Max running jobs per host");
+    if(maxRunningJobsPerHostStr!=null && !maxRunningJobsPerHostStr.trim().equals("")){
+      maxRunningJobsPerHost = Integer.parseInt(maxRunningJobsPerHostStr);
+    }
+    maxMachines = MyUtil.getTotalMaxSimultaneousRunningJobs(csName) / maxRunningJobsPerHost;
+    // Fill maxRunningJobs with a constant number
+    maxRunningJobs = new int[maxMachines];
+    Arrays.fill(maxRunningJobs, maxRunningJobsPerHost);
+    Debug.debug("Jobs per machine: "+MyUtil.arrayToString(maxRunningJobs), 2);
     // Fill hosts with nulls and assign values as jobs are submitted.
     hosts = new String [maxMachines];
-    // Fill maxJobs with a constant number
-    maxJobs = new int[maxMachines];
-    // We set the max number of jobs allowed by super.preprocess() to be the allowed
-    // preparing+running of the GridPilot config file. The number of actually running jobs
-    // will be controlled by SubmissionControl to be <= the max allowed running jobs.
-    jobsPerMachine = MyUtil.getMaxSimultaneousRunningJobs(csName) +
-       MyUtil.getMaxSimultaneousPreprocessingJobs(csName);
-    Arrays.fill(maxJobs, jobsPerMachine);
     localRteDir = GridPilot.RUNTIME_DIR;
     remoteRteDir = localRteDir;
     workingDir = configFile.getValue(csName, "working directory");
@@ -205,8 +211,13 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     includeManuallyBootedVMs();
     
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
-    ok = ok && super.preProcess(job); /* This is what boots up a VM. Notice that super refers to
-                                         gridfactory.common.jobrun.ForkComputingSystem. */
+    if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
+                                         gridfactory.common.jobrun.ForkComputingSystem. */){
+      // There may still be hosts booting or unbooted - just return false - SubmissionControl
+      // will check and fail job if necessary.
+      Debug.debug("super.preProcess() failed, returning false", 2);
+      return false;
+    }
 
     String commandSuffix = ".sh";
     String scriptFile = job.getName()+".gp"+commandSuffix;
@@ -328,8 +339,50 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         true, new String [] {"Linux", "Windows"}, true);
   }
   
+  /**
+   * Check if there is a free slot for running a job on the host 'host'.
+   * @param host the host in question
+   * @return true if the job can be run, false otherwise
+   */
+  private boolean checkMaxRunning(MyJobInfo job) {
+    Shell shell = shells.get(job.getHost());
+    if(shell.equals(null)){
+      return false;
+    }    String hostAndPort;
+    int sJobs;
+    int rJobs;
+    for(int i=0; i<hosts.length; ++i){
+      if(job.getHost().equals(hosts[i])){
+        sJobs = getSubmitting(job);
+        rJobs = shell.getJobsNumber();
+        Debug.debug("Checking if we can run more jobs on "+hosts[i]+"-->"+
+            sJobs+"+"+rJobs+"<"+maxRunningJobs[i], 2);
+        return sJobs+rJobs<maxRunningJobs[i];
+      }
+    }
+    return true;
+  }
+  
+  private int getSubmitting(MyJobInfo _job){
+    int ret = 0;
+    MyJobInfo job;
+    Vector<MyJobInfo> jobs = GridPilot.getClassMgr().getSubmissionControl().getSubmittingJobs();
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      job = it.next();
+      if(!job.getIdentifier().equals(_job.getIdentifier()) && _job.getHost().equals(job.getHost())){
+        Debug.debug("getSubmitting-->"+job.getName(), 3);
+        ++ret;
+      }
+    }
+    return ret;
+  }
+
   public int run(final MyJobInfo job){
     try{
+      if(!checkMaxRunning(job)){
+        return MyComputingSystem.RUN_WAIT;
+      }
+
       if(submit(job)){
         return MyComputingSystem.RUN_OK;
       }

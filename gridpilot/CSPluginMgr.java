@@ -103,18 +103,9 @@ public class CSPluginMgr implements MyComputingSystem{
    */
   public void loadClasses() throws Throwable{
 
-    String enabled = "no";
-
     for(int i=0; i<csNames.length; ++i){
-      enabled = "no";
-      try{
-        enabled = configFile.getValue(csNames[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      
+      if(!MyUtil.checkCSEnabled(csNames[i])){
         continue;
       }
       
@@ -443,17 +434,8 @@ public class CSPluginMgr implements MyComputingSystem{
    * @see MyComputingSystem#exit()
    */
   public void exit() {
-    String enabled = null;
     for(int i=0; i<csNames.length; ++i){
-      enabled = null;
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(csNames[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(csNames[i])){
         continue;
       }
       final int k = i;
@@ -488,16 +470,8 @@ public class CSPluginMgr implements MyComputingSystem{
       return "ERROR: no computing system";
     }
     boolean csFound = false;
-    String enabled = "no";
     for(int i=0; i<csNames.length; ++i){
-      try{
-        enabled = configFile.getValue(csNames[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(csNames[i])){
         continue;
       }
       if(csNames[i].equalsIgnoreCase(csName)){
@@ -546,14 +520,25 @@ public class CSPluginMgr implements MyComputingSystem{
     ResThread t = new ResThread(){
       String [] res = new String[]{null,null};
       public void run(){
-        try{
-          res = ((MyComputingSystem) cs.get(csName)).getCurrentOutput(job);
-        }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during job " + job.getName() + " getCurrentOutpus", (MyJobInfo) job, t);
+        // Try three times - the FS may be blocking because the files are being written...
+        for(int i=0; i<3; ++i){
+          try{
+            res = ((MyComputingSystem) cs.get(csName)).getCurrentOutput(job);
+            return;
+          }
+          catch(Exception t){
+            try {
+              Thread.sleep(3000);
+            }
+            catch(InterruptedException e){
+              e.printStackTrace();
+            }
+            setException(t);
+          }
           res = new String[]{null, null};
+          logFile.addMessage((getException() instanceof Exception ? "Exception" : "Error") +
+              " from plugin " + csName +
+              " during job " + job.getName() + " getCurrentOutpus", (MyJobInfo) job, getException());
         }
       }
       public String [] getString2Res(){
@@ -822,12 +807,7 @@ public class CSPluginMgr implements MyComputingSystem{
     }
     ResThread t = new ResThread(){
       public void run(){
-        try{
-          if(!configFile.getValue(csName, "Enabled").equalsIgnoreCase("yes")){
-            return;
-          }
-        }
-        catch(Exception e){
+        if(!MyUtil.checkCSEnabled(csName)){
           return;
         }
         try{
@@ -853,12 +833,7 @@ public class CSPluginMgr implements MyComputingSystem{
     ResThread t = new ResThread(){
       public void run(){
         try{
-          try{
-            if(!configFile.getValue(csName, "Enabled").equalsIgnoreCase("yes")){
-              return;
-            }
-          }
-          catch(Exception e){
+          if(!MyUtil.checkCSEnabled(csName)){
             return;
           }
           ((MyComputingSystem) cs.get(csName)).cleanupRuntimeEnvironments(csName);

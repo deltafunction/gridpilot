@@ -46,6 +46,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   private static final long serialVersionUID = 1L;
   
+  /** Number of seconds between each refresh when processing dataset(s). */
+  private static final int AUTO_REFRESH_SECONDS = 20;
+
+  private static final int FIRST_JOB_SUBMITTED_WAIT_MILLIS = 120*1000;
+  
   /** Show define, edit and delete buttons on all DB panes. */
   private boolean SHOW_DB_BUTTONS = false;
   
@@ -434,17 +439,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      String enabled = "no";
       for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
         Debug.debug("Checking CS "+GridPilot.CS_NAMES[i], 2);
-        try{
-          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-        }
-        catch(Exception e){
-          continue;
-        }
-        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-            !enabled.equalsIgnoreCase("true")){
+        if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
           continue;
         }
         JMenuItem miP = new JMenuItem(GridPilot.CS_NAMES[i]);
@@ -566,17 +563,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       });
       
-      String enabled = "no";
       for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
         Debug.debug("Checking CS "+GridPilot.CS_NAMES[i], 2);
-        try{
-          enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-        }
-        catch(Exception e){
-          continue;
-        }
-        if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-            !enabled.equalsIgnoreCase("true")){
+        if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
           continue;
         }
         JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
@@ -1763,16 +1752,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            jmSetFieldValue.add(miSetFields[i]);
       }
     }
-    String enabled = "no";
     for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
         continue;
       }
       JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);
@@ -2619,7 +2600,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     boolean ok = true;
     int jobCount = 0;
     Debug.debug("Processing dataset(s): "+MyUtil.arrayToString(ids), 3);
-    String [] jobDefIds;
     DBResult jobDefs;
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     // Create jobs if none present
@@ -2639,7 +2619,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(jobDefs.values.length==0){
         continue;
       }
-      jobDefIds = new String [jobDefs.values.length];
       for(int ii=0; ii<jobDefs.values.length; ++ii){
         toSubmitJobDefIds.add((String) jobDefs.get(ii).getValue(idField));
         ++jobCount;
@@ -2650,25 +2629,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       MyUtil.showMessage("No jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
       return ok;
     }
-    // First try a test job
-    String firstJobDefId = toSubmitJobDefIds.remove(0);
+    // First try a test job - DROPPED - the user can do this himself...
+    /*String firstJobDefId = toSubmitJobDefIds.remove(0);
     String [] remainingJobDefIds = toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]);
     try{
       doSubmit(csName, new String [] {firstJobDefId});
+      waitForSubmitted(csName, firstJobDefId);
     }
     catch(Exception e){
       ok = false;
       String error = e.getMessage();
-      MyUtil.showError("Problem submitting job(s) "+
+      MyUtil.showError("Problem submitting first job "+
           (error!=null||error.equals("")?"See the log for details.":error));
       return ok;
     }
     // Then submit the rest
     if(toSubmitJobDefIds.size()==0){
       return ok;
-    }
+    }*/
     try{
-      doSubmit(csName, remainingJobDefIds);
+      //doSubmit(csName, remainingJobDefIds);
+      doSubmit(csName, toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]));
     }
     catch(Exception e){
       ok = false;
@@ -2677,9 +2658,40 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           (error!=null||error.equals("")?"See the log for details.":error));
       return ok;
     }
+    setRefresh();
     return ok;
   }
   
+  private void setRefresh() {
+    GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+        ).getJobMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
+  }
+
+  private void waitForSubmitted(String csName, String firstJobDefId) throws Exception {
+    int i = 0;
+    int dbStatus = -1;
+    int sleepMillis = 5000;
+    while(dbStatus!=DBPluginMgr.SUBMITTED){
+      dbStatus = DBPluginMgr.getStatusId(dbPluginMgr.getJobDefStatus(firstJobDefId));
+      Debug.debug("Waiting for first job, got status "+DBPluginMgr.getStatusName(dbStatus), 2);
+      if(dbStatus==DBPluginMgr.SUBMITTED){
+        return;
+      }
+      try{
+        Thread.sleep(sleepMillis);
+      }
+      catch(InterruptedException e){
+         e.printStackTrace();
+         break;
+      }
+      ++i;
+      if(i*sleepMillis>FIRST_JOB_SUBMITTED_WAIT_MILLIS){
+        break;
+      }
+    }
+    throw new Exception("Timed out waiting for job "+firstJobDefId);
+  }
+
   private boolean createJobDefsForDataset(String datasetId){
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
         new String [] {datasetId}, true);

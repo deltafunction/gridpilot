@@ -204,16 +204,8 @@ public class RunCommandWizard extends GPFrame{
     ct.gridwidth = 3;
     ct.gridx = 0;
     JPanel buttonsPanel = new JPanel();
-    String enabled = "no";
     for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
         continue;
       }
       JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i]);

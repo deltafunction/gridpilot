@@ -162,16 +162,8 @@ public class JobStatusUpdateControl{
     /**
      * Load of maxJobsByUpdate
      */
-    String enabled = "no";
     for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
         continue;
       }
       tmp = configFile.getValue(GridPilot.CS_NAMES[i], "max jobs by update");

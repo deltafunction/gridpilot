@@ -31,7 +31,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected String [] hosts = null;
   protected String [] maxRunningJobs = null;
   protected String [] maxPreprocessingJobs = null;
-  // Map of host -> Set of jobs that are being submmited
+  // Map of host -> Set of jobs that are being submitted
   protected HashMap<String, HashSet<String>> submittingHostJobs = null;
   protected String [] users = null;
   protected String [] passwords = null;
@@ -149,6 +149,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     String host = null;
     int maxP = 1;
     int submitting = 0;
+    //Shell mgr = null;
+    //int maxR = 1;
     for(int i=0; i<hosts.length; ++i){
       host = hosts[i];
       try{
@@ -157,9 +159,18 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         }
         submitting = (host!=null &&
             submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
-        if(submitting<maxP){
-          return host;
+        if(submitting>=maxP){
+          continue;
+        } 
+        return host;
+        // Not necessary
+        /*mgr = getShell(host);
+        if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
+          maxR = Integer.parseInt(maxRunningJobs[i]);
         }
+        if(mgr.getJobsNumber()+submitting<maxR+maxP){
+          return host;
+        }*/
       }
       catch(Exception e){
         e.printStackTrace();

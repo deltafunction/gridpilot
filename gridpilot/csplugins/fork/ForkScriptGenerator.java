@@ -126,6 +126,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
     String scriptPath = MyUtil.clearFile(scriptSrc).replaceAll("\\\\", "/");
     String scriptName = scriptPath.replaceFirst(".*/([^/]+)", "$1");
     String scriptDest = "file:" + MyUtil.clearFile(workingDir) + "/" + scriptName;
+    
+    if(scriptName.trim().equals("")){
+      logFile.addMessage("ERROR: executable script undefined. "+
+          "Cannot proceed with "+job);
+      return false;
+    }
 
     // Header
     writeHeader(onWindows, buf, commentStart);

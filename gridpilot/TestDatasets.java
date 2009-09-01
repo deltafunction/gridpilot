@@ -48,12 +48,10 @@ public class TestDatasets {
     catch(Exception e){
       // if we cannot show text on splash, just silently ignore
     }
-    String isEnabled = "no";
     Shell shellMgr = null;
     DBPluginMgr dbPluginMgr = null;
     for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-      isEnabled = configFile.getValue(GridPilot.CS_NAMES[i], "Enabled");
-      if(isEnabled==null || !isEnabled.equalsIgnoreCase("yes") && !isEnabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
         continue;
       }
       try{

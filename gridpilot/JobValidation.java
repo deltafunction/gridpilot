@@ -18,10 +18,6 @@ import java.util.*;
 
 public class JobValidation{
 
-  static final int EXIT_VALIDATED = 1;
-  static final int EXIT_UNDECIDED = 2;
-  static final int EXIT_FAILED = 3;
-  static final int EXIT_UNEXPECTED = 4;
   static final int ERROR = -1;
 
   private MyLogFile logFile;
@@ -123,6 +119,13 @@ public class JobValidation{
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
           int dbStatus = doValidate(job);
+          Integer resubmit = (Integer) GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+             ).getJobMonitoringPanel().getSAutoResubmit().getValue();
+          // If we are running in automatic resubmission mode, there is no such thing as undecided.
+          // Just set the job to failed.
+          if(resubmit>0 && (dbStatus==DBPluginMgr.UNDECIDED || dbStatus==DBPluginMgr.UNEXPECTED)){
+            dbStatus = DBPluginMgr.FAILED;
+          }
           try{
             GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
                 + DBPluginMgr.getStatusName(dbStatus) +
@@ -262,11 +265,11 @@ public class JobValidation{
       String errorMatches = validate(outs);
       job.setValidationResult(errorMatches);
       if(errorMatches.length()==0){
-        exitValue = EXIT_VALIDATED;
+        exitValue = DBPluginMgr.VALIDATED;
         Debug.debug("Validation ended with : " + errorMatches, 2);
       }
       else{
-        exitValue = EXIT_UNDECIDED;
+        exitValue = DBPluginMgr.UNDECIDED;
         logFile.addMessage("Validation ended with : " + errorMatches);
       }
 
@@ -280,19 +283,19 @@ public class JobValidation{
     int dbStatus;
     extractInfo(job, outs[0]);
     switch(exitValue){
-      case EXIT_VALIDATED :
+      case DBPluginMgr.VALIDATED :
         Debug.debug("Validation : exit validated", 2);
         dbStatus = DBPluginMgr.VALIDATED;
         break;
-      case EXIT_UNDECIDED :
+      case DBPluginMgr.UNDECIDED :
         Debug.debug("job " + job.getName() + " Validation : exit undecided", 2);
         dbStatus = DBPluginMgr.UNDECIDED;
         break;
-      case EXIT_FAILED :
+      case DBPluginMgr.FAILED :
         Debug.debug("job " + job.getName() + " Validation : exit failed", 2);
         dbStatus = DBPluginMgr.FAILED;
         break;
-      case EXIT_UNEXPECTED :
+      case DBPluginMgr.UNEXPECTED :
         Debug.debug("job " + job.getName() + " Validation : exit with unexpected errors", 2);
         dbStatus = DBPluginMgr.UNEXPECTED;
         break;
@@ -309,10 +312,10 @@ public class JobValidation{
 
     Debug.debug("Validation of job " + job.getName() + " took " +
                 (new Date().getTime() - beginTime) + " ms with result : " +
-                (exitValue==EXIT_VALIDATED ? "Validated" :
-                exitValue==EXIT_UNDECIDED ? "Undecided" :
-                exitValue==EXIT_UNEXPECTED ? "Unexpected" :
-                exitValue==EXIT_FAILED ? "Failed" :
+                (exitValue==DBPluginMgr.VALIDATED ? "Validated" :
+                exitValue==DBPluginMgr.UNDECIDED ? "Undecided" :
+                exitValue==DBPluginMgr.UNEXPECTED ? "Unexpected" :
+                exitValue==DBPluginMgr.FAILED ? "Failed" :
                 "(Wrong value)") , 3);
    return dbStatus;
   }

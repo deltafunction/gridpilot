@@ -46,10 +46,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
-import java.util.Set;
 import java.util.Vector;
 
 
@@ -1946,7 +1944,7 @@ private static String fixUrl(String _url){
     return ret;
   }
 
-  public static int getMaxSimultaneousRunningJobs(String csName) {
+  public static int getTotalMaxSimultaneousRunningJobs(String csName) {
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     int ret = -1;
@@ -1975,7 +1973,7 @@ private static String fixUrl(String _url){
     return ret;
   }
 
-  public static int getMaxSimultaneousPreprocessingJobs(String csName) {
+  public static int getTotalMaxSimultaneousPreprocessingJobs(String csName) {
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     int ret = -1;
@@ -2003,5 +2001,21 @@ private static String fixUrl(String _url){
     }
     return ret;
   }
+  
+  public static boolean checkCSEnabled(String csName) {
+    String enabled = null;
+    try{
+      enabled = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Enabled");
+    }
+    catch(Exception e){
+    }
+    if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
+        !enabled.equalsIgnoreCase("true")){
+      return false;
+    }
+    return true;
+  }
+
+
 
 }

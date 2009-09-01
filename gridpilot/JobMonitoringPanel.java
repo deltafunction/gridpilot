@@ -16,9 +16,7 @@ import java.util.Vector;
 import javax.swing.event.*;
 
 /**
- * Shows a table with informations about running jobs
- *
- * <p><a href="JobMonitoringPanel.java.html">see sources</a>
+ * Shows a table with informations about running jobs.
  */
 public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
@@ -56,6 +54,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
   private JSpinner sAutoRefresh = new JSpinner();
   private JSpinner sAutoResubmit = new JSpinner();
   private JComboBox cbRefreshUnits = new JComboBox(new Object []{"sec", "min"});
+  private int SEC = 0;
   private int MIN = 1;
   private JMenuItem miStopUpdate = new JMenuItem("Stop updating");
   private JMenuItem miKill = new JMenuItem("Kill");
@@ -383,16 +382,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
 
-    String enabled = "no";
     for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
-      try{
-        enabled = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Enabled");
-      }
-      catch(Exception e){
-        continue;
-      }
-      if(enabled==null || !enabled.equalsIgnoreCase("yes") &&
-          !enabled.equalsIgnoreCase("true")){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
         continue;
       }
       JMenuItem mi = new JMenuItem(GridPilot.CS_NAMES[i], i);
@@ -470,6 +461,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     else{
       timerRefresh.stop();
     }
+  }
+  
+  public void setAutoRefreshSeconds(int secs){
+    cbRefreshUnits.setSelectedIndex(SEC);
+    sAutoRefresh.setValue(secs);
+    cbAutoRefresh.setSelected(true);
+    cbAutoRefresh_clicked();
   }
 
   /**

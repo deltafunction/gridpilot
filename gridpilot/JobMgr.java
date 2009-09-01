@@ -912,8 +912,7 @@ public class JobMgr{
   }
 
   /**
-   * Tells if a transiton between DB status is allowed. <p>
-   * Currently, this method is only called with toStatus in {Defined, Aborted, Failed}.
+   * Tells if a transition between DB statuses is allowed. <p>
    * @return <code>null</code> if the transition from the DB status <code>fromStatus</code>
    * to <code>toStatus</code> is allowed, and a String which explains why if this
    * transition is not allowed. <p>
@@ -924,26 +923,29 @@ public class JobMgr{
     String sameStatus = "Transitions between the same status are not allowed";
 
     String fromDefined = "Defined jobs cannot be set manually to other statuses than Aborted";
+    String fromPrepared = "Prepared jobs cannot be set manually to other statuses than Aborted or Failed";
     String fromValidated = "A Validated job can only be set to Defined or Aborted";
-    String fromAborted = "An Aborted job has to be set to Defined before resubmission";
-    String fromSubmitted = "Kill this job and wait until GridPilot detects its end, " +
+    String fromAborted = "An Aborted job has to be set to Defined before manual resubmission";
+    String fromSubmitted = "Kill this job and wait until GridPilot detects it has been terminated - " +
         "otherwise a ghost job may overwrite a new attempt";
 
     String toValidated = "A job cannot be set to Validated manually";
     String toUndecided = "A job cannot be set to Undecided manually";
 
-    String undToSub = "Set it Failed before, and resubmit it";
+    String unToSub = "Set it Failed before, and resubmit it";
     String failToSub = "Resubmit it";
-    String undToDef = "Set it Failed before";
+    String unToDef = "Set it to Failed first";
 
     String allowedTransition [][] = {
-        /*   from\to    DEFINED        SUBMITTED      VALIDATED      UNDECIDED      FAILED         ABORTED*/
-        /*DEFINED*/    {sameStatus,    fromDefined,   fromDefined,   fromDefined,   fromDefined,   null},
-        /*SUBMITTED*/  {fromSubmitted, sameStatus,    toValidated,   toUndecided,   fromSubmitted, fromSubmitted},
-        /*VALIDATED*/  {null,          fromValidated, sameStatus,    fromValidated, fromValidated, null},
-        /*UNDECIDED*/  {undToDef,      undToSub,      toValidated,   sameStatus,    null,          null},
-        /*FAILED*/     {null,          failToSub,     toValidated,   toUndecided,   sameStatus,    null},
-        /*ABORTED*/    {null,          fromAborted,   fromAborted,   fromAborted,   fromAborted,   sameStatus}};
+        /*   from\to    DEFINED        PREPARED        SUBMITTED      VALIDATED      UNDECIDED      UNEXPECTED      FAILED         ABORTED*/
+        /*DEFINED*/    {sameStatus,    fromDefined,    fromDefined,   fromDefined,   fromDefined,   fromDefined,    fromDefined,   null},
+        /*PREPARED*/   {fromPrepared,  sameStatus,     fromPrepared,  fromPrepared,  fromPrepared,  fromPrepared,   null,          null},
+        /*SUBMITTED*/  {fromSubmitted, fromSubmitted,  sameStatus,    toValidated,   toUndecided,   toUndecided,    fromSubmitted, fromSubmitted},
+        /*VALIDATED*/  {null,          fromValidated,  fromValidated, sameStatus,    fromValidated, fromValidated,  fromValidated, null},
+        /*UNDECIDED*/  {unToDef,       unToSub,        unToSub,      toValidated,    sameStatus,    null,           null,          null},
+        /*UNEXPECTED*/ {null,          unToSub,        unToSub,      toValidated,    null,          sameStatus,     null,          null},
+        /*FAILED*/     {null,          failToSub,      failToSub,     toValidated,   toUndecided,   null,           sameStatus,    null},
+        /*ABORTED*/    {null,          fromAborted,    fromAborted,   fromAborted,   fromAborted,   null,           fromAborted,   sameStatus}};
 
     return allowedTransition[fromStatus -1][toStatus -1];
   }
