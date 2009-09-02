@@ -60,7 +60,7 @@ public class SubmissionControl{
   /** Delay between the begin of two submission threads. */
   private int timeBetweenSubmissions = 10000;
   /** Number of times to try and find a host for a job. */
-  private int PREPROCESS_RETRIES = 5;
+  private int PREPROCESS_RETRIES = 3;
   private HashMap<MyJobInfo, Integer> preprocessRetryJobs;
   private String isRand = null;
   private String [] csNames;
@@ -980,6 +980,7 @@ public class SubmissionControl{
           submitTimer.restart();
         }
         preprocessRetryJobs.remove(job);
+        preprocessingDone(job, dbStatus);
       }
       else if(checkPreprocessTimeout(job)){
         dbStatus = DBPluginMgr.DEFINED;
@@ -990,21 +991,28 @@ public class SubmissionControl{
         JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
         jobMgr.updateDBCell(job);
         jobMgr.updateJobsByStatus();
+        if(!preprocessTimer.isRunning()){
+          preprocessTimer.restart();
+        }
       }
       else{
         logFile.addMessage("Job "+job.getName()+" cannot be preprocessed." +
         		" Cannot find or provision worker node.");
         dbStatus = DBPluginMgr.FAILED;
+        preprocessingDone(job, dbStatus);
         failJob(job);
       }
-      Debug.debug("Preprocessing of "+job.getIdentifier()+" done.", 3);
-      incrementProgressBar(dbStatus);
-      statusTable.setValueAt(job.getHost()==null?"":job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
-      statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
     }
     
     job.setDBStatus(dbStatus);
 
+  }
+
+  private void preprocessingDone(MyJobInfo job, int dbStatus) {
+    Debug.debug("Preprocessing of "+job.getIdentifier()+" done.", 3);
+    incrementProgressBar(dbStatus);
+    statusTable.setValueAt(job.getHost()==null?"":job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
+    statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
   }
 
   private void incrementProgressBar(int dbStatus) {

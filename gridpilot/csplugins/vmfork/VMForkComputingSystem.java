@@ -144,7 +144,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   }
 
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
-    MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir);
+    MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir, false);
   }
   
   protected void updateStatus(JobInfo job, Shell shell){

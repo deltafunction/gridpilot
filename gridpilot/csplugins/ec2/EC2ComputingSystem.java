@@ -64,6 +64,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String[] allTmpCatalogs;
   private String accessKey;
   private String secretKey;
+  private HashMap<JobInfo, String> jobAmis;
   
   // These variables will be set in the shells run on EC2 instances
   private static String AWS_ACCESS_KEY_ID_VAR = "AWS_ACCESS_KEY_ID";
@@ -206,6 +207,22 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     job.setRTEs(rtes);
     return super.preProcess(job);
+  }
+  
+  /**
+   * Override to avoid trying to set up RTEs provided by the VM.
+   */
+  protected boolean setupJobRTEs(MyJobInfo job, Shell shell){
+    try{
+      MyUtil.setupJobRTEs(job, shell, rteMgr,
+          GridPilot.getClassMgr().getTransferStatusUpdateControl(),
+          runtimeDirectory, runtimeDirectory, true);
+      return true;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
   }
 
   /**
@@ -523,6 +540,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   private String findAmiId(JobInfo job) {
+    if(jobAmis.containsKey(job)){
+      return jobAmis.get(job);
+    }
     DBPluginMgr dbMgr;
     try{
       dbMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());    
@@ -538,19 +558,27 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBRecord rte;
     String rteName;
     String amiId;
+    Exception eee = null;
     try{
       for(Iterator<DBRecord> it=allEC2RTEs.get(dbMgr.getDBName()).iterator(); it.hasNext();){
         amiId = null;
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
+        Debug.debug("Checking provides of "+rteName, 3);
         if(checkProvides(job, rte, rteName)){
-          amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
+          try{
+            amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
+          }
+          catch(Exception ee){
+            eee = ee;
+          }
           if(amiId!=null){
             job.setOpSys(rteName);
             job.setOpSysRTE(rteName);
             // This is just to have initLines written to the RTE DB record
             getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
             //
+            jobAmis.put(job, amiId);
             return amiId;
           }
         }
@@ -561,6 +589,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     logFile.addInfo("No RTE found that provides all "+MyUtil.arrayToString(job.getRTEs())+
         ". Falling back to "+fallbackAmiID);
+    if(eee!=null){
+      eee.printStackTrace();
+    }
     if(fallbackAmiID!=null && !fallbackAmiID.equals("")){
       job.setOpSys(null);
       job.setOpSysRTE(null);
@@ -641,10 +672,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private void findAllEC2RTEs(DBPluginMgr dbMgr) {
     DBResult rtes = dbMgr.getRuntimeEnvironments();
     DBRecord rte;
-    ArrayList<DBRecord> ret = new ArrayList();
+    ArrayList<DBRecord> ret = new ArrayList<DBRecord>();
     for(int i=0; i<rtes.values.length; ++i){
       rte = rtes.get(i);
-      if(((String) rte.getValue("computingSystem")).equalsIgnoreCase(csName)){
+      if(csName.equalsIgnoreCase(((String) rte.getValue("computingSystem")))){
         ret.add(rte);
       }
     }

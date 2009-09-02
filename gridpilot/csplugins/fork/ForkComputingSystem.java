@@ -33,7 +33,7 @@ import gridpilot.MyUtil;
 
 public class ForkComputingSystem implements MyComputingSystem{
   
-  private RTEMgr rteMgr;
+  protected RTEMgr rteMgr;
 
   protected String [] env = {
     "STATUS_WAIT="+MyJobInfo.STATUS_READY,
@@ -837,7 +837,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     try{
       MyUtil.setupJobRTEs(job, shell, rteMgr,
           GridPilot.getClassMgr().getTransferStatusUpdateControl(),
-          runtimeDirectory, runtimeDirectory);
+          runtimeDirectory, runtimeDirectory, false);
       return true;
     }
     catch(Exception e){

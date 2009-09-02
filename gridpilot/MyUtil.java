@@ -1765,12 +1765,12 @@ private static String fixUrl(String _url){
 
   public static void setupJobRTEs(JobInfo job, Shell shell, RTEMgr rteMgr,
       TransferStatusUpdateControl transferStatusUpdateControl,
-      String remoteRteDir, String localRteDir) throws Exception{
+      String remoteRteDir, String localRteDir, boolean ignoreCatalogInconsistencies) throws Exception{
     String [] rteNames = job.getRTEs();
     Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
-    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys(), false);
+    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys(), ignoreCatalogInconsistencies);
     InstancePackage ip = null;
     String name = null;
     String os = null;
