@@ -85,7 +85,7 @@ public class CSPluginMgr implements MyComputingSystem{
     logFile = GridPilot.getClassMgr().getLogFile();
     configFile = GridPilot.getClassMgr().getConfigFile();
     csNames = GridPilot.CS_NAMES;
-    cs = new HashMap(csNames.length);
+    cs = new HashMap<String, Object>(csNames.length);
 
     try{
       loadClasses();

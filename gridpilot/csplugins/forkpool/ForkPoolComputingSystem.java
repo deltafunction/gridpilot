@@ -417,7 +417,11 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       logFile.addMessage("ERROR: could prepare job.", e);
     }
     finally{
-      ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
+      try{
+        ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
+      }
+      catch(Exception ee){
+      }
     }
     return ret;
   }

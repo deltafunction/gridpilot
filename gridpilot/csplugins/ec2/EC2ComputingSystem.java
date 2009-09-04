@@ -82,6 +82,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     
     allEC2RTEs = new HashMap<String, ArrayList<DBRecord>>();
     
+    jobAmis = new HashMap<JobInfo, String>();
+    
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
 
@@ -209,12 +211,16 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return super.preProcess(job);
   }
   
+  private RTEMgr getRteMgr(){
+    return GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
+  }
+  
   /**
    * Override to avoid trying to set up RTEs provided by the VM.
    */
   protected boolean setupJobRTEs(MyJobInfo job, Shell shell){
     try{
-      MyUtil.setupJobRTEs(job, shell, rteMgr,
+      MyUtil.setupJobRTEs(job, shell, getRteMgr(),
           GridPilot.getClassMgr().getTransferStatusUpdateControl(),
           runtimeDirectory, runtimeDirectory, true);
       return true;
@@ -1135,13 +1141,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception
    */
   private String[] getTarPackageRTEs(String opsysRte, String dbName) throws Exception{
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
+    RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();
     MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(null);
     Collections.addAll(deps, requiredRuntimeEnvs);
-    Debug.debug("Found TarPackage dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
+    Debug.debug("Found TarPackage dependencies "+MyUtil.arrayToString(deps.toArray())+
+        " on "+opsysMp.name+" providing "+MyUtil.arrayToString(opsysMp.provides), 2);
     return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), opsysMp.provides);
   }
 
@@ -1161,7 +1168,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
+    RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(opsysRte);
@@ -1256,7 +1263,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   
   private void installTarPackages(Instance inst, String os, String[] rtes) throws Exception {
         
-    RTEMgr rteMgr = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, allTmpCatalogs);
+    RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();    
     Shell shell = getShell(inst.getDnsName());
     

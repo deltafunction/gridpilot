@@ -809,7 +809,7 @@ public class SubmissionControl{
     }
     
     int ret = -1;
-    if(pJobsByCS[jobCsIndex]>0 &&
+    if(jobCsIndex>=0 && pJobsByCS[jobCsIndex]>0 &&
         job.getDBStatus()==DBPluginMgr.PREPARED && 
         runningJobs<totalMaxRunning &&
         submittingJobs.size()+runningJobs<totalMaxRunning &&

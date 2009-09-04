@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1833,6 +1834,12 @@ public class MyTransferControl extends TransferControl {
     else{
       LocalStaticShell.mkdir(url.getURL());
     }
+  }
+
+  public HashSet<String> supportedProtocols() {
+    HashSet<String> protocols = new HashSet<String>();
+    Collections.addAll(protocols, GridPilot.FT_NAMES);
+    return protocols;
   }
 
 }
