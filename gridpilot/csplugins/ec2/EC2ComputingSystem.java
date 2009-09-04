@@ -208,7 +208,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     job.setRTEs(rtes);
-    return super.preProcess(job);
+    if(!super.preProcess(job) /* This is what boots up a VM. */){
+      // There may still be hosts booting or unbooted - just return false - SubmissionControl
+      // will check and fail job if necessary.
+      Debug.debug("super.preProcess() failed, returning false", 2);
+      return false;
+    }
+    return true;
   }
   
   private RTEMgr getRteMgr(){
