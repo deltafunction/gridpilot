@@ -1013,7 +1013,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       for(Iterator itt=instanceList.iterator(); itt.hasNext();){
         instance = (Instance) itt.next();
         if(instance.getDnsName().equals(host)){
-          return instance.isRunning();
+          return (instance.isRunning() || instance.getState().equalsIgnoreCase("running"));
         }
       }
     }    

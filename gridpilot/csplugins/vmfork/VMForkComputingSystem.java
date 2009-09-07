@@ -320,7 +320,17 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
             vm = vms.get(it.next());
             vmHost = vm.getHostName()+":"+vm.getSshPort();
             if(!MyUtil.arrayContains(hosts, vmHost)){
-              hosts[i] = vmHost;
+              if(vm.getState()==VirtualMachine.STATE_RUNNING ||
+                  vm.getState()==VirtualMachine.STATE_BOOTING){
+                hosts[i] = vmHost;
+              }
+            }
+            else/*i.e. the host is in hosts*/{
+              // Forget the host if it has been terminated manually.
+              if(vm.getState()!=VirtualMachine.STATE_RUNNING &&
+                  vm.getState()!=VirtualMachine.STATE_BOOTING){
+                hosts[i] = null;
+              }
             }
           }
           catch(Exception e){
