@@ -209,12 +209,16 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     });
     bTerminate.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try{
-          terminateInstances();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
+        (new Thread(){
+          public void run(){
+            try{
+              terminateInstances();
+            }
+            catch(Exception e1){
+               e1.printStackTrace();
+            }
+          }
+        }).start();
       }
     });
     pButtons.add(bRefreshInstances);
@@ -259,16 +263,19 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     }
     else{
       int [] rows = instanceTable.getSelectedRows();
-      bTerminate.setEnabled(true);
+      boolean ok = true;
       for(int i=0; i<rows.length; ++i){
-        boolean ok = !lsm.isSelectionEmpty() && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex() &&
-        ((String) instanceTable.getUnsortedValueAt(rows[i], stateField)).equalsIgnoreCase(runningString);
-        bTerminate.setEnabled(ok);
-        miCopyDNS.setEnabled(ok);
-        miCopyCredentials.setEnabled(ok);
-        miRunShell.setEnabled(ok);
+        if(!((String) instanceTable.getUnsortedValueAt(rows[i], stateField)).equalsIgnoreCase(runningString)){
+          ok = false;
+          break;
+        }
       }
-      //bTerminate.setEnabled(!lsm.isSelectionEmpty());
+      bTerminate.setEnabled(ok);
+      ok = ok && lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex();
+      miCopyDNS.setEnabled(ok);
+      miCopyCredentials.setEnabled(ok);
+      miRunShell.setEnabled(ok);
+
     }
   }
 
