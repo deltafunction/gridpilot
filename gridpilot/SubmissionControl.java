@@ -480,7 +480,7 @@ public class SubmissionControl{
       if(job.getDBStatus()!=DBPluginMgr.ABORTED){
         // updateDBStatus didn't work
         logFile.addMessage(
-            "This job cannot be set Submitted -> this job cannot be resubmited",
+            "This job cannot be set Aborted -> this job cannot be resubmited",
             job);
       }
       else{
@@ -728,6 +728,7 @@ public class SubmissionControl{
     int [] jobsByStatus = null;
     int [] rJobsByCS = new int[csNames.length];
     int [] pJobsByCS = new int[csNames.length];
+    int [] ppJobsByCS = new int[csNames.length];
     int [] submittedJobsByCS = new int[csNames.length];
     int [] preprocessedJobsByCS = new int[csNames.length];
     int jobCsIndex = -1;
@@ -742,7 +743,7 @@ public class SubmissionControl{
       
       preprocessedJobsByCS = mgr.getPreprocessedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
-        pJobsByCS[i] += preprocessedJobsByCS[i];
+        ppJobsByCS[i] += preprocessedJobsByCS[i];
         Debug.debug("Upping preprocessed job count for CS "+csNames[i]+" with "+preprocessedJobsByCS[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
@@ -794,7 +795,6 @@ public class SubmissionControl{
        job.getDBStatus()==DBPluginMgr.PREPARED){
       for(Iterator<MyJobInfo> it=monitoredJobs.iterator(); it.hasNext();){
         tmpJob = it.next();
-        // TODO: get this to work
         if((tmpJob.getStatus()==MyJobInfo.STATUS_RUNNING ||
             tmpJob.getDBStatus()==DBPluginMgr.SUBMITTED) &&
             tmpJob.getHost()!=null && tmpJob.getHost().equals(job.getHost())){
@@ -809,15 +809,16 @@ public class SubmissionControl{
     }
     
     int ret = -1;
-    if(jobCsIndex>=0 && pJobsByCS[jobCsIndex]>0 &&
+    if(jobCsIndex>=0 && ppJobsByCS[jobCsIndex]>0 &&
         job.getDBStatus()==DBPluginMgr.PREPARED && 
         runningJobs<totalMaxRunning &&
         submittingJobs.size()+runningJobs<totalMaxRunning &&
         rJobsByCS[jobCsIndex]<maxRunningOnEachCS[jobCsIndex]){
       ret = CAN_RUN;
     }
-    else if(job.getDBStatus()==DBPluginMgr.DEFINED &&
-        preprocessingJobs.size()<totalMaxPreprocessing){
+    else if((job.getDBStatus()==DBPluginMgr.DEFINED || job.getDBStatus()==DBPluginMgr.ABORTED) &&
+        preprocessingJobs.size()<totalMaxPreprocessing &&
+        pJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
       // If the CS in question is one that has "max running jobs per host" set and
       // there's a running host with free slot(s), tag the job to use it already now.
       tagJobHost(job);
@@ -974,6 +975,7 @@ public class SubmissionControl{
       preprocessingJobs.add(job);
       statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
       ok = csPluginMgr.preProcess(job);
+      statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
       if(ok){
         dbStatus = DBPluginMgr.PREPARED;
         if(!submitTimer.isRunning()){
@@ -1089,7 +1091,6 @@ public class SubmissionControl{
       JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       jobMgr.updateDBCell(job);
       jobMgr.updateJobsByStatus();
-      statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
     }
     if(ok && submitRes==MyComputingSystem.RUN_OK){
       dbStatus = DBPluginMgr.SUBMITTED;

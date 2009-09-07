@@ -21,6 +21,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
+import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VirtualMachine;
 
@@ -916,6 +917,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           urlDir = inputFiles[i].substring(0, lastSlash + 1);
         }
       }
+      fileName = Util.removeQuotes(fileName);
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
         // Remote shell
         if(!thisShellMgr.isLocal()){

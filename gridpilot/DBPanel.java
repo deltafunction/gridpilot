@@ -2825,14 +2825,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
             try{
               ok = ok && deleteJobDefsFromDataset(i, ids[i]);
-              jobCount = jobCount + jobDefs.size();
+              if(ok){
+                jobCount = jobCount + jobDefs.size();
+              }
             }
             catch(Exception ee){
               ee.printStackTrace();
             }
             try{
               ok = ok && deletefilesOfDataset(i, ids[i]);
-              fileCount = fileCount + files.size();
+              if(ok){
+                fileCount = fileCount + files.size();
+              }
             }
             catch(Exception ee){
               ee.printStackTrace();

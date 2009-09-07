@@ -103,7 +103,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     else{
       AMI_PREFIX = "";
       logFile.addInfo("WARNING: AMI prefix not set. All AMIs will be listed as RTEs." +
-          " This is very time consuming and probably not what you want.");
+          " This is very time consuming and may not be what you want.");
     }
     boolean ec2Secure = true;
     String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
@@ -576,7 +576,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         amiId = null;
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
-        Debug.debug("Checking provides of "+rteName, 3);
+        //Debug.debug("Checking provides of "+rteName, 3);
         if(checkProvides(job, rte, rteName)){
           try{
             amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
@@ -1056,6 +1056,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         List reservationList = null;
         List instanceList = null;
         Instance instance = null;
+        Thread.sleep(10000);
         while(!inst.isRunning()){
           nowMillis = MyUtil.getDateInMilliSeconds(null);
           if(nowMillis-startMillis>MAX_BOOT_WAIT){
@@ -1080,11 +1081,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
               }
             }
           }
-          Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
-          Thread.sleep(10000);
           if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
             break;
           }
+          Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+          Thread.sleep(10000);
         }
         // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
         // and add initLines to the runtimeEnvironment record and mount the volume.
@@ -1153,9 +1154,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     Vector<String> deps = depsMap.get(null);
     Collections.addAll(deps, requiredRuntimeEnvs);
-    Debug.debug("Found TarPackage dependencies "+MyUtil.arrayToString(deps.toArray())+
-        " on "+opsysMp.name+" providing "+MyUtil.arrayToString(opsysMp.provides), 2);
-    return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), opsysMp.provides);
+    Vector<String> provides = new Vector<String>();
+    Collections.addAll(provides, opsysMp.provides);
+    if(opsysMp.virtualMachine!=null && opsysMp.virtualMachine.os!=null){
+      provides.add(opsysMp.virtualMachine.os);
+    }
+    Debug.debug("Found TarPackage dependencies "+deps+" on "+opsysMp.name+" providing "+provides, 2);
+    return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), provides.toArray(new String[provides.size()]));
   }
 
   /**
