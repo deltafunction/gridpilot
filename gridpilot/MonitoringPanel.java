@@ -59,7 +59,7 @@ public class MonitoringPanel extends CreateEditPanel {
             JPanel panel = (JPanel) it.next();
             tpStatLog.addTab(panel.getName(), panel);
           }
-          tpStatLog.addTab("Logs", spLogView);
+          tpStatLog.addTab("Log", spLogView);
         }
       }
     );

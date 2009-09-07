@@ -1357,6 +1357,16 @@ public class MyTransferControl extends TransferControl {
    * @throws Exception 
    */
   public void download(final String url, File destination) throws Exception{
+    try{
+      doDownload(url, destination);
+    }
+    catch(Exception e){
+      setStatusBarText("");
+      throw e;
+    }
+  }
+  
+  private void doDownload(final String url, File destination) throws Exception{
     if(url==null || url.endsWith("/")|| destination==null){
       throw new IOException("ERROR: source or destination not given. "+
           url+":"+destination);
@@ -1402,9 +1412,9 @@ public class MyTransferControl extends TransferControl {
       GlobusURL globusUrl = new GlobusURL(url);
       FileTransfer fileTransfer =
         GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
-     fileTransfer.getFile(globusUrl, destination/*dName*/);
-     Debug.debug("Download done - "+destFileName, 3);        
-     setStatusBarText(url+" downloaded");
+      fileTransfer.getFile(globusUrl, destination/*dName*/);
+      Debug.debug("Download done - "+destFileName, 3);        
+      setStatusBarText(url+" downloaded");
     }
     else if(srcUrlDir.startsWith("http://")){
       Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
