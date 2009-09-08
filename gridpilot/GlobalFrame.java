@@ -881,7 +881,8 @@ public class GlobalFrame extends GPFrame{
   protected void exportDB() {
     String url = null;
     try{
-      url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      //url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
     }
     catch(IOException e){
       e.printStackTrace();
