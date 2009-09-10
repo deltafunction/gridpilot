@@ -2100,6 +2100,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
             else if(fields[i].equalsIgnoreCase("lastModified")){
               values[i] = fixDate(null);
             }
+            else if((fields[i].equalsIgnoreCase("runNumber") || fields[i].equalsIgnoreCase("totalFiles") ||
+                fields[i].equalsIgnoreCase("totalEvents")) &&
+                (values[i]==null || values[i].trim().equals(""))){
+              values[i] = "'0'";
+            }
             else{
               values[i] = "'"+dbEncode(values[i])+"'";
             }

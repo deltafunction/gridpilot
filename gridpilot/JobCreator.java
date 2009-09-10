@@ -934,7 +934,7 @@ public class JobCreator{
           Debug.debug("Range of input events: "+readEvtMin+"-->"+readEvtMax, 2);
           
           if(readEvtMin!=-1 && readEvtMax!=-1 && (
-                        // This should catch all cases where event in input files are
+                        // This should catch all cases where events in input files are
                         // partitioned differently from input events (events in output files).
                         // TODO:  needs to be checked!
                 readEvtMax-readEvtMin>evtMax-evtMin &&

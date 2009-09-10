@@ -35,7 +35,7 @@ public class GlobalFrame extends GPFrame{
   private static final int MAX_TAB_TITLE_LENGTH = 24;
   
   private Vector allPanels;
-  private int selectedPanel;
+  private DBPanel selectedPanel;
   private CreateEditDialog pDialog;
   private MyPreferencesPanel prefsPanel = null;
   private static int i;
@@ -104,7 +104,7 @@ public class GlobalFrame extends GPFrame{
     statusBar.setLabel("GridPilot welcomes you!");
     container.add(tabbedPane, BorderLayout.CENTER);
     container.validate();
-    selectedPanel = tabbedPane.getSelectedIndex();
+    selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
 
    /**
     * Detect click over X in tab
@@ -262,14 +262,8 @@ public class GlobalFrame extends GPFrame{
    * Get active panel
    */
   public DBPanel getActiveDBPanel(){
-    int selectedIndex = tabbedPane.getTabCount()-1;
-    if(selectedPanel>=0){
-      selectedIndex = selectedPanel;
-      Debug.debug("Selected index: "+selectedIndex, 3);
-    }
-    DBPanel dbPanel = (DBPanel)allPanels.elementAt(selectedIndex);
-    Debug.debug("Selected panel : "+dbPanel.getTableName(), 3);
-    return dbPanel;
+    selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+    return selectedPanel;
   }
 
  /**
@@ -385,11 +379,10 @@ public class GlobalFrame extends GPFrame{
    * Called when selected tab changes
    */
   private void tabbedSelected(ChangeEvent e){
-    selectedPanel = tabbedPane.getSelectedIndex();
-    if(selectedPanel>=0){
-      ((ListPanel) tabbedPane.getComponentAt(selectedPanel)).panelHidden();
-      ((ListPanel) tabbedPane.getComponentAt(selectedPanel)).panelShown();
-      String title = ((ListPanel)allPanels.elementAt(selectedPanel)).getTitle();
+    if(selectedPanel!=null){
+      ((ListPanel)selectedPanel).panelHidden();
+      ((ListPanel)selectedPanel).panelShown();
+      String title = ((ListPanel)selectedPanel).getTitle();
       setTitle("GridPilot - "+title);
     }
   }
@@ -436,7 +429,7 @@ public class GlobalFrame extends GPFrame{
 
       public void menuSelected(MenuEvent e) {
         // Refresh active elements of the menu
-        ((DBPanel) tabbedPane.getComponentAt(selectedPanel)).fileMenuSelected();
+        selectedPanel.fileMenuSelected();
       }
     });
    
@@ -451,7 +444,7 @@ public class GlobalFrame extends GPFrame{
 
       public void menuSelected(MenuEvent e) {
         // Refresh active elements of the menu
-        ((DBPanel) tabbedPane.getComponentAt(selectedPanel)).dbMenuSelected();
+        getActiveDBPanel().dbMenuSelected();
       }
     });
 
@@ -616,7 +609,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = tabbedPane.getSelectedIndex();
+              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
             }
           });
           mDB.add(miNewTab);
@@ -642,7 +635,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = tabbedPane.getSelectedIndex();
+              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
             }
           });
           mDB.add(miNewTab);
@@ -670,7 +663,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = tabbedPane.getSelectedIndex();
+              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
             }
           });
           mDB.add(miNewTab);
@@ -697,7 +690,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = tabbedPane.getSelectedIndex();
+              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
             }
           });
           mDB.add(miNewTab);

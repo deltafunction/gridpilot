@@ -1795,7 +1795,14 @@ private static String fixUrl(String _url){
         GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
         return;
       }
-      ip = rteMgr.getRteInstancePackage(name, os);
+      try{
+        ip = rteMgr.getRteInstancePackage(name, os);
+      }
+      catch(Exception e){
+        Debug.debug("MetaPackage "+name+" has no instances. Assuming it is provided by the VM.", 2);
+        e.printStackTrace();
+        continue;
+      }
       rteMgr.getRTEInstaller().install(name, ip, shell);
     }
   }
