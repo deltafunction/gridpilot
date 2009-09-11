@@ -3260,11 +3260,10 @@ public class DBPluginMgr extends DBCache implements Database{
   }
 
   /** 
-   * Split events over multiple logicalFiles for
-   * a dataset by consulting
-   * dataset.totalEvents and dataset.totalFiles.
+   * Split events over multiple jobDefinitions for
+   * a dataset by consulting dataset.totalEvents and dataset.totalFiles.
    * Returns a list of
-   * {logicalFileEventMin,logicalFileEventMax} dublets.
+   * {eventMin,eventMax} dublets.
    */
   public int [][] getEventSplits(String datasetID){
     String arg = "";
@@ -3274,7 +3273,7 @@ public class DBPluginMgr extends DBCache implements Database{
     int nrEvents = 0;
     int totalEvents = 0;
     int totalFiles = 0;
-    int [][] splits = {{0, 0}};
+    int [][] splits = null;
     String debug = "";
     
     arg = "select totalEvents, totalFiles from dataset where identifier='"+
@@ -3314,7 +3313,7 @@ public class DBPluginMgr extends DBCache implements Database{
         debug += "{"+splits[totalFiles][0]+","+splits[totalFiles][1]+"}";
       }
     }
-    Debug.debug("Splitting according to "+debug, 2);
+    Debug.debug("Splitting according to "+splits+" --> "+debug, 2);
     return splits;
   }
 
