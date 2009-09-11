@@ -1113,7 +1113,7 @@ public class JobCreator{
       jobAttributeNames.add("inputFileNames");
       jobAttributes.add("");
     }
-    if(!jobattributenames.contains("depJobs") &&
+    if(!jobattributenames.contains("depjobs") &&
         jobdefinitionfields.contains("depjobs")){
       jobAttributeNames.add("depJobs");
       jobAttributes.add("");
