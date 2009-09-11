@@ -610,7 +610,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     return (args!=null?MyUtil.splitUrls(args):new String [] {});
   }
 
-  public String getJobDefOutLocalName(String jobDefID, String par) throws Exception{
+  public String getJobDefOutLocalName(String jobDefID, String fileName) throws Exception{
     String exeID = getJobDefExecutableID(jobDefID);
     String [] fouts = MyUtil.splitUrls((String) getExecutable(exeID).getValue("outputFiles"));
     String maps = (String) getJobDefinition(jobDefID).getValue("outFileMapping");
@@ -625,14 +625,14 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     String name = "";
     for(int i=0; i<fouts.length; i++){
-      if(par.equals(fouts[i])){
+      if(fileName.equals(fouts[i])){
         name = map[i*2];
       }
     }
     return MyUtil.clearFile(name);
   }
 
-  public String getJobDefOutRemoteName(String jobDefID, String par) throws Exception{
+  public String getJobDefOutRemoteName(String jobDefID, String fileName) throws Exception{
     String exeID = getJobDefExecutableID(jobDefID);
     // NOTICE: output file names must NOT have spaces.
     String [] fouts = MyUtil.split((String) getExecutable(exeID).getValue("outputFiles"));
@@ -644,8 +644,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String[] map = MyUtil.splitUrls(maps1);
     String name = "";
     for(int i=0; i<fouts.length; i++){
-      Debug.debug("checking: "+par+"<->"+fouts[i]+" : "+map[i*2+1], 3);
-      if(par.equals(fouts[i])){
+      Debug.debug("checking: "+fileName+"<->"+fouts[i]+" : "+map[i*2+1], 3);
+      if(fileName.equals(fouts[i])){
         name = map[i*2+1];
         break;
       }

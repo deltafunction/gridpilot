@@ -163,7 +163,8 @@ public class DatasetCreator{
         }
         // See if attribute has not been set. If it hasn't, set it and clear it
         // again after the new dataset has been created.
-        else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
+        // --> hmm... Bad idea for metaData - not sure if this is a good idea in general.
+        /*else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
           try{
             resCstAttr[j] = res.getValue(cstAttrNames[j]).toString();
             clearAttrs.add(new Integer(j));
@@ -172,7 +173,7 @@ public class DatasetCreator{
             e.printStackTrace();
           }
           Debug.debug("Setting "+cstAttrNames[j]+" to "+resCstAttr[j], 2);
-        }
+        }*/
         if(resCstAttr[j]==null){
           resCstAttr[j] = "";
         }

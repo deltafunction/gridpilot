@@ -1228,8 +1228,12 @@ public class JobMgr{
     else{
       int dbStatusNr = job.getDBStatus();
       String dbStatus = DBPluginMgr.getStatusName(dbStatusNr);
-      // Stdout/stderr has now been copied to
-      // final destinations and the local run dir deleted by postProcessing.
+      /* Output files and stdout/stderr have now been copied to
+         final destinations and the local run dir deleted by postProcessing.
+         We now commit the status "validated" to the DB. This means that
+         SubmissionControl.checkDependenceOnOtherJobs() will allow any possible
+         other job depending on this one to run.
+       */
       if(!dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "status",
           dbStatus)){
         succes = false;

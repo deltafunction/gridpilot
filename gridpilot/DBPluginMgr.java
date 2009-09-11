@@ -1275,7 +1275,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  public String getJobDefOutRemoteName(final String jobDefinitionID, final String outpar){
+  public String getJobDefOutRemoteName(final String jobDefinitionID, final String outFileName){
     ResThread t = new ResThread(){
       String res = null;
       public void requestStop(){
@@ -1287,7 +1287,7 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           db.clearError();
-          res = db.getJobDefOutRemoteName(jobDefinitionID, outpar);
+          res = db.getJobDefOutRemoteName(jobDefinitionID, outFileName);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -2244,7 +2244,7 @@ public class DBPluginMgr extends DBCache implements Database{
   
   public synchronized boolean deleteJobDefinition(final String jobDefID, final boolean cleanup){
     ResThread t = new ResThread(){
-      boolean res = false;
+      boolean res = true;
       public void requestStop(){
         db.requestStop();
       }

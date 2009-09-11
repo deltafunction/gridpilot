@@ -358,15 +358,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1])){
         MyUtil.setJText(tcCstAttributes[i], executableVersion);
       }
-      else if(cstAttributesNames[i].equalsIgnoreCase("targetDatabase")){
-        // TODO
-      }
-      else if(cstAttributesNames[i].equalsIgnoreCase("inputDataset")){
-        // TODO
-      }
-      else{
-        // nothing
-      }
     }
   }
   
@@ -827,7 +818,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         targetDB);
     String [] targetFields = targetDBPluginMgr.getFieldNames("dataset");
     String [] targetAttr = new String[targetFields.length];
-    for(int j=0; j<targetFields.length; ++j){ 
+    for(int j=0; j<targetFields.length; ++j){
       targetAttr[j] = "";
       //Do the mapping.
       for(int k=0; k<sourceFields.length; ++k){
@@ -870,7 +861,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
           targetFields[j].equalsIgnoreCase("totalCPUTime") ||
           targetFields[j].equalsIgnoreCase("created") ||
           targetFields[j].equalsIgnoreCase("lastModified") ||
-          targetFields[j].equalsIgnoreCase("lastStatusUpdate")){
+          targetFields[j].equalsIgnoreCase("lastStatusUpdate") ||
+          targetFields[j].equalsIgnoreCase("metaData")){
         targetAttr[j] = "";
       }
       // For unset fields:

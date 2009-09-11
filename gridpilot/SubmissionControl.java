@@ -915,7 +915,7 @@ public class SubmissionControl{
   }
 
   /**
-   * Check if a job depends on the finishing of other jobs.
+   * Check if a job has to wait for the finishing of other jobs.
    * @param job
    * @return
    */
@@ -935,9 +935,16 @@ public class SubmissionControl{
         depJobs = new String [] {};
       }
     }
+    String datasetID = dbPluginMgr.getJobDefDatasetID(job.getIdentifier());
+    DBRecord dataset = dbPluginMgr.getDataset(datasetID);
+    String inputDB = (String) dataset.getValue("inputDB");
+    if(inputDB==null || inputDB.equals("")){
+      return false;
+    }
+    DBPluginMgr inputMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
     String status;
     for(int i=0; i<depJobs.length; ++i){
-      status = dbPluginMgr.getJobDefStatus(depJobs[i]);
+      status = inputMgr.getJobDefStatus(depJobs[i]);
       if(status==null || DBPluginMgr.getStatusId(status)!=DBPluginMgr.VALIDATED){
         Debug.debug("Job "+depJobs[i]+" has not finished. Cannot start "+job.getIdentifier(), 2);
         return false;
