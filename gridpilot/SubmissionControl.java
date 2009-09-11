@@ -939,7 +939,7 @@ public class SubmissionControl{
     DBRecord dataset = dbPluginMgr.getDataset(datasetID);
     String inputDB = (String) dataset.getValue("inputDB");
     if(inputDB==null || inputDB.equals("")){
-      return false;
+      return true;
     }
     DBPluginMgr inputMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
     String status;
