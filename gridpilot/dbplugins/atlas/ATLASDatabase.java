@@ -336,10 +336,18 @@ public class ATLASDatabase extends DBCache implements Database{
       get = get.replaceAll("(?i)\\bcomplete = (\\S+)", "complete=$1");
       get = get.replaceAll("(?i)\\bincomplete = (\\S+)", "incomplete=$1");
       
-      get = get.replaceAll("(?i)\\bdsn CONTAINS (\\S+)", "dsn=*$1*");
+      /*get = get.replaceAll("(?i)\\bdsn CONTAINS (\\S+)", "dsn=*$1*");
       get = get.replaceAll("(?i)\\bvuid CONTAINS (\\S+)", "vuid=*$1*");
       get = get.replaceAll("(?i)\\bcomplete CONTAINS (\\S+)", "complete=*$1*");
-      get = get.replaceAll("(?i)\\bincomplete CONTAINS (\\S+)", "incomplete=*$1*");
+      get = get.replaceAll("(?i)\\bincomplete CONTAINS (\\S+)", "incomplete=*$1*");*/
+      // Replaced *bla bla* patterns with bla bla*
+      // This inconsistency is due to the fact that ATLAS no longer accepts patterns
+      // starting with *
+      get = get.replaceAll("(?i)\\bdsn CONTAINS (\\S+)", "dsn=$1*");
+      get = get.replaceAll("(?i)\\bvuid CONTAINS (\\S+)", "vuid=$1*");
+      get = get.replaceAll("(?i)\\bcomplete CONTAINS (\\S+)", "complete=$1*");
+      get = get.replaceAll("(?i)\\bincomplete CONTAINS (\\S+)", "incomplete=$1*");
+
       
       get = get.replaceAll(" AND ", "&");
 
