@@ -1098,7 +1098,17 @@ public class SRMFileTransfer implements FileTransfer {
 
   public void getFile(GlobusURL globusUrl, File downloadDirOrFile) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
-    throw new IOException("getFile not supported by SRM plugin.");
+    //throw new IOException("getFile not supported by SRM plugin.");
+    String fileName = globusUrl.getPath().replaceFirst("^.*/([^/]+)$", "$1");
+    File destFile;
+    if(downloadDirOrFile.getAbsolutePath().endsWith("/") || downloadDirOrFile.isDirectory()){
+      destFile = new File(downloadDirOrFile, fileName);
+    }
+    else{
+      destFile = downloadDirOrFile;
+    }
+    startCopyFiles(new GlobusURL[] {globusUrl},
+                   new GlobusURL[] {new GlobusURL("file:///"+destFile.getAbsolutePath())});
   }
 
   public void putFile(File file, GlobusURL globusFileUrl) throws Exception {

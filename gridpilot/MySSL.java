@@ -158,6 +158,14 @@ public class MySSL extends SSL{
     }
   }
   
+  public String getDN(){
+    String myDN = super.getDN();
+    if(myDN!=null && !myDN.equals("")){
+      return myDN;
+    }
+    return getGridSubject0();
+  }
+  
   public /*synchronized*/ GSSCredential getGridCredential(){
     if(gridProxyInitialized){
       Debug.debug("Grid proxy already initialized. "+credential, 2);
@@ -748,13 +756,12 @@ public class MySSL extends SSL{
   /**
    * Get the DN of the grid certificate.
    * Here we use the proxy to get it. This means that
-   * a proxy will be created if needed.
+   * a proxy must have been created.
    * Globus uses the format /C=.../.../...
    */
-  public String getGridSubject0(){
+  private String getGridSubject0(){
     String subject = null;
     try{
-      GSSCredential credential = getGridCredential();
       GlobusCredential globusCred = null;
       if(credential instanceof GlobusGSSCredentialImpl){
         globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
@@ -861,14 +868,17 @@ public class MySSL extends SSL{
   }
   
   /**
-   * The same method as above, except for using getGridSubject1 instead
+   * The same method as above, except for using getGridSubject0 instead
    * of getGridSubject.
    */
   public String getGridDatabaseUser0(){
     String user = null;
     try{
-      String subject = getGridSubject0();
       
+      // Make sure a proxy exists
+      getGridCredential();
+      // Get the DN from this proxy
+      String subject = getGridSubject0();
       AbstractChecksum checksum = null;
       checksum = JacksumAPI.getChecksumInstance("cksum");
       

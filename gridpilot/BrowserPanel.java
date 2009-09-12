@@ -36,9 +36,10 @@ import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
 import gridfactory.common.TransferInfo;
-import gridfactory.common.https.MyUrlCopy;
+//import gridfactory.common.https.MyUrlCopy;
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
+import gridpilot.ftplugins.srm.SRMFileTransfer;
 import gridpilot.ftplugins.sss.SSSFileTransfer;
 
 
@@ -75,6 +76,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private GSIFTPFileTransfer gsiftpFileTransfer = null;
   private HTTPSFileTransfer httpsFileTransfer = null;
   private SSSFileTransfer sssFileTransfer = null;
+  private SRMFileTransfer srmFileTransfer = null;
   private boolean ok = true;
   private boolean saveUrlHistory = false;
   private boolean doingSearch = false;
@@ -84,22 +86,23 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JMenuItem miDownload = new JMenuItem("Download file");
   private JMenuItem miDelete = new JMenuItem("Delete file");
   private JMenu miRegister = new JMenu("Register file");
-  // Menu to popup when clicking "Register all"
+  // Menu to pop-up when clicking "Register all"
   private JPopupMenu bmiRegister = new JPopupMenu("Register all files");
-  // File registration semaphor
+  // File registration semaphore
   private boolean registering = false;
   private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
   // Keep track of which files we are listing.
-  private Vector listedUrls = null;
-  private Vector listedSizes = null;
+  private Vector<String> listedUrls = null;
+  private Vector<String> listedSizes = null;
   private boolean allowRegister = true;
-  private HashSet excludeDBs = new HashSet();
-  private Vector urlList;
+  private HashSet<String> excludeDBs = new HashSet<String>();
+  private Vector<String> urlList;
   
   private static int MAX_FILE_EDIT_BYTES = 100000;
   private static int TEXTFIELDWIDTH = 32;
-  private static int HTTP_TIMEOUT = 10000;
+  //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
+  private static final String FILE_FOUND_TEXT = "File found. Size: ";
 
   public static int HISTORY_SIZE = 15;
 
@@ -144,6 +147,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
       httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
       sssFileTransfer = (SSSFileTransfer) GridPilot.getClassMgr().getFTPlugin("sss");
+      srmFileTransfer = (SRMFileTransfer) GridPilot.getClassMgr().getFTPlugin("srm");
     }
     
     readBrowserHistory();
@@ -347,6 +351,141 @@ public class BrowserPanel extends JDialog implements ActionListener{
     bCancel.addActionListener(this);
   }
   
+  HyperlinkListener hl = new HyperlinkListener(){
+    public void hyperlinkUpdate(final HyperlinkEvent e){
+      if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
+        Debug.debug("click detected --> "+ep.getText(), 3);
+        if(isDLWindow()){
+          Debug.debug("isDLWindow", 3);
+          String url;
+          if(e.getURL()!=null){
+            url = e.getURL().toExternalForm();
+          }
+          else{
+            url = e.getDescription();
+          }
+          download(url, null);
+        }
+        else if(e instanceof HTMLFrameHyperlinkEvent){
+          ((HTMLDocument) ep.getDocument()).processHTMLFrameHyperlinkEvent(
+              (HTMLFrameHyperlinkEvent) e);
+         }
+        else{
+          //setUrl(e.getDescription());
+          ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          statusBar.setLabel("Opening URL...");
+          ResThread t = new ResThread(){
+            public void run(){
+              try{
+                if(e.getURL()!=null){
+                  setDisplay(e.getURL().toExternalForm());
+                }
+                else{
+                  setDisplay(e.getDescription());
+                }
+              }
+              catch(Exception ioe){
+                ioe.printStackTrace();
+              }
+            }
+          }; 
+          t.start();
+        }
+      }
+      else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
+        if(popupMenu.isShowing()){
+          return;
+        }
+        String linkUrl = null;
+        if(e.getURL()!=null){
+          linkUrl = e.getURL().toExternalForm();
+        }
+        else if(e.getDescription()!=null){
+          linkUrl = e.getDescription();
+        }
+        if(linkUrl==null){
+          Debug.debug("No URL available.", 2);
+          return;
+        }
+        final String url = linkUrl;
+        statusBar.setLabel(url);
+        if(bRegister.isEnabled() && !url.endsWith("/")){
+          int ii = 0;
+          for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
+            if(excludeDBs.contains(Integer.toString(i))){
+              continue;
+            }
+            Debug.debug("addActionListener "+MyUtil.arrayToString(excludeDBs.toArray())+":"+i, 3);
+            miRegister.getItem(ii).addActionListener(new ActionListener(){
+              public void actionPerformed(ActionEvent ev){
+                Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
+                registerFile(url, ((JMenuItem) ev.getSource()).getText());
+              }
+            });
+            ++ii;
+          }
+          if(allowRegister){
+            popupMenu.add(miRegister);
+          }
+        }
+        //if(bDownload.isEnabled()){
+        if(!url.startsWith("http://") && url.indexOf("/..")<0){
+          if(url.endsWith("/")){
+            miDelete.setText("Delete directory");
+            miDownload.setText("Download directory");
+          }
+          miDownload.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ev){
+              download(url, null);
+            }
+          });
+          miDelete.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent ev){
+              deleteFileOrDir(url);
+            }
+          });
+          popupMenu.add(miDownload);
+          popupMenu.add(miDelete);
+        }
+      }
+      else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
+        statusBar.setLabel(" ");
+        try{
+          if(GridPilot.DB_NAMES!=null){
+            int ii = 0;
+            for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
+              if(excludeDBs.contains(Integer.toString(i))){
+                continue;
+              }
+              Debug.debug("addActionListener "+i, 3);
+              ActionListener [] acls = miRegister.getItem(ii).getActionListeners();
+              for(int j=0; j<acls.length; ++j){
+                miRegister.getItem(ii).removeActionListener(acls[j]);
+              }
+              ++ii;
+            }
+            ActionListener [] acls = miDownload.getActionListeners();
+            for(int j=0; j<acls.length; ++j){
+              miDownload.removeActionListener(acls[j]);
+            }
+            acls = miDelete.getActionListeners();
+            for(int j=0; j<acls.length; ++j){
+              miDelete.removeActionListener(acls[j]);
+            }
+            miDelete.setText("Delete file");
+            miDownload.setText("Download file");
+            popupMenu.remove(miRegister);
+            popupMenu.remove(miDownload);
+            popupMenu.remove(miDelete);
+          }
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
+      }
+    }
+  };
+  
   // TODO: cleanup this monster
   /**
    * Component initialization.
@@ -532,128 +671,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     //}
         
     //HTMLDocument d = new HTMLDocument();
-    ep.addHyperlinkListener(new HyperlinkListener(){
-      public void hyperlinkUpdate(final HyperlinkEvent e){
-        if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-          if(e instanceof HTMLFrameHyperlinkEvent){
-            ((HTMLDocument) ep.getDocument()).processHTMLFrameHyperlinkEvent(
-               (HTMLFrameHyperlinkEvent) e);
-          }
-          else{
-            //setUrl(e.getDescription());
-            ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            statusBar.setLabel("Opening URL...");
-            ResThread t = new ResThread(){
-              public void run(){
-                try{
-                  if(e.getURL()!=null){
-                    setDisplay(e.getURL().toExternalForm());
-                  }
-                  else{
-                    setDisplay(e.getDescription());
-                  }
-                }
-                catch(Exception ioe){
-                  ioe.printStackTrace();
-                }
-              }
-            }; 
-            t.start();
-          }
-        }
-        else if(e.getEventType()==HyperlinkEvent.EventType.ENTERED){
-          if(popupMenu.isShowing()){
-            return;
-          }
-          String linkUrl = null;
-          if(e.getURL()!=null){
-            linkUrl = e.getURL().toExternalForm();
-          }
-          else if(e.getDescription()!=null){
-            linkUrl = e.getDescription();
-          }
-          if(linkUrl==null){
-            Debug.debug("No URL available.", 2);
-            return;
-          }
-          final String url = linkUrl;
-          statusBar.setLabel(url);
-          if(bRegister.isEnabled() && !url.endsWith("/")){
-            int ii = 0;
-            for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
-              if(excludeDBs.contains(Integer.toString(i))){
-                continue;
-              }
-              Debug.debug("addActionListener "+MyUtil.arrayToString(excludeDBs.toArray())+":"+i, 3);
-              miRegister.getItem(ii).addActionListener(new ActionListener(){
-                public void actionPerformed(ActionEvent ev){
-                  Debug.debug("registerFile "+((JMenuItem) ev.getSource()).getText(), 3);
-                  registerFile(url, ((JMenuItem) ev.getSource()).getText());
-                }
-              });
-              ++ii;
-            }
-            if(allowRegister){
-              popupMenu.add(miRegister);
-            }
-          }
-          //if(bDownload.isEnabled()){
-          if(!url.startsWith("http://") && url.indexOf("/..")<0){
-            if(url.endsWith("/")){
-              miDelete.setText("Delete directory");
-              miDownload.setText("Download directory");
-            }
-            miDownload.addActionListener(new ActionListener(){
-              public void actionPerformed(ActionEvent ev){
-                download(url, null);
-              }
-            });
-            miDelete.addActionListener(new ActionListener(){
-              public void actionPerformed(ActionEvent ev){
-                deleteFileOrDir(url);
-              }
-            });
-            popupMenu.add(miDownload);
-            popupMenu.add(miDelete);
-          }
-        }
-        else if(e.getEventType()==HyperlinkEvent.EventType.EXITED){
-          statusBar.setLabel(" ");
-          try{
-            if(GridPilot.DB_NAMES!=null){
-              int ii = 0;
-              for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
-                if(excludeDBs.contains(Integer.toString(i))){
-                  continue;
-                }
-                Debug.debug("addActionListener "+i, 3);
-                ActionListener [] acls = miRegister.getItem(ii).getActionListeners();
-                for(int j=0; j<acls.length; ++j){
-                  miRegister.getItem(ii).removeActionListener(acls[j]);
-                }
-                ++ii;
-              }
-              ActionListener [] acls = miDownload.getActionListeners();
-              for(int j=0; j<acls.length; ++j){
-                miDownload.removeActionListener(acls[j]);
-              }
-              acls = miDelete.getActionListeners();
-              for(int j=0; j<acls.length; ++j){
-                miDelete.removeActionListener(acls[j]);
-              }
-              miDelete.setText("Delete file");
-              miDownload.setText("Download file");
-              popupMenu.remove(miRegister);
-              popupMenu.remove(miDownload);
-              popupMenu.remove(miDelete);
-            }
-          }
-          catch(Exception ee){
-            ee.printStackTrace();
-          }
-        }
-      }
-    });
+    ep.addHyperlinkListener(hl);
     
     ep.addMouseListener(new java.awt.event.MouseAdapter() {
       public void mousePressed(MouseEvent e) {
@@ -879,7 +897,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * @throws NullPointerException
    * @throws Exception
    */
-  private String[][] listAllFiles(String url) throws NullPointerException, Exception {
+  /*private String[][] listAllFiles(String url) throws NullPointerException, Exception {
     GlobusURL globusUrl = new GlobusURL(url);
     String filter = jtFilter.getText();
     Vector<String> allFilesAndDirs = GridPilot.getClassMgr().getFTPlugin(globusUrl.getProtocol()).find(globusUrl, filter);
@@ -901,7 +919,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     return new String[][] {allFiles.toArray(new String[allFiles.size()]),
         allFileSizes.toArray(new String[allFileSizes.size()])};
-  }
+  }*/
 
   /**
    * Download a single file.
@@ -1129,8 +1147,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
     if(refresh || currentUrlBox.getItemCount()==0 && urlList.size()>0){
       currentUrlBox.removeAllItems();
-      for(ListIterator it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
-        currentUrlBox.addItem(it.previous().toString());
+      for(ListIterator<String> it=urlList.listIterator(urlList.size()-1); it.hasPrevious();){
+        currentUrlBox.addItem((String) it.previous());
       }
       currentUrlBox.updateUI();
     }
@@ -1324,6 +1342,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       else if(url.startsWith("sss:")){
         setRemoteFileConfirmDisplay(url, sssFileTransfer);
+      }
+      else if(url.startsWith("srm:")){
+        setRemoteFileConfirmDisplay(url, srmFileTransfer);
       }
       // blank page
       else if(url.equals("") && withNavigation){
@@ -1686,7 +1707,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(bytes==0){
           throw new IOException("File is empty");
         }
-        ep.setText("File found --> "+bytes+" bytes.");
+        ep.setContentType("text/html");
+        ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br>" +
+        		"<a href=\""+url+"\">Click here to download</a>.</html>");
         Debug.debug("Setting thisUrl, "+url, 3);
         thisUrl = url;
         setUrl(thisUrl);
@@ -1750,15 +1773,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("found files "+text.length, 3);
         int directories = 0;
         int files = 0;
-        Vector textVector = new Vector();
+        Vector<String> textVector = new Vector<String>();
         String filter = jtFilter.getText();
         if(filter==null || filter.equals("")){
           filter = "*";
         }
         statusBar.setLabel("Filtering...");
         Debug.debug("Filtering with "+filter, 3);
-        Vector lastUrlVector = new Vector();
-        Vector lastSizesVector = new Vector();
+        Vector<String> lastUrlVector = new Vector<String>();
+        Vector<String> lastSizesVector = new Vector<String>();
         String bytes;
         for(int j=0; j<text.length; ++j){
           if((jcbFilter.isSelected() ||
@@ -1833,8 +1856,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void setRemoteDirDisplay(String url, FileTransfer ft, String protocol) throws Exception{
     Debug.debug("setRemoteDirDisplay "+url, 3);
     
-    listedUrls = new Vector();
-    listedSizes = new Vector();
+    listedUrls = new Vector<String>();
+    listedSizes = new Vector<String>();
     jtFilter.setEnabled(true);
     String filter = jtFilter.getText();
     String htmlText = "";
@@ -1861,7 +1884,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       host = "";
     }
-    Vector textVector = ft.list(globusUrl, filter);
+    Vector<String> textVector = ft.list(globusUrl, filter);
 
     String text = "";
     // TODO: reconsider max entries and why listing more is so slow...
@@ -1951,7 +1974,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display a directory listing
    * of the URL url.
    */
-  private void setHttpDirDisplay(final String url) throws IOException{
+  /*private void setHttpDirDisplay(final String url) throws IOException{
     Debug.debug("setHttpDirDisplay "+url, 3);
     jtFilter.setEnabled(false);
     try{
@@ -1991,11 +2014,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // workaround for bug in java < 1.5
       // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4492274
       // Doesn't work...
-      /*if (!ep.getPage().equals(url))
-      {
-        ep.getDocument().
-          putProperty(Document.StreamDescriptionProperty, url);
-      }*/
+      //if (!ep.getPage().equals(url))
+      //{
+      //  ep.getDocument().
+      //    putProperty(Document.StreamDescriptionProperty, url);
+      //}
       ep.setEditable(false);
       pButton.updateUI();
       Debug.debug("Setting thisUrl, "+thisUrl, 3);
@@ -2007,7 +2030,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
          e.getMessage(), 1);
       throw e;
     }
-  }
+  }*/
 
   public Dimension getPreferredSize(){
     return panel.getPreferredSize();
@@ -2026,9 +2049,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
     super.processWindowEvent(e);
   }
   
+  private boolean isDLWindow(){
+    boolean ret = ep.getContentType().equalsIgnoreCase("text/html") &&
+       ep.getText().matches("(?i)(?s)<html>.*<head>.*</head>.*<body>\\s*"+
+       FILE_FOUND_TEXT+".*</body>.*</html>\\s*");
+    return ret;
+  }
+  
   // Close the dialog
   private void cancel(){
-    if(thisUrl==null || thisUrl.endsWith("/")){
+    if(thisUrl==null || thisUrl.endsWith("/") /*|| isDLWindow()*/){
       //lastURL = Util.urlDecode(origUrl);
       lastURL = null;
       lastUrlsList = null;
@@ -2164,6 +2194,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
         else if(url.startsWith("sss://")){
           sssFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
         }
+        else if(url.startsWith("srm://")){
+          srmFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
+        }
         statusBar.setLabel(globusUrl.getPath()+" deleted");
       }
       else{
@@ -2283,6 +2316,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
           GlobusURL globusUrl = new GlobusURL(thisUrl);
           sssFileTransfer.write(globusUrl, ep.getText());
         }
+        else if(thisUrl.startsWith("srm://")){
+          GlobusURL globusUrl = new GlobusURL(thisUrl);
+          srmFileTransfer.write(globusUrl, ep.getText());
+        }
         else{
           throw(new IOException("Unknown protocol for "+thisUrl));
         }
@@ -2334,7 +2371,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     ResThread t = (new ResThread(){
       public void run(){
         String href = null;
-        for(Iterator it=listedUrls.iterator(); it.hasNext();){
+        for(Iterator<String> it=listedUrls.iterator(); it.hasNext();){
           href = (String) it.next();
           Debug.debug("Getting: "+href+" -> "+dir.getAbsolutePath(), 2);
           try{
@@ -2507,8 +2544,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
           String href = null;
           String lfn = null;
           String size = null;
-          Iterator itt=listedSizes.iterator();
-          for(Iterator it=listedUrls.iterator(); it.hasNext();){
+          Iterator<String> itt=listedSizes.iterator();
+          for(Iterator<String> it=listedUrls.iterator(); it.hasNext();){
             href = (String) it.next();
             size = (String) itt.next();
             Debug.debug("Registering file : "+href+" in "+datasetName, 3);
@@ -2550,13 +2587,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
 
-  private void clearUrls(String url){
+  /*private void clearUrls(String url){
     synchronized(urlList){
       if(urlList==null){
         Debug.debug("urlList null", 3);
       }
       urlList.removeAllElements();
     }
-  }
+  }*/
   
 }

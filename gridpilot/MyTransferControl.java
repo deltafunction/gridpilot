@@ -1407,7 +1407,7 @@ public class MyTransferControl extends TransferControl {
     }
     // remote gsiftp or https/webdav directory
     else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
-        srcUrlDir.startsWith("sss://")){
+        srcUrlDir.startsWith("sss://") || srcUrlDir.startsWith("srm://")){
       Debug.debug("Downloading "+destFileName+" from "+srcUrlDir+" to "+downloadDir.getAbsolutePath(), 3);
       GlobusURL globusUrl = new GlobusURL(url);
       FileTransfer fileTransfer =
@@ -1492,7 +1492,7 @@ public class MyTransferControl extends TransferControl {
     }
     // remote directory
     else if(uploadUrlDir.startsWith("gsiftp://") || uploadUrlDir.startsWith("https") ||
-       uploadUrlDir.startsWith("sss")){
+       uploadUrlDir.startsWith("sss") || uploadUrlDir.startsWith("srm://")){
       if(!uploadUrlDir.endsWith("/")){
         throw(new IOException("Upload location must be a directory. "+uploadUrl));
       }
