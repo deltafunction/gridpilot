@@ -46,6 +46,7 @@ public class LFCLookupPFN extends LookupPFN {
             "lfn", atlasLPN);
       }
       catch(Exception e){
+        e.printStackTrace();
       }
       // if nothing is found, try another path convention (and remember this)
       if(pfns==null || pfns.length==0 ||

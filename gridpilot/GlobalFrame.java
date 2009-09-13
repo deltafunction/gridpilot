@@ -34,7 +34,7 @@ public class GlobalFrame extends GPFrame{
 
   private static final int MAX_TAB_TITLE_LENGTH = 24;
   
-  private Vector allPanels;
+  private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
   private CreateEditDialog pDialog;
   private MyPreferencesPanel prefsPanel = null;
@@ -66,7 +66,7 @@ public class GlobalFrame extends GPFrame{
    */
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-    allPanels = new Vector();
+    allPanels = new Vector<ListPanel>();
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -433,9 +433,31 @@ public class GlobalFrame extends GPFrame{
       }
     });
    
-    // DB
-    JMenu menuDB = new JMenu("DB");
-    menuDB.addMenuListener(new MenuListener(){
+    // Edit
+    menuEditCopy.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditCopy_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditCopy);
+    menuEditCut.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditCut_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditCut);
+    menuEditPaste.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditPaste_actionPerformed();
+      }
+    });
+    menuEdit.add(menuEditPaste);
+    menuEditPrefs.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        menuEditPrefs_actionPerformed();
+      }
+    });
+    menuEdit.addMenuListener(new MenuListener(){
       public void menuCanceled(MenuEvent e) {
       }
 
@@ -471,8 +493,9 @@ public class GlobalFrame extends GPFrame{
     
     mDbDefineRecords.add(miWithoutInput);
     mDbDefineRecords.add(miWithInputDataset);
-    menuDB.add(miDbDefineRecords);
-    menuDB.add(mDbDefineRecords);
+    menuEdit.addSeparator();
+    menuEdit.add(miDbDefineRecords);
+    menuEdit.add(mDbDefineRecords);
 
     miDbEditRecord.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -480,7 +503,7 @@ public class GlobalFrame extends GPFrame{
         editRecord();
       }
     });
-    menuDB.add(miDbEditRecord);
+    menuEdit.add(miDbEditRecord);
 
     miDbDeleteRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -488,7 +511,9 @@ public class GlobalFrame extends GPFrame{
         deleteRecords();
       }
     });
-    menuDB.add(miDbDeleteRecords);
+    menuEdit.add(miDbDeleteRecords);
+    menuEdit.addSeparator();
+    menuEdit.add(menuEditPrefs);
 
     JMenuItem miDbClearCaches = new JMenuItem("Clear database cache");
     miDbClearCaches.addActionListener(new ActionListener(){
@@ -710,31 +735,6 @@ public class GlobalFrame extends GPFrame{
         toggleMonitoringPanel();
       }
     });    
-    
-    menuEditCopy.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditCopy_actionPerformed();
-      }
-    });
-    menuEdit.add(menuEditCopy);
-    menuEditCut.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditCut_actionPerformed();
-      }
-    });
-    menuEdit.add(menuEditCut);
-    menuEditPaste.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditPaste_actionPerformed();
-      }
-    });
-    menuEdit.add(menuEditPaste);
-    menuEditPrefs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditPrefs_actionPerformed();
-      }
-    });
-    menuEdit.add(menuEditPrefs);
 
     // Help
     JMenu menuHelp = new JMenu("Help");
@@ -788,7 +788,6 @@ public class GlobalFrame extends GPFrame{
     menuBar.add(menuFile);
     menuBar.add(menuEdit);
     menuBar.add(menuView);
-    menuBar.add(menuDB);
     menuBar.add(menuHelp);
     
     return menuBar;

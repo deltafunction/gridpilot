@@ -29,6 +29,7 @@ import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
@@ -1429,7 +1430,17 @@ private static String fixUrl(String _url){
       Debug.debug("Could not find image "+ GridPilot.ICONS_PATH + "stop_small.png", 3);
       cancelIcon = new ImageIcon();
     }
-    statusBar.setProgressBar(pb);
+    // Keep any MoustListener on any indeterminate progress bar.
+    MouseListener ml = statusBar.getIndeterminateProgressBarMouseListener();
+    String tt = statusBar.getIndeterminateProgressBarToolTip();
+    statusBar.stopAnimation();
+    if(ml!=null){
+      statusBar.stopAnimation();
+      statusBar.addProgressBarMouseListener(pb, ml);
+      if(tt!=null){
+        statusBar.setProgressBarToolTip(pb, tt);
+      }
+    }
     statusBar.setProgressBarMax(pb, maxVal);
     JButton bCancel = new JButton(cancelIcon);
     bCancel.setToolTipText("click here to stop PFN lookup");
@@ -1444,6 +1455,7 @@ private static String fixUrl(String _url){
     jpCancel.setSize(new java.awt.Dimension(6, 4));
     statusBar.setCenterComponent(jpCancel);
     pb.validate();
+    statusBar.setProgressBar(pb);
     return pb;
   }
   

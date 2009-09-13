@@ -38,7 +38,6 @@ import gridfactory.common.Debug;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 
-import gridpilot.DBPluginMgr;
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -61,16 +60,16 @@ public class ATLASDatabase extends DBCache implements Database{
   // running in parallel. Running them in parallel would
   // require a reengineering of the select method, which does
   // everything serially.
-  private Vector pfnVector = null;
+  private Vector<String> pfnVector = null;
   // The same goes for fileBytes and fileChecksum
   private String fileBytes = null;
   private String fileChecksum = null;
   private int fileCatalogTimeout = 2000;
-  private HashMap dqLocationsCache = new HashMap();
-  private HashMap queryResults = new HashMap();
+  private HashMap<String, Vector<String>> dqLocationsCache = new HashMap<String, Vector<String>>();
+  private HashMap<String, DBResult> queryResults = new HashMap<String, DBResult>();
   private boolean useCaching = false;
   private TiersOfAtlas toa = null;
-  private HashSet httpSwitches = new HashSet();
+  private HashSet<String> httpSwitches = new HashSet<String>();
   private boolean forceFileDelete = false;
   private DQ2Access dq2Access = null;
  
@@ -140,7 +139,7 @@ public class ATLASDatabase extends DBCache implements Database{
       logFile.addMessage(error, e);
     }
     
-    pfnVector = new Vector();
+    pfnVector = new Vector<String>();
 
     // Set preferred download sites
     preferredSites = configFile.getValues(dbName, "preferred sites");
@@ -304,7 +303,7 @@ public class ATLASDatabase extends DBCache implements Database{
     
     // Find != rules. < and > rules could be done in the same way...
     conditions = req.replaceFirst("SELECT (.*) FROM (\\w*) WHERE (.*)", "$3");
-    HashMap excludeMap = new HashMap();
+    HashMap<String, String> excludeMap = new HashMap<String, String>();
     String pattern = null;
     String conditions1 = conditions;
     while(conditions1.matches(".+ (\\S+) != (\\S+)\\s*.*")){
@@ -421,14 +420,14 @@ public class ATLASDatabase extends DBCache implements Database{
         return new DBResult(fields, new String[0][fields.length]);
       }
       
-      Vector valuesVector = new Vector();
+      Vector<String[]> valuesVector = new Vector<String[]>();
       String [] record = null;
       String vuidsString = null;
       String [] vuids = null;
       //String duid = null;
       for(int i=0; i<records.length; ++i){
         
-        Vector recordVector = new Vector();
+        Vector<String> recordVector = new Vector<String>();
         boolean exCheck = true;
         records[i] = records[i].replaceFirst("^\\{", "");
         records[i] = records[i].replaceFirst("\\}\\}$", "");
@@ -459,7 +458,7 @@ public class ATLASDatabase extends DBCache implements Database{
           Debug.debug("Matching: "+vuid+":"+complete+":"+incomplete, 2);
           for(int j=0; j<vuids.length; ++j){
             Debug.debug("vuid: "+vuids[j], 3);
-            recordVector = new Vector();
+            recordVector = new Vector<String>();
             exCheck = true;
             for(int k=0; k<fields.length; ++k){
               if(fields[k].equalsIgnoreCase("dsn")){
@@ -513,7 +512,7 @@ public class ATLASDatabase extends DBCache implements Database{
             }
             if(exCheck){
               Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
-              valuesVector.add(recordVector.toArray());
+              valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
             }
             else{
               Debug.debug("Excluding record ", 2);
@@ -593,7 +592,7 @@ public class ATLASDatabase extends DBCache implements Database{
             }
             if(exCheck){
               Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
-              valuesVector.add(recordVector.toArray());
+              valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
             }
             else{
               Debug.debug("Excluding record ", 2);
@@ -608,7 +607,7 @@ public class ATLASDatabase extends DBCache implements Database{
       values = new String[valuesVector.size()][fields.length];
       for(int i=0; i<valuesVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){
-          values[i][j] = ((Object []) valuesVector.get(i))[j].toString();
+          values[i][j] = valuesVector.get(i)[j];
         }
         Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
       }
@@ -728,7 +727,7 @@ public class ATLASDatabase extends DBCache implements Database{
         Debug.debug("WARNING: no records found with "+str, 2);
         return new DBResult(fields, new String[0][fields.length]);
       }    
-      Vector valuesVector = new Vector();
+      Vector<String[]> valuesVector = new Vector<String[]>();
       String [] record = null;
       if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
         pb = MyUtil.setProgressBar(records.length, dbName);
@@ -741,7 +740,7 @@ public class ATLASDatabase extends DBCache implements Database{
         if(pb!=null){
           pb.setValue(i+1);
         }
-        Vector recordVector = new Vector();
+        Vector<String> recordVector = new Vector<String>();
         boolean exCheck = true;
         record = MyUtil.split(records[i], ": \\{");
         if(record==null || record.length==0){
@@ -774,13 +773,13 @@ public class ATLASDatabase extends DBCache implements Database{
           catch(Exception e){
             e.printStackTrace();
           }
-          pfns = MyUtil.arrayToString(pfnVector.toArray());
+          pfns = MyUtil.arrayToString(pfnVector.toArray(new String[pfnVector.size()]));
         }
         else{
           pfns = "";
         }
  
-        recordVector = new Vector();
+        recordVector = new Vector<String>();
         exCheck = true;
         for(int k=0; k<fields.length; ++k){
           if(fields[k].equalsIgnoreCase("lfn")){
@@ -818,8 +817,8 @@ public class ATLASDatabase extends DBCache implements Database{
           }
         }
         if(exCheck){
-          Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
-          valuesVector.add(recordVector.toArray());
+          Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray(new String[recordVector.size()])), 3);
+          valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
         }
         else{
           Debug.debug("Excluding record ", 2);
@@ -834,7 +833,7 @@ public class ATLASDatabase extends DBCache implements Database{
       values = new String[valuesVector.size()][fields.length];
       for(int i=0; i<valuesVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){
-          values[i][j] = ((Object []) valuesVector.get(i))[j].toString();
+          values[i][j] = valuesVector.get(i)[j];
         }
         Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
       }
@@ -1266,7 +1265,7 @@ public class ATLASDatabase extends DBCache implements Database{
           String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
           String guid = null;
-          Vector resultVector = new Vector();
+          Vector<String> resultVector = new Vector<String>();
           Debug.debug(">> "+req, 2);
           rset = conn.createStatement().executeQuery(req);
           while(rset.next()){
@@ -1280,7 +1279,7 @@ public class ATLASDatabase extends DBCache implements Database{
             error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
             logFile.addMessage(error);
           }
-          guid = (String) resultVector.get(0);
+          guid = resultVector.get(0);
           // Now delete this guid from the t_lfn, t_pfn and t_meta tables
           req = "DELETE FROM t_lfn WHERE guid = '"+guid+"'";
           Debug.debug(">> "+req, 2);
@@ -1373,7 +1372,7 @@ public class ATLASDatabase extends DBCache implements Database{
           String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
           ResultSet rset = null;
           String guid = null;
-          Vector resultVector = new Vector();
+          Vector<String> resultVector = new Vector<String>();
           Debug.debug(">> "+req, 3);
           rset = conn.createStatement().executeQuery(req);
           while(rset.next()){
@@ -1387,7 +1386,7 @@ public class ATLASDatabase extends DBCache implements Database{
             error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
             logFile.addMessage(error);
           }
-          guid = (String) resultVector.get(0);
+          guid = resultVector.get(0);
           // Now flag this guid for deletion in t_meta
           req = "UPDATE t_meta SET sync = 'delete' WHERE guid ='"+guid+"'";
           Debug.debug(">> "+req, 3);
@@ -1575,11 +1574,11 @@ public class ATLASDatabase extends DBCache implements Database{
    * @param vuid dataset ID
    * @return Vector of Strings (site names)
    */
-  private Vector getOrderedLocations(String vuid){
+  private Vector<String> getOrderedLocations(String vuid){
     
     // First check cache
     if(dqLocationsCache.containsKey(vuid)){
-      return (Vector) dqLocationsCache.get(vuid);
+      return dqLocationsCache.get(vuid);
     }
     
     DQ2Locations dqLocations = null;
@@ -1594,7 +1593,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     // construct vector of all locations
-    Vector locations = new Vector();
+    Vector<String> locations = new Vector<String>();
     // make sure homeServer is first in the list, excluding ignored sites
     for(int i=0; i<dqLocations.getComplete().length; ++i){
       if(dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
@@ -1636,7 +1635,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }
     // add the rest, excluding ignored sites
-    HashSet preferredSet = new HashSet();
+    HashSet<String> preferredSet = new HashSet<String>();
     Collections.addAll(preferredSet, preferredSites);
     for(int i=0; i<dqLocations.getComplete().length; ++i){
       if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
@@ -1662,15 +1661,15 @@ public class ATLASDatabase extends DBCache implements Database{
    * Returns a Vector of catalogServers corresponding to the
    * Vector of PFNs.
    */
-  private Vector findPFNs(String vuid, String lfn, boolean findAll){
+  private Vector<String> findPFNs(String vuid, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
     // For each LRC catalog try both the mysql and the http interface.
     String lfName = lfn;
-    Vector locations = getOrderedLocations(vuid);
-    Vector catalogs = new Vector();
-    Object [] locationsArray = locations.toArray();
+    Vector<String> locations = getOrderedLocations(vuid);
+    Vector<String> catalogs = new Vector<String>();
+    String [] locationsArray = locations.toArray(new String[locations.size()]);
     try{
       pfnVector.clear();
       fileBytes = null;
@@ -1678,7 +1677,7 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug("Checking locations "+MyUtil.arrayToString(locationsArray), 3);
       for(int i=0; i<locationsArray.length; ++i){
         Debug.debug("Checking location "+locationsArray[i], 3);
-        if(locationsArray[i]==null || ((String) locationsArray[i]).matches("\\s*")){
+        if(locationsArray[i]==null || locationsArray[i].matches("\\s*")){
           continue;
         }
         if(getStop() || !findPFNs){
@@ -1693,18 +1692,18 @@ public class ATLASDatabase extends DBCache implements Database{
           String tryAgainServer = null;
           String fallbackServer = null;
           if(homeSite!=null && homeServerMysqlAlias!=null &&
-              ((String) locationsArray[i]).equalsIgnoreCase(homeSite)){
+              locationsArray[i].equalsIgnoreCase(homeSite)){
             catalogServer = homeServerMysqlAlias;
-            tryAgainServer = toa.getFileCatalogServer((String) locationsArray[i], false); 
+            tryAgainServer = toa.getFileCatalogServer(locationsArray[i], false); 
           }
           else{
             if(!httpSwitches.contains(locationsArray[i])){
-              catalogServer = toa.getFileCatalogServer((String) locationsArray[i], false);
-              fallbackServer = toa.getFileCatalogServer((String) locationsArray[i], true);
+              catalogServer = toa.getFileCatalogServer(locationsArray[i], false);
+              fallbackServer = toa.getFileCatalogServer(locationsArray[i], true);
             }
             else{
-              catalogServer = toa.getFileCatalogServer((String) locationsArray[i], true);
-              fallbackServer = toa.getFileCatalogServer((String) locationsArray[i], false);
+              catalogServer = toa.getFileCatalogServer(locationsArray[i], true);
+              fallbackServer = toa.getFileCatalogServer(locationsArray[i], false);
             }
           }
           if(catalogServer==null){
@@ -1753,6 +1752,7 @@ public class ATLASDatabase extends DBCache implements Database{
         catch(Exception e){
           e.printStackTrace();
         }
+        Debug.debug("Found PFNs "+pfnVector, 2);
         // break out after first location, if "Find all" is not checked
         if(!findAll && !pfnVector.isEmpty() && pfnVector.get(0)!=null){
           break;
@@ -1760,7 +1760,7 @@ public class ATLASDatabase extends DBCache implements Database{
         // if we did not find anything on this location, put it last in the
         // HashMap of locations
         if(pfns==null || pfns.length==0 || pfns[0]==null || pfns[0].equals("")){
-          Vector tl = (Vector) dqLocationsCache.get(vuid);
+          Vector<String> tl = dqLocationsCache.get(vuid);
           int j=0;
           for(j=0; j<tl.size(); ++j){
             if(tl.get(j).equals(locationsArray[i])){
@@ -1770,17 +1770,17 @@ public class ATLASDatabase extends DBCache implements Database{
           int len = tl.size();
           Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
               j+":"+len+":"+(-len+j+1), 2);
-          Collections.rotate(((Vector) dqLocationsCache.get(vuid)).subList(j, len),
+          Collections.rotate(dqLocationsCache.get(vuid).subList(j, len),
               len-j-1);
           Debug.debug("New location cache for "+vuid+
-              ": "+MyUtil.arrayToString(((Vector) dqLocationsCache.get(vuid)).toArray()), 2);
+              ": "+MyUtil.arrayToString((dqLocationsCache.get(vuid)).toArray()), 2);
         }
       }
       // Eliminate duplicates
-      Vector pfnShortVector = new Vector();
+      Vector<String> pfnShortVector = new Vector<String>();
       String tmpPfn = null;
-      for(Iterator it=pfnVector.iterator(); it.hasNext();){
-        tmpPfn = (String) it.next();
+      for(Iterator<String> it=pfnVector.iterator(); it.hasNext();){
+        tmpPfn = it.next();
         if(!pfnShortVector.contains(tmpPfn)){
           pfnShortVector.add(tmpPfn);
         }
@@ -1870,7 +1870,7 @@ public class ATLASDatabase extends DBCache implements Database{
     
     // Alternative, hacky solution
     
-    String [] fields= getFieldNames("file");
+    String [] fields = getFieldNames("file");
     
     String vuid = getDatasetID(dsn);
     
@@ -1886,7 +1886,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     
     // Get the pfns
-    Vector resultVector = new Vector();
+    Vector<String> resultVector = new Vector<String>();
     String pfns = "";
     String catalogs = "";
     String bytes = "";
@@ -1894,11 +1894,12 @@ public class ATLASDatabase extends DBCache implements Database{
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
       catalogs = MyUtil.arrayToString(findPFNs(vuid, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
       for(int j=2; j<pfnVector.size(); ++j){
-        resultVector.add((String) pfnVector.get(j));
+        resultVector.add(pfnVector.get(j));
       }
+      Debug.debug("pfnVector --> "+pfnVector, 3);
       bytes = (fileBytes==null?"":fileBytes);
       checksum = (fileBytes==null?"":fileChecksum);
-      pfns = MyUtil.arrayToString(resultVector.toArray());
+      pfns = MyUtil.arrayToString(resultVector.toArray(new String[resultVector.size()]));
     }
         
     return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, fileID, bytes, checksum});
@@ -1909,9 +1910,10 @@ public class ATLASDatabase extends DBCache implements Database{
     String [][] ret = new String [2][];
     try{
       DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
-      Debug.debug("catalogs: "+file.getValue("catalogs"), 2);
       ret[0] = MyUtil.split((String) file.getValue("catalogs"));
       ret[1] = MyUtil.splitUrls((String) file.getValue("pfns"));
+      Debug.debug("catalogs: "+MyUtil.arrayToString(ret[0]), 2);
+      Debug.debug("pfns: "+MyUtil.arrayToString(ret[1]), 2);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2099,7 +2101,7 @@ public class ATLASDatabase extends DBCache implements Database{
     int deleted = 0;
     // Delete the physical files.
     // First store them all in a Vector.
-    Vector pfns = new Vector();
+    Vector<String> pfns = new Vector<String>();
     String [] pfnsArr = null;
     for(int i=0; i<toDeleteLfns.length; ++i){
       if(getStop()){
@@ -2131,11 +2133,11 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }      
     // Then construct a HashMap of Vectors of files on the same server.
-    HashMap pfnHashMap = new HashMap();
+    HashMap<String, Vector<String>> pfnHashMap = new HashMap<String, Vector<String>>();
     String pfn = null;
     String host = null;
-    for(Iterator it=pfns.iterator(); it.hasNext();){
-      pfn = (String) it.next();
+    for(Iterator<String> it=pfns.iterator(); it.hasNext();){
+      pfn = it.next();
       try{
         host = (new GlobusURL(pfn)).getHost();
       }
@@ -2144,17 +2146,17 @@ public class ATLASDatabase extends DBCache implements Database{
             pfn+". Please delete this file by hand.");
       }
       if(!pfnHashMap.containsKey(host)){
-        Vector hostPFNs = new Vector();
+        Vector<String> hostPFNs = new Vector<String>();
         hostPFNs.add(pfn);
         pfnHashMap.put(host, hostPFNs);
       }
       else{
-        ((Vector) pfnHashMap.get(host)).add(pfn);
+        pfnHashMap.get(host).add(pfn);
       }
     }
     // Now try to delete the batches of files.
-    Set hosts = pfnHashMap.keySet();
-    Vector hostPFNs = null;
+    Set<String> hosts = pfnHashMap.keySet();
+    Vector<String> hostPFNs = null;
     GlobusURL [] urls = null;
     GridPilot.getClassMgr().getStatusBar().setLabel("Deleting physical files...");
     JProgressBar pb = new JProgressBar();
@@ -2168,7 +2170,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     });
     int i = 0;
-    for(Iterator it=hosts.iterator(); it.hasNext();){
+    for(Iterator<String> it=hosts.iterator(); it.hasNext();){
       if(getStop()){
         break;
       }
@@ -2176,12 +2178,12 @@ public class ATLASDatabase extends DBCache implements Database{
       GridPilot.getClassMgr().getStatusBar().setLabel("Record "+i+" : "+hosts.size());
       pb.setValue(i);
       try{
-        host = (String) it.next();
-        hostPFNs = (Vector) pfnHashMap.get(host);
+        host = it.next();
+        hostPFNs = pfnHashMap.get(host);
         urls = new GlobusURL [hostPFNs.size()];
         int j = 0;
-        for(Iterator itt=hostPFNs.iterator(); itt.hasNext(); ++j){
-          urls[j] = new GlobusURL((String) itt.next());
+        for(Iterator<String> itt=hostPFNs.iterator(); itt.hasNext(); ++j){
+          urls[j] = new GlobusURL(itt.next());
         }
         GridPilot.getClassMgr().getStatusBar().setLabel("Deleting physical file(s)");
         GridPilot.getClassMgr().getTransferControl().deleteFiles(urls);
@@ -2382,8 +2384,8 @@ public class ATLASDatabase extends DBCache implements Database{
     
     String dsn = null;
     String vuid = null;
-    Vector fieldStrings = new Vector();
-    Vector valueStrings = new Vector();
+    Vector<String> fieldStrings = new Vector<String>();
+    Vector<String> valueStrings = new Vector<String>();
     
     if(table==null || !table.equalsIgnoreCase("dataset")){
       error = "ERROR: could not use table "+table;
@@ -2402,7 +2404,7 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         else if(values[i]!=null && !values[i].toString().equals("") &&
             !values[i].toString().equals("''")){
-          fieldStrings.add((String) fields[i]);
+          fieldStrings.add(fields[i]);
           valueStrings.add((String) values[i]);
         }
       }
@@ -2425,8 +2427,8 @@ public class ATLASDatabase extends DBCache implements Database{
       String [] fieldArray = new String [fieldStrings.size()];
       String [] valueArray = new String [valueStrings.size()];
       for(int i=0; i<fieldStrings.size(); ++i){
-        fieldArray[i] = (String) fieldStrings.get(i);
-        valueArray[i] = (String) valueStrings.get(i);
+        fieldArray[i] = fieldStrings.get(i);
+        valueArray[i] = valueStrings.get(i);
       }
       try{
         if(!updateDataset(vuid, dsn, fieldArray, valueArray)){
@@ -2525,7 +2527,7 @@ public class ATLASDatabase extends DBCache implements Database{
           try{
             if(fields[i].equalsIgnoreCase("complete")){
               String [] newLocations = MyUtil.split(values[i]);
-              Set newLocationsSet = new HashSet();
+              Set<String> newLocationsSet = new HashSet<String>();
               Collections.addAll(newLocationsSet, newLocations);
               // Delete locations
               for(int j=0; j<dqLocations[0].getComplete().length; ++j){
@@ -2537,7 +2539,7 @@ public class ATLASDatabase extends DBCache implements Database{
                 dq2Access.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
               }
               // Set the new ones
-              Set oldLocationsSet = new HashSet();
+              Set<String> oldLocationsSet = new HashSet<String>();
               Collections.addAll(oldLocationsSet, dqLocations[0].getComplete());
               for(int j=0; j<newLocations.length; ++j){
                 if(oldLocationsSet.contains(newLocations[j])){
@@ -2551,7 +2553,7 @@ public class ATLASDatabase extends DBCache implements Database{
             //BNLTAPE CERNPROD CYF LYONTAPE CSCS
             else if(fields[i].equalsIgnoreCase("incomplete")){
               String [] newLocations = MyUtil.split(values[i]);
-              Set newLocationsSet = new HashSet();
+              Set<String> newLocationsSet = new HashSet<String>();
               Collections.addAll(newLocationsSet, newLocations);
               for(int j=0; j<dqLocations[0].getIncomplete().length; ++j){
                 if(newLocationsSet.contains(dqLocations[0].getIncomplete()[j])){
@@ -2561,7 +2563,7 @@ public class ATLASDatabase extends DBCache implements Database{
                     " for vuid "+vuid, 2);
                 dq2Access.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
               }
-              Set oldLocationsSet = new HashSet();
+              Set<String> oldLocationsSet = new HashSet<String>();
               Collections.addAll(oldLocationsSet, dqLocations[0].getIncomplete());
               for(int j=0; j<newLocations.length; ++j){
                 if(oldLocationsSet.contains(newLocations[j])){
@@ -2671,9 +2673,9 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     String thisSql = null;
     String [] theseTableNames = null;
-    HashSet deleteKeys = new HashSet();
-    for(Iterator it=queryResults.keySet().iterator(); it.hasNext();){
-      thisSql = (String) it.next();
+    HashSet<String> deleteKeys = new HashSet<String>();
+    for(Iterator<String> it=queryResults.keySet().iterator(); it.hasNext();){
+      thisSql = it.next();
       theseTableNames = MyUtil.getTableNames(thisSql);
       if(theseTableNames==null){
         Debug.debug("WARNING: could not get table name for "+thisSql, 1);
@@ -2691,8 +2693,8 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }
     Debug.debug("Clearing cache entries", 2);
-    for(Iterator it=deleteKeys.iterator(); it.hasNext();){
-      thisSql = (String) it.next();
+    for(Iterator<String> it=deleteKeys.iterator(); it.hasNext();){
+      thisSql = it.next();
       Debug.debug("--> "+thisSql, 3);
       queryResults.remove(thisSql);
     }

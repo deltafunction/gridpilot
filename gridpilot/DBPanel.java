@@ -3359,13 +3359,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         Debug.debug("PFNs column name: "+pfnsColumn, 2);
         JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
         for(int i=0; i<selectedFileIdentifiers.length; ++i){
-          pb.setValue(i+1);
+          //pb.setValue(i+1);
+          statusBar.incrementProgressBarValue(pb, 1);
           // Get the datasetName from the table.            
           HashMap<String, String> values = new HashMap<String, String>();
           int pfnsColumnIndex = -1;
           int catalogsColumnIndex = -1;
           for(int j=0; j<fieldNames.length; ++j){
-            // Not displayed colums
+            // Not displayed columns
             for(int k=0; k<tableResults.getColumnCount(); ++k){
               if(tableResults.getColumnName(k).equalsIgnoreCase(fieldNames[j])){
                 values.put(fieldNames[j], tableResults.getUnsortedValueAt(selectedRows[i], k).toString());
