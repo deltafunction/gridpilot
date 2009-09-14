@@ -223,6 +223,11 @@ public class JobCreationPanel extends CreateEditPanel{
     
     JLabel [] constantAttributeLabels = new JLabel [cstAttributesNames.length];
     boolean isInMetadata = false;
+    // metadata information from the metadata field of the dataset.
+    // We display nothing, jobCreator will take care of filling in
+    // - IF the field is left empty
+    String metaDataString = (String) dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
+    metaData = MyUtil.parseMetaData(metaDataString);    
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       isInMetadata = false;
       constantAttributeLabels[i] = new JLabel(cstAttributesNames[i] + LABEL_END);
@@ -290,11 +295,6 @@ public class JobCreationPanel extends CreateEditPanel{
 
     JLabel [] jobAttributeLabels = new JLabel[jobParamNames.length];
 
-    // metadata information from the metadata field of the dataset.
-    // We display nothing, jobCreator will take care of filling in
-    // - IF the field is left empty
-    String metaDataString = (String) dbPluginMgr.getDataset(datasetIDs[0]).getValue("metaData");
-    metaData = MyUtil.parseMetaData(metaDataString);    
     for(int i=0; i<jobParamNames.length; ++i, ++row){
       isInMetadata = false;
       if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
