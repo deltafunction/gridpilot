@@ -349,7 +349,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage(error, e);
       return false;
     }
-    if(job.getJobId()!=null){
+    if(job.getJobId()==null){
       try{
         // Do this only if not a resubmit
         setInputFiles(job);
@@ -542,5 +542,18 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   public void cleanupRuntimeEnvironments(String csName){
     MyUtil.cleanupRuntimeEnvironments(csName, runtimeDBs, toDeleteRtes);
   }
+  
+  public boolean cleanup(JobInfo job){
+    boolean ret = super.cleanup(job);
+    try{
+      getLRMS().clean(new String [] {job.getJobId()}, null);
+    }
+    catch(Exception e){
+      ret = false;
+      e.printStackTrace();
+    }    
+    return ret;
+  }
+
 
 }

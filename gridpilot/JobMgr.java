@@ -866,9 +866,10 @@ public class JobMgr{
         if(showThis){
           try{
             String confirmString = "WARNING: The transition from " +
-            DBPluginMgr.getStatusName(job.getDBStatus()) + " to " +
-            DBPluginMgr.getStatusName(dbStatus) + " is not allowed.\n"+
-            authorization+".\nContinue on your own risk.";
+               DBPluginMgr.getStatusName(job.getDBStatus()) + " to " +
+               DBPluginMgr.getStatusName(dbStatus) + " is not allowed.\n"+
+               authorization+".\nContinue on your own risk.";
+            confirmString = "<html>"+confirmString.replaceAll("\\n", "<br>")+"</html>";
             if(rows.length-i>1){
               choice = MyUtil.showResult(null, new JLabel(confirmString),
                   "Confirm change status", MyUtil.OK_ALL_SKIP_ALL_OPTION, "Skip");
@@ -929,8 +930,7 @@ public class JobMgr{
     String fromSubmitted = "Kill this job and wait until GridPilot detects it has been terminated - " +
         "otherwise a ghost job may overwrite a new attempt";
 
-    String toValidated = "A job cannot be set to Validated manually";
-    String toUndecided = "A job cannot be set to Undecided manually";
+    String toNotAllowed = "A job cannot be set to this status manually";
 
     String unToSub = "Set it Failed before, and resubmit it";
     String failToSub = "Resubmit it";
@@ -940,11 +940,11 @@ public class JobMgr{
         /*   from\to    DEFINED        PREPARED        SUBMITTED      VALIDATED      UNDECIDED      UNEXPECTED      FAILED         ABORTED*/
         /*DEFINED*/    {sameStatus,    fromDefined,    fromDefined,   fromDefined,   fromDefined,   fromDefined,    fromDefined,   null},
         /*PREPARED*/   {fromPrepared,  sameStatus,     fromPrepared,  fromPrepared,  fromPrepared,  fromPrepared,   null,          null},
-        /*SUBMITTED*/  {fromSubmitted, fromSubmitted,  sameStatus,    toValidated,   toUndecided,   toUndecided,    fromSubmitted, fromSubmitted},
+        /*SUBMITTED*/  {fromSubmitted, fromSubmitted,  sameStatus,    toNotAllowed,  toNotAllowed,  toNotAllowed,   fromSubmitted, fromSubmitted},
         /*VALIDATED*/  {null,          fromValidated,  fromValidated, sameStatus,    fromValidated, fromValidated,  fromValidated, null},
-        /*UNDECIDED*/  {unToDef,       unToSub,        unToSub,      toValidated,    sameStatus,    null,           null,          null},
-        /*UNEXPECTED*/ {null,          unToSub,        unToSub,      toValidated,    null,          sameStatus,     null,          null},
-        /*FAILED*/     {null,          failToSub,      failToSub,     toValidated,   toUndecided,   null,           sameStatus,    null},
+        /*UNDECIDED*/  {unToDef,       unToSub,        unToSub,       toNotAllowed,  sameStatus,    null,           null,          null},
+        /*UNEXPECTED*/ {null,          unToSub,        unToSub,       toNotAllowed,  null,          sameStatus,     null,          null},
+        /*FAILED*/     {null,          failToSub,      failToSub,     toNotAllowed,  toNotAllowed,   null,           sameStatus,    null},
         /*ABORTED*/    {null,          fromAborted,    fromAborted,   fromAborted,   fromAborted,   null,           fromAborted,   sameStatus}};
 
     return allowedTransition[fromStatus -1][toStatus -1];
@@ -1283,8 +1283,12 @@ public class JobMgr{
     for(int i=0; i<rows.length; ++i){
       job = getJobAtRow(rows[i]);
       GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
-      job.setDBStatus(DBPluginMgr.DEFINED);
+      // TODO: This will set the job as Defined. Not sure if this is a good idea...
+      /*job.setDBStatus(DBPluginMgr.DEFINED);
       GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);
+      GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+          ).setJobDefsField(new String[] {job.getIdentifier()}, "status",
+              DBPluginMgr.getStatusName(DBPluginMgr.DEFINED));*/
     }
   }
 
