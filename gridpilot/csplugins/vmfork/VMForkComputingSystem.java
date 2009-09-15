@@ -143,9 +143,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     });
   }
 
-  // Overrides super.setupJobRTEs() using MyUtil.setupJobRTEs(). This method simply ignores
+  // Overrides super.setupJobRTEs() using MyUtil.setupJobRTEs() which simply ignores
   // MetaPackages with no instances - assuming that they are provided by the VM.
-  // This is in contrast to MyUtil.setupJobRTEs() which checks this explicitly.
+  // In contrast super.setupJobRTEs() checks this explicitly.
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
     MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir, false);
   }
