@@ -41,7 +41,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
 
     JCheckBox cbForAll;
     if (jobs.size()>1){
-      cbForAll = new JCheckBox("Apply my choice for all jobs");
+      cbForAll = new JCheckBox("Apply choice for all jobs");
     }
     else{
       cbForAll = null;

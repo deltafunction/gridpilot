@@ -349,17 +349,15 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage(error, e);
       return false;
     }
-    if(job.getJobId()==null){
-      try{
-        // Do this only if not a resubmit
-        setInputFiles(job);
-        setOutputFiles(job);
-        setRTEs(job);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        return false;
-      }
+    try{
+      // Do this only if not a resubmit
+      setInputFiles(job);
+      setOutputFiles(job);
+      setRTEs(job);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
     }
     return true;
   }
