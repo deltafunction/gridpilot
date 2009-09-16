@@ -44,7 +44,7 @@
           <versionLine x="20" y="40" text="version ${compiler:sys.version}" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
         </text>
       </splashScreen>
-      <java mainClass="gridpilot.GridPilot" vmParameters="" arguments="" allowVMPassthroughParameters="true" preferredVM="">
+      <java mainClass="gridpilot.GridPilot" vmParameters="-XX:-UseGCOverheadLimit -Xms128m -Xmx1024m" arguments="" allowVMPassthroughParameters="true" preferredVM="">
         <classPath>
           <archive location="gridpilot.jar" failOnError="true" />
           <scanDirectory location="lib" failOnError="false" />

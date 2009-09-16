@@ -1,8 +1,8 @@
 #!/bin/sh
 
 # Max and min vm heap size
-export ms="32m"
-export mx="128m"
+export ms="128m"
+export mx="1024m"
 
 jars=`ls lib/*.jar`
 classpath=`echo $jars | sed 's/ /:/g'`
