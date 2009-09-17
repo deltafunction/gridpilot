@@ -1974,7 +1974,7 @@ private static String fixUrl(String _url){
     catch(Exception e){
       e.printStackTrace();
       logFile.addInfo("WARNING: Value of \"max simultaneous running\" is not"+
-                                  " defined properly for "+csName);
+                                  " defined properly for "+csName+" --> "+tmp);
     }
     tmp = configFile.getValue("Computing systems", "max simultaneous running");
     if(ret==-1){

@@ -1,3 +1,4 @@
+
 package gridpilot;
 
 import gridfactory.common.ConfigFile;
@@ -196,7 +197,7 @@ public class JobStatusUpdateControl{
    *
    */
   public void updateStatus(int [] _rows){
-    Debug.debug("updateStatus", 1);
+    Debug.debug("updateStatus", 3);
     
     // get job vector
     int [] rows = _rows;
