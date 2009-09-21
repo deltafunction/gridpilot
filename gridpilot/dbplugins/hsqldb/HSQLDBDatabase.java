@@ -2985,10 +2985,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
   private synchronized boolean createFile(String datasetName, String fileID,
       String lfn, String url, String size, String checksum){
     if(fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE){
-      createFileInOneTable(datasetName, fileID, lfn, url, size, checksum);
+      return createFileInOneTable(datasetName, fileID, lfn, url, size, checksum);
     }
     else if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
-      createFileInThreeTables(datasetName, fileID, lfn, url, size, checksum);
+      return createFileInThreeTables(datasetName, fileID, lfn, url, size, checksum);
     }
     // If not file table(s) present we cannot create a file record
     return false;
@@ -3055,7 +3055,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     catch(Exception e){
       execok1 = false;
-      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
       error = e.getMessage();
       try{
         conn.close();
@@ -3073,16 +3073,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
-      try{
-        conn.close();
-      }
-      catch(Exception ee){
-      }
-      return false;
     }
     catch(Exception e){
       execok2 = false;
-      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
       error = e.getMessage();
     }
     sql = "INSERT INTO t_meta (guid, dsname, fsize, md5sum) VALUES ('" +
@@ -3098,14 +3092,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     catch(Exception e){
       execok3 = false;
-      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
       error = e.getMessage();
       try{
         conn.close();
       }
       catch(Exception ee){
       }
-      return false;
     }
     return execok1 && execok2 && execok3;
   }
