@@ -36,7 +36,7 @@ public class MySQLLookupPFN  extends LookupPFN {
     }
     // Make the connection
     // we use the database url as alias
-    GridPilot.getClassMgr().sqlConnection(
+    GridPilot.getClassMgr().establishJDBCConnection(
         alias, driver, database, user, passwd, gridAuth,
         db.connectTimeout, db.socketTimeout, db.lrcPoolSize);
     if(gridAuth){

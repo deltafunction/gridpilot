@@ -1704,7 +1704,7 @@ public class DBPluginMgr extends DBCache implements Database{
         size = (String) db.getFile(datasetName, fileId, LOOKUP_PFNS_NONE).getValue(MyUtil.getFileSizeField(dbName));
       }
       catch(Exception e){
-        //e.printStackTrace();
+        e.printStackTrace();
       }
     }
     // For a jobDefinition table, size and md5sum may have been inserted
@@ -1810,8 +1810,8 @@ public class DBPluginMgr extends DBCache implements Database{
       GridPilot.getClassMgr().getLogFile().addInfo(message);
     }
     
-    String size = getFileBytes(datasetName, id);
-    String checksum = getFileChecksum(datasetName, id);
+    String size = sourceMgr.getFileBytes(datasetName, id);
+    String checksum = sourceMgr.getFileChecksum(datasetName, id);
     
     boolean ok = true;
     boolean finalOk = true;

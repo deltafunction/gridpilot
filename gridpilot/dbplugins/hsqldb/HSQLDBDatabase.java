@@ -45,6 +45,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   private String [] jobDefFields = null;
   private String [] datasetFields = null;
   private String [] runtimeEnvironmentFields = null;
+  private String [] fileFields = null;
   private String [] t_lfnFields = null;
   private String [] t_pfnFields = null;
   private String [] t_metaFields = null;
@@ -52,10 +53,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
   private String databaseName = null;
   private String dbName = null;
   private ConfigFile configFile = null;
-  private boolean fileCatalog = false;
+  private final static int FILE_CATALOG_TYPE_ONE_TABLE = 0;
+  private final static int FILE_CATALOG_TYPE_THREE_TABLES = 1;
+  private final static int FILE_CATALOG_TYPE_NO_TABLE = 2;
+  private int fileCatalogType = FILE_CATALOG_TYPE_NO_TABLE;
   private boolean jobRepository = false;
-  private Connection getFieldNamesConn = null;
-  private Connection selectConn = null;
   private boolean stop = false;
   
   private static String SERVER_RUNNING = "no";
@@ -71,9 +73,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
     
     configFile = GridPilot.getClassMgr().getConfigFile();
 
-    if(configFile.getValue(dbName, "t_pfn field names")!=
-      null){
-      fileCatalog = true;
+    if(configFile.getValue(dbName, "file field names")!=null){
+      if(configFile.getValue(dbName, "t_lfn field names")!=null){
+        fileCatalogType = FILE_CATALOG_TYPE_THREE_TABLES;
+      }
+      else{
+        fileCatalogType = FILE_CATALOG_TYPE_ONE_TABLE;
+      }
+    }
+    else{
+      fileCatalogType = FILE_CATALOG_TYPE_NO_TABLE;
     }
 
     if(configFile.getValue(dbName, "jobDefinition field names")!=
@@ -133,7 +142,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       e.printStackTrace();
     }
     
-    if(datasetFields==null || datasetFields.length<1){
+    if(datasetFields==null){
       try{
         makeTable("dataset");
       }
@@ -141,7 +150,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         e.printStackTrace();
       }
     }
-    if(jobDefFields==null || jobDefFields.length<1){
+    if(jobDefFields==null){
       try{
         makeTable("jobDefinition");
       }
@@ -149,7 +158,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         e.printStackTrace();
       }
     }
-    if(executableFields==null || executableFields.length<1){
+    if(executableFields==null){
       try{
         makeTable("executable");
       }
@@ -157,7 +166,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         e.printStackTrace();
       }
     }
-    if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
+    if(runtimeEnvironmentFields==null){
       try{
         makeTable("runtimeEnvironment");
       }
@@ -165,28 +174,40 @@ public class HSQLDBDatabase extends DBCache implements Database{
         e.printStackTrace();
       }
     }
-    if(t_lfnFields==null || t_lfnFields.length<1){
-      try{
-        makeTable("t_lfn");
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    if(t_pfnFields==null || t_pfnFields.length<1){
-      try{
-        makeTable("t_pfn");
-      }
-      catch(Exception e){
-        e.printStackTrace();
+    if(fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE){
+      if(fileFields==null){
+        try{
+          makeTable("file");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
       }
     }
-    if(t_metaFields==null || t_metaFields.length<1){
-      try{
-        makeTable("t_meta");
+    if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
+      if(t_lfnFields==null){
+        try{
+          makeTable("t_lfn");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
       }
-      catch(Exception e){
-        e.printStackTrace();
+      if(t_pfnFields==null){
+        try{
+          makeTable("t_pfn");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+      if(t_metaFields==null){
+        try{
+          makeTable("t_meta");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
       }
     }
     try{
@@ -212,7 +233,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
 
   public boolean isFileCatalog(){
-    return fileCatalog;
+    return fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE || fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES;
   }
   
   public boolean isJobRepository(){
@@ -233,7 +254,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         // In-memory database
         //conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
         //   user, passwd);
-        GridPilot.getClassMgr().sqlConnection(
+        GridPilot.getClassMgr().establishJDBCConnection(
             dbName, driver, "jdbc:hsqldb:"+database, user, passwd,
             false, null, null, MAX_CONNECTIONS);
       }
@@ -256,24 +277,19 @@ public class HSQLDBDatabase extends DBCache implements Database{
             // This is just a high port number. If not set, an exception is
             // thrown when restarting the server...
             server.setPort(9001);
-            Debug.debug("Starting database server, "+databaseName+":"+
-                dbPath, 1);
+            Debug.debug("Starting database server, "+databaseName+":"+dbPath, 1);
             server.start();
             database = "hsql://localhost/"+databaseName;
             SERVER_RUNNING = "yes";
           }
           //conn = DriverManager.getConnection("jdbc:hsqldb:"+database,
           //    user, passwd);
-          GridPilot.getClassMgr().sqlConnection(
+          GridPilot.getClassMgr().establishJDBCConnection(
               dbName, driver, "jdbc:hsqldb:"+database, user, passwd,
               false, null, null, MAX_CONNECTIONS);
         }
       }
-      getFieldNamesConn = getDBConnection(dbName);
-      selectConn = getDBConnection(dbName);
-      if(!getFieldNamesConn.isClosed()){
-        return "";
-      }
+      return "";
     }
     catch(Exception e){
       Debug.debug("Could not connect to db "+database+
@@ -282,7 +298,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
       e.printStackTrace();
       return null;
     }
-    return null;
   }
   
   private boolean checkTable(String table){
@@ -293,7 +308,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       //fieldTypes = Util.split(tablesConfig.getValue(dbName, table+" field types"), ",");
     }
     catch(Exception e){
-      e.printStackTrace();
+      //e.printStackTrace();
     }
     if(fields==null /*|| fieldTypes==null*/){
       return false;
@@ -317,6 +332,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
     // only needed if we need an explicit file catalog where more than one
     // pfn per lfn can be registered.
     try{
+      // One table as file catalog.
+      fileFields = getFieldNames("file");
+      // Separate tables for guid<->lfn, guid<->pfn and gui<->metadata mappings.
+      // This is what is used with MySQL by the OSG file catalogs.
+      // For HSQLDB it is very unperformant - ~100 records cannot be
+      // selected and joined with less than 1 GB of memory and takes a long time.
       t_lfnFields = getFieldNames("t_lfn");
       t_pfnFields = getFieldNames("t_pfn");
       t_metaFields = getFieldNames("t_meta");
@@ -336,7 +357,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
     String [] fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = MyUtil.split(configFile.getValue(dbName, table+" field types"), ",");
-    if(fields==null || fieldTypes==null){
+    if(fields==null || fieldTypes==null || fields.length!=fieldTypes.length){
       return false;
     }
     String sql = "CREATE TABLE "+table+"(";
@@ -378,8 +399,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
         error = e.getMessage();
       }
     }
-    else if(table.equalsIgnoreCase("t_lfn")){
-      sql1 = "ALTER TABLE "+table+" ADD UNIQUE (lfname)";
+    else if(table.toLowerCase().startsWith("t_")){
+      sql1 = "ALTER TABLE "+table+" ADD UNIQUE (guid)";
       try{
         Statement stmt = conn.createStatement();
         Debug.debug("Altering table. "+sql1, 1);
@@ -411,13 +432,19 @@ public class HSQLDBDatabase extends DBCache implements Database{
         "outTmp = '', errTmp = '', validationResult = '' " +
         "WHERE "+idField+" = '"+jobDefID+"'";
     boolean ok = true;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       error = e.getMessage();
       ok = false;
     }
@@ -428,8 +455,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
     try{
       if(server!=null){
         try{
-          getFieldNamesConn.close();
-          selectConn.close();
           Connection conn = getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           // This must be done before exiting. Changes are done in memory
@@ -452,8 +477,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       else{
         try{
-          getFieldNamesConn.close();
-          selectConn.close();
           Connection conn = getDBConnection(dbName);
           Statement stmt = conn.createStatement();
           stmt.executeUpdate("SHUTDOWN COMPACT");
@@ -478,21 +501,21 @@ public class HSQLDBDatabase extends DBCache implements Database{
     if(table.equalsIgnoreCase("file")){
       String nameField = MyUtil.getNameField(dbName, "dataset");
       String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
-      if(!isFileCatalog()){
+      // The case of no independent file table - file information is kept in the jobDefinition table.
+      if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
         return new String [] {refFields[1], nameField, "url"};
       }
-      else{
+      // The case of separate file tables. The case of one table is handled below.
+      else if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
         return MyUtil.split(configFile.getValue(dbName, "file field names"), ", ");
       }
     }
-    else if(!checkTable(table)){
+    if(!checkTable(table)){
       return null;
     }
     //return new String [] {"dsn", "lfn", "pfns", "guid"};
-    if(getFieldNamesConn.isClosed()){
-      getFieldNamesConn = getDBConnection(dbName);
-    }
-    Statement stmt = getFieldNamesConn.createStatement();
+    Connection conn = getDBConnection(dbName);
+    Statement stmt = conn.createStatement();
     // TODO: Do we need to execute a query to get the metadata?
     ResultSet rset = stmt.executeQuery("SELECT LIMIT 0 1 * FROM "+table);
     ResultSetMetaData md = rset.getMetaData();
@@ -500,6 +523,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
     for(int i=1; i<=md.getColumnCount(); ++i){
       res[i-1] = md.getColumnName(i);
     }
+    rset.close();
+    conn.close();
     Debug.debug("found "+MyUtil.arrayToString(res), 3);
     return res;
   }
@@ -523,8 +548,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
           vec.add(id);
         }
         else{
-          Debug.debug("WARNING: identifier null for name "+
-              exeName, 1);
+          Debug.debug("WARNING: identifier null for name "+exeName, 1);
         }
       }
       rset.close();
@@ -554,8 +578,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     " AND computingSystem = '"+cs+"'";
     String id = null;
     Vector<String> vec = new Vector<String>();
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -565,14 +590,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
           vec.add(id);
         }
         else{
-          Debug.debug("WARNING: identifier null for name "+
-              name, 1);
+          Debug.debug("WARNING: identifier null for name "+name, 1);
         }
       }
       rset.close();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
       return null;
@@ -731,8 +760,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
        "executable WHERE "+nameField+" = '"+executable+"' AND version = '"+version+"'";
     Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -754,6 +784,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 1);
     }
     return exeID;
@@ -777,13 +812,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public synchronized DBResult select(String selectRequest, String idField,
       boolean findAll){
-    Debug.debug("Select request "+selectRequest, 3);
+    Debug.debug("Select request "+selectRequest, 2);
     String req = selectRequest;
     boolean withStar = false;
     int identifierColumn = -1;
     boolean fileTable = false;
-    int urlColumn = -1;
-    int nameColumn = -1;
     Pattern patt;
     Matcher matcher;
 
@@ -803,13 +836,13 @@ public class HSQLDBDatabase extends DBCache implements Database{
       patt = Pattern.compile(", "+idField+" ", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
       req = matcher.replaceAll(" ");
-      patt = Pattern.compile("SELECT "+idField+" FROM", Pattern.CASE_INSENSITIVE);
+      patt = Pattern.compile("SELECT .*\\b+"+idField+"\\b+.* FROM", Pattern.CASE_INSENSITIVE);
       if(!patt.matcher(req).find()){
         patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst(", "+idField+" FROM "+"$1");
         // get rid of multiple occurences of identifier
-        /*patt = Pattern.compile("(SELECT .*)"+identifier+", (.*"+identifier+" FROM .*)",
+        /*patt = Pattern.compile("(SELECT .*)"+idField+", (.*"+idField+" FROM .*)",
             Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         String tmp = null;
@@ -822,26 +855,26 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }*/
       }
     }
-    
-    if(isFileCatalog()){
-      // The "file" table is a pseudo table constructed from the tables
+    Debug.debug("new search: "+req, 2);
+    if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
+      // The "file" table is a pseudo table constructed from the 3 tables
       // t_pfn, t_lfn and t_meta
       if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn, t_lfn, t_meta" +
+        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn" +
             " JOIN t_lfn ON t_pfn.guid=t_lfn.guid JOIN t_meta ON t_pfn.guid=t_meta.guid" +
             " WHERE $2");
       }
       if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn, t_lfn, t_meta" +
+        req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn" +
                 " JOIN t_lfn ON t_pfn.guid=t_lfn.guid JOIN t_meta ON t_pfn.guid=t_meta.guid");
       }
-      Debug.debug("new search: "+req, 3);
+      Debug.debug("search now: "+req, 2);
     }
-    else{
+    else if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
       // The "file" table is a pseudo table constructed from "jobDefinitions".
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
@@ -897,81 +930,79 @@ public class HSQLDBDatabase extends DBCache implements Database{
     
     Debug.debug(">>> sql string was : "+req, 3);
     
+    Connection conn = null;
     try{
-      if(selectConn.isClosed()){
-        selectConn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
+      return doSelect(conn, req, idField,identifierColumn, withStar, fileTable);
+    }
+    catch(Exception e){
+      try{
+        conn.close();
       }
-      Statement stmt = selectConn.createStatement();
-      ResultSet rset = stmt.executeQuery(req);
-      ResultSetMetaData md = rset.getMetaData();
-      String[] fields = new String[md.getColumnCount()];
-      //find out how many rows
-      int i = 0;
-      while(rset.next()){
-        i++;
+      catch(Exception ee){
       }
-      String [][] values = new String[i][md.getColumnCount()];
+      Debug.debug(e.getMessage(),1);
+      return new DBResult(0, 0);
+    }
+  }
+  
+  private DBResult doSelect(Connection conn, String req, String idField,
+      int identifierColumn,boolean withStar, boolean fileTable) throws SQLException {
+    int urlColumn = -1;
+    int nameColumn = -1;
+    Statement stmt = conn.createStatement();
+    ResultSet rset = stmt.executeQuery(req);
+    ResultSetMetaData md = rset.getMetaData();
+    String[] fields = new String[md.getColumnCount()];
+    //find out how many rows
+    int i = 0;
+    while(rset.next()){
+      i++;
+    }
+    String [][] values = new String[i][md.getColumnCount()];
+    for(int j=0; j<md.getColumnCount(); ++j){
+      fields[j] = md.getColumnName(j+1);
+      // If we did select *, make sure that the identifier
+      // column is at the end as it should be.
+      if(withStar && fields[j].equalsIgnoreCase(idField)  && 
+          j!=md.getColumnCount()-1){
+        identifierColumn = j;
+      }
+      // In the case of a virtual file table generated from the jobDefintion table,
+      // find the outFileMapping column number.
+      if(fileTable && fields[j].equalsIgnoreCase("outFileMapping")  && 
+          j!=md.getColumnCount()-1){
+        urlColumn = j;
+        // Replace "outFileMapping" with "url" in the Table.
+        fields[j] = "URL";
+      }
+      // Find the name column number
+      if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
+          j!=md.getColumnCount()-1){
+        nameColumn = j;
+        // replace "name" with the what's defined in the config file
+        fields[j] = MyUtil.getNameField(dbName, "file");
+      }
+    }
+    Debug.debug("Fields: "+MyUtil.arrayToString(fields), 2);
+    if(withStar && identifierColumn>-1){
+      fields[identifierColumn] = md.getColumnName(md.getColumnCount());
+      fields[md.getColumnCount()-1] = idField;
+    }
+    rset = stmt.executeQuery(req);
+    i=0;
+    while(rset.next()){
       for(int j=0; j<md.getColumnCount(); ++j){
-        fields[j] = md.getColumnName(j+1);
-        // If we did select *, make sure that the identifier
-        // row is at the end as it should be
-        if(withStar && fields[j].equalsIgnoreCase(idField)  && 
-            j!=md.getColumnCount()-1){
-          identifierColumn = j;
-        }
-        // Find the outFileMapping column number
-        if(fileTable && fields[j].equalsIgnoreCase("outFileMapping")  && 
-            j!=md.getColumnCount()-1){
-          urlColumn = j;
-          // replace "outFileMapping" with "url" in the Table.
-          fields[j] = "URL";
-        }
-        // Find the name column number
-        if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
-            j!=md.getColumnCount()-1){
-          nameColumn = j;
-          // replace "name" with the what's defined in the config file
-          fields[j] = MyUtil.getNameField(dbName, "file");
-        }
-      }
-      if(withStar && identifierColumn>-1){
-        fields[identifierColumn] = md.getColumnName(md.getColumnCount());
-        fields[md.getColumnCount()-1] = idField;
-      }
-      rset = stmt.executeQuery(req);
-      i=0;
-      while(rset.next()){
-        for(int j=0; j<md.getColumnCount(); ++j){
-          if(withStar && identifierColumn>-1){
-            if(j==identifierColumn){
-              // identifier column is not at the end, so we swap
-              // identifier column and the last column
-              String foo = rset.getString(md.getColumnCount());
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
-            else if(j==md.getColumnCount()-1){
-              String foo = rset.getString(identifierColumn+1);
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
-            else{
-              String foo = dbDecode(rset.getString(j+1));
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
+        if(withStar && identifierColumn>-1){
+          if(j==identifierColumn){
+            // identifier column is not at the end, so we swap
+            // identifier column and the last column
+            String foo = rset.getString(md.getColumnCount());
+            Debug.debug("values "+i+" "+foo, 2);
+            values[i][j] = foo;
           }
-          else if(fileTable && urlColumn>-1 && j==urlColumn){
-            // The first output file specified in outFileMapping
-            // is by convention *the* output file.
-            String [] foos = MyUtil.split(rset.getString(j+1));
-            String foo = "";
-            if(foos.length>1){
-              foo = foos[1];
-            }
-            else{
-              Debug.debug("WARNING: no output file found!", 1);
-            }
+          else if(j==md.getColumnCount()-1){
+            String foo = rset.getString(identifierColumn+1);
             Debug.debug("values "+i+" "+foo, 2);
             values[i][j] = foo;
           }
@@ -981,27 +1012,44 @@ public class HSQLDBDatabase extends DBCache implements Database{
             values[i][j] = foo;
           }
         }
-        // Add extension to name
-        if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
-          int lastSlash = values[i][urlColumn].lastIndexOf("/");
-          String fileName = null;
-          if(lastSlash>-1){
-            fileName = values[i][urlColumn].substring(lastSlash + 1);
+        else if(fileTable && urlColumn>-1 && j==urlColumn){
+          // The first output file specified in outFileMapping
+          // is by convention *the* output file.
+          String [] foos = MyUtil.split(rset.getString(j+1));
+          String foo = "";
+          if(foos.length>1){
+            foo = foos[1];
           }
-          if(fileName.startsWith(values[i][nameColumn])){
-            values[i][nameColumn] = fileName;
+          else{
+            Debug.debug("WARNING: no output file found!", 1);
           }
+          Debug.debug("values "+i+" "+foo, 2);
+          values[i][j] = foo;
         }
-        i++;
+        else{
+          String foo = dbDecode(rset.getString(j+1));
+          Debug.debug("values "+i+" "+foo, 2);
+          values[i][j] = foo;
+        }
       }
-      return new DBResult(fields, values);
+      // Add extension to name
+      if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
+        int lastSlash = values[i][urlColumn].lastIndexOf("/");
+        String fileName = null;
+        if(lastSlash>-1){
+          fileName = values[i][urlColumn].substring(lastSlash + 1);
+        }
+        if(fileName.startsWith(values[i][nameColumn])){
+          values[i][nameColumn] = fileName;
+        }
+      }
+      i++;
     }
-    catch(SQLException e){
-      Debug.debug(e.getMessage(),1);
-      return new DBResult(0, 0);
-    }
+    rset.close();
+    conn.close();
+    return new DBResult(fields, values);
   }
-  
+
   // TODO: use getValues
   public synchronized DBRecord getDataset(String datasetID){
     
@@ -1016,8 +1064,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     req += " FROM dataset";
     req += " WHERE "+idField+" = '"+ datasetID+"'";
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector<DBRecord> datasetVector = new Vector<DBRecord>();
@@ -1052,6 +1101,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     catch(SQLException e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("WARNING: No dataset found with id "+datasetID+". "+e.getMessage(), 1);
       return dataset;
     }
@@ -1077,8 +1131,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
     Vector<String> vec = new Vector<String>();
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1088,14 +1143,18 @@ public class HSQLDBDatabase extends DBCache implements Database{
           vec.add(id);
         }
         else{
-          Debug.debug("WARNING: identifier null for name "+
-              datasetName, 1);
+          Debug.debug("WARNING: identifier null for name "+datasetName, 1);
         }
       }
       rset.close();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 1);
       error = e.getMessage();
       return "-1";
@@ -1129,8 +1188,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     req += " FROM runtimeEnvironment";
     req += " WHERE "+idField+" = '"+ runtimeEnvironmentID+"'";
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
@@ -1165,6 +1225,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     catch(SQLException e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("WARNING: No runtime environment with id "+runtimeEnvironmentID+". "+e.getMessage(), 1);
     }
      return pack;
@@ -1183,8 +1248,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     req += " FROM executable";
     req += " WHERE "+idField+" = '"+ executableID+"'";
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Debug.debug(">> "+req, 3);
       ResultSet rset = conn.createStatement().executeQuery(req);
       Vector<DBRecord> executableVector = new Vector<DBRecord>();
@@ -1218,7 +1284,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
         Debug.debug("WARNING: More than one ("+rset.getRow()+") executable found with id "+executableID, 1);
       }
     }
-    catch(SQLException e){
+    catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("WARNING: No executable with id "+executableID+". "+e.getMessage(), 1);
     }
      return executable;
@@ -1237,7 +1308,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
     
     ResultSet rset = null;
     String req = "";
-    DBRecord [] allRuntimeEnvironmentRecords = null;   
+    DBRecord [] allRuntimeEnvironmentRecords = null;
+    Connection conn = null;
     try{      
       req = "SELECT "+runtimeEnvironmentFields[0];
       if(runtimeEnvironmentFields.length>1){
@@ -1247,7 +1319,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
       String [] jt = new String[runtimeEnvironmentFields.length];
@@ -1277,6 +1349,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     catch(SQLException e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("WARNING: No runtime environments found. "+e.getMessage(), 1);
     }
     return allRuntimeEnvironmentRecords;
@@ -1289,7 +1366,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
     
     ResultSet rset = null;
     String req = "";
-    DBRecord [] allExecutableRecords = null;   
+    DBRecord [] allExecutableRecords = null;
+    Connection conn = null;
     try{      
       req = "SELECT "+executableFields[0];
       if(executableFields.length>1){
@@ -1299,7 +1377,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       req += " FROM executable";
       Debug.debug(req, 3);
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       rset = conn.createStatement().executeQuery(req);
       Vector<DBRecord> executableVector = new Vector<DBRecord>();
       String [] jt = new String[executableFields.length];
@@ -1328,6 +1406,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     catch(SQLException e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug("WARNING: No executables found. "+e.getMessage(), 1);
     }
     return allExecutableRecords;
@@ -1343,8 +1426,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     jobDefinitionID + "'";
     Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1378,14 +1462,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
     catch(Exception e){
       e.printStackTrace();
       Debug.debug("WARNING: problem getting job definition", 2);
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
     }
     if(jobdefv.size()>1){
-      Debug.debug("WARNING: More than one jobDefinition with id "+
-          jobDefinitionID, 1);
+      Debug.debug("WARNING: More than one jobDefinition with id "+jobDefinitionID, 1);
     }
     if(jobdefv.size()<1){
-      Debug.debug("WARNING: No jobDefinition with id "+
-          jobDefinitionID, 1);
+      Debug.debug("WARNING: No jobDefinition with id "+jobDefinitionID, 1);
       return null;
     }
     DBRecord def = (DBRecord)jobdefv.get(0);
@@ -1440,8 +1527,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -1474,7 +1562,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       conn.close();
     }
     catch(Exception e){
-      Debug.debug(e.getMessage(), 2);
+      e.printStackTrace();
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
     }
     DBRecord[] defs = new DBRecord[jobdefv.size()];
     for(int i=0; i<jobdefv.size(); i++) defs[i] = (DBRecord)jobdefv.get(i);
@@ -1686,7 +1779,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         try{
           conn.close();
         }
-        catch(SQLException e1){
+        catch(Exception ee){
         }
       }
       return execok;
@@ -1976,14 +2069,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
@@ -2055,14 +2154,21 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += " WHERE "+idField+"="+jobDefID;
     Debug.debug(sql, 2);
     boolean execok = true;
-    try{Connection conn = getDBConnection(dbName);
+    Connection conn = null;
+    try{
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
-      execok = false;
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+     execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
     }
@@ -2123,14 +2229,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += " WHERE "+idField+"='"+datasetID+"'";
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
@@ -2190,14 +2302,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += " WHERE "+idField+"="+executableID;
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       execok = false;
       error = e.getMessage();
       Debug.debug(e.getMessage(), 2);
@@ -2257,14 +2375,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     sql += " WHERE "+idField+"="+runtimeEnvironmentID;
     Debug.debug(sql, 2);
     boolean execok = true;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       execok = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
@@ -2276,17 +2400,23 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean deleteJobDefinition(String jobDefId){
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     boolean ok = true;
+    Connection conn = null;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
       Debug.debug(sql, 3);
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
       ok = false;
@@ -2301,16 +2431,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean deleteDataset(String datasetID){
     String idField = MyUtil.getIdentifierField(dbName, "dataset");
     boolean ok = true;
+    Connection conn = null;
     try{
       String sql = "DELETE FROM dataset WHERE "+idField+" = '"+
          datasetID+"'";
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
       ok = false;
@@ -2321,16 +2457,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean deleteJobDefsFromDataset(String datasetID){
     String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
     boolean ok = true;
+    Connection conn = null;
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+refFields[1]+" = '"+
       getDatasetName(datasetID)+"'";
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 1);
       ok = false;
     }
@@ -2340,16 +2482,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean deleteExecutable(String executableID){
     String idField = MyUtil.getIdentifierField(dbName, "executable");
     boolean ok = true;
+    Connection conn = null;
     try{
       String sql = "DELETE FROM executable WHERE "+idField+" = '"+
       executableID+"'";
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
       ok = false;
@@ -2360,16 +2508,22 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public synchronized boolean deleteRuntimeEnvironment(String runtimeEnvironmentID){
     String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
     boolean ok = true;
+    Connection conn = null;
     try{
       String sql = "DELETE FROM runtimeEnvironment WHERE "+idField+" = '"+
       runtimeEnvironmentID+"'";
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
       ok = false;
@@ -2386,8 +2540,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
     String version;
+    Connection conn = null;
     try{
-      Connection conn = getDBConnection(dbName);
+      conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       ResultSet rset = stmt.executeQuery(req);
       while(rset.next()){
@@ -2405,6 +2560,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
       conn.close();
     }
     catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
       Debug.debug(e.getMessage(), 1);
     }
     Vector<String> vec1 = new Vector<String>();
@@ -2460,7 +2620,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug("file fields: "+MyUtil.arrayToString(file.fields), 3);
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
-    if(isFileCatalog()){
+    if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
       Vector<String> fieldsVector = new Vector<String>();
       // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
@@ -2520,7 +2680,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     // If there are no file catalog tables, we construct a virtual file table
     // from the jobDefinition table - if it is present.
-    else if(isJobRepository()){
+    else if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
       // "datasetName", "name", "url"
       DBRecord jobDef = getJobDefinition(fileID);
       for(int i=0; i<fields.length; ++i){
@@ -2543,16 +2703,92 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }
       }
     }
+    else if(fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE){
+      file = getFileRecord(fileID, findAllPFNs);
+    }
     return file;
   }
 
-  // Take different actions depending on whether or not
-  // t_lfn, etc. are present
+  private DBRecord getFileRecord(String fileID, int findAllPFNs){
+    
+    String idField = MyUtil.getIdentifierField(dbName, "file");
+
+    DBRecord file = null;
+    String req = "SELECT "+fileFields[0];
+    if(fileFields.length>1){
+      for(int i=1; i<fileFields.length; ++i){
+        req += ", "+fileFields[i];
+      }
+    }
+    req += " FROM file";
+    req += " WHERE "+idField+" = '"+ fileID+"'";
+    Connection conn = null;
+    try{
+      conn = getDBConnection(dbName);
+      Debug.debug(">> "+req, 3);
+      ResultSet rset = conn.createStatement().executeQuery(req);
+      Vector<DBRecord> fileVector = new Vector<DBRecord>();
+      String [] jt = new String[fileFields.length];
+      int i = 0;
+      while(rset.next()){
+        jt = new String[fileFields.length];
+        for(int j=0; j<fileFields.length; ++j){
+          try{
+            if(fileFields[i].equalsIgnoreCase("pfname")){
+              String pfnsString = rset.getString(j+1);
+              String [] pfns = pfnsString==null?null:MyUtil.splitUrls(pfnsString);
+              if(findAllPFNs==Database.LOOKUP_PFNS_NONE){
+                jt[j] = "";
+              }
+              else if(findAllPFNs==Database.LOOKUP_PFNS_ONE && pfns!=null && pfns.length>0){
+                jt[j] = dbDecode(pfns[0]);
+              }
+              else /*if(findAllPFNs==Database.LOOKUP_PFNS_ALL)*/{
+                jt[j] = dbDecode(pfnsString);
+              }
+            }
+            else{
+              jt[j] = dbDecode(rset.getString(j+1));
+            }
+          }
+          catch(Exception e){
+            Debug.debug("Could not set value "+rset.getString(j+1)+" in "+
+                fileFields[j]+". "+e.getMessage(),1);
+          }
+        }
+        fileVector.add(new DBRecord(fileFields, jt));
+        ++i;
+      }
+      rset.close();
+      conn.close();
+      if(i==0){
+        Debug.debug("ERROR: No file found with id "+fileID, 1);
+      }
+      else{
+        file = ((DBRecord) fileVector.get(0));
+      }
+      if(i>1){
+        Debug.debug("WARNING: More than one ("+rset.getRow()+") file found with id "+fileID, 1);
+      }
+    }
+    catch(SQLException e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+      Debug.debug("WARNING: No file with id "+fileID+". "+e.getMessage(), 1);
+    }
+     return file;
+  }
+  
+  // Take different actions depending on whether or not this is a file catalog.
+  // jobDefinitions only contain one output file URL.
   public String [][] getFileURLs(String datasetName, String fileID, boolean findAll){
+    DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
     if(isFileCatalog()){
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
         ret = (String) file.getValue("pfname");
       }
       catch(Exception e){
@@ -2572,7 +2808,6 @@ public class HSQLDBDatabase extends DBCache implements Database{
     else{
       String ret = null;
       try{
-        DBRecord file = getFile(datasetName, fileID, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
         ret = (String) file.getValue("url");
       }
       catch(Exception e){
@@ -2720,15 +2955,73 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String sql = "INSERT INTO t_pfn (pfname, guid) VALUES ('"+
     url + "', '" + fileID +"')";
     Debug.debug(sql, 2);
-    Connection conn = getDBConnection(dbName);
-    Statement stmt = conn.createStatement();
-    stmt.executeUpdate(sql);
-    conn.commit();
-    conn.close();
+    Connection conn = null;
+    try{
+      conn = getDBConnection(dbName);
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
+    }
+    catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+    }
   }
   
-  // This is only to be used if this is a file catalog.
   private synchronized boolean createFile(String datasetName, String fileID,
+      String lfn, String url, String size, String checksum){
+    if(fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE){
+      createFileInOneTable(datasetName, fileID, lfn, url, size, checksum);
+    }
+    else if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
+      createFileInThreeTables(datasetName, fileID, lfn, url, size, checksum);
+    }
+    // If not file table(s) present we cannot create a file record
+    return false;
+  }
+  
+  private synchronized boolean createFileInOneTable(String datasetName, String fileID,
+      String lfn, String url, String size, String checksum){
+    if(size==null){
+      size = "";
+    }
+    String chksum = "";
+    if(checksum!=null){
+      chksum = checksum;
+      // Other checksum types than md5 we still use, but keep the "<type>:" tag.
+      chksum = chksum.replaceFirst("^md5:", "");
+    }
+    Connection conn = null;
+    String sql = "INSERT INTO file (guid, pfname, lfname, dsname, fsize, md5sum) VALUES ('"+
+       fileID + "'"+dbEncode(url) + "', '" + dbEncode(lfn) + "', '" +
+       dbEncode(datasetName)+ "', '" + size+ "', '" + chksum + "')";
+    Debug.debug(sql, 2);
+    boolean execok = true;
+    try{
+      conn = getDBConnection(dbName);
+      Statement stmt = conn.createStatement();
+      stmt.executeUpdate(sql);
+      conn.commit();
+      conn.close();
+    }
+    catch(Exception e){
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+      execok = false;
+      Debug.debug(e.getMessage(), 2);
+      error = e.getMessage();
+    }
+    return execok;
+  }
+
+  private synchronized boolean createFileInThreeTables(String datasetName, String fileID,
       String lfn, String url, String size, String checksum){
     if(size==null){
       size = "";
@@ -2754,6 +3047,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok1 = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+      return false;
     }
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
        dbEncode(lfn) + "', '" + fileID +
@@ -2764,6 +3063,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
       conn.commit();
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+      return false;
     }
     catch(Exception e){
       execok2 = false;
@@ -2785,6 +3090,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       execok3 = false;
       Debug.debug(e.getMessage(), 2);
       error = e.getMessage();
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+      return false;
     }
     return execok1 && execok2 && execok3;
   }
@@ -2794,10 +3105,17 @@ public class HSQLDBDatabase extends DBCache implements Database{
   }
   
   public boolean deleteFiles(String datasetID, String [] fileIDs) {
-    if(!isFileCatalog()){
-      // do nothing
-      return true;
+    if(fileCatalogType==FILE_CATALOG_TYPE_ONE_TABLE){
+      deleteFilesInOneTable(datasetID, fileIDs);
     }
+    else if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
+      deleteFilesInThreeTables(datasetID, fileIDs);
+    }
+    // If not file table(s) present we cannot create a file record
+    return true;
+  }
+  
+  public boolean deleteFilesInOneTable(String datasetID, String [] fileIDs) {
     Connection conn = null;
     try{
       conn = getDBConnection(dbName);
@@ -2808,13 +3126,62 @@ public class HSQLDBDatabase extends DBCache implements Database{
     LogFile logFile = GridPilot.getClassMgr().getLogFile();
     // If no file IDs are given, delete all from this dataset
     if(fileIDs==null){
-      String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+      String idField = MyUtil.getIdentifierField(dbName, "file");
       DBResult filesRes = getFiles(datasetID);
       fileIDs = new String[filesRes.size()];
       for(int i=0; i<fileIDs.length; ++i){
         fileIDs[i] = (String) filesRes.getValue(i, idField);
       }
     }
+    boolean ok = true;
+    Debug.debug("Deleting files "+MyUtil.arrayToString(fileIDs), 2);
+    for(int i=0; i<fileIDs.length; ++i){
+      try{
+        String req = "DELETE FROM file WHERE guid = '"+fileIDs[i]+"'";
+        Debug.debug(">> "+req, 3);
+        int rowsAffected = conn.createStatement().executeUpdate(req);
+        if(rowsAffected==0){
+          error = "WARNING: could not delete guid "+fileIDs[i]+" from file";
+          logFile.addMessage(error);
+        }
+        conn.commit();
+      }
+      catch(Exception e){
+        ok = false;
+      }
+    }
+    try{
+      conn.close();
+    }
+    catch(SQLException e){
+      e.printStackTrace();
+    }
+    return ok;
+  }
+
+  public boolean deleteFilesInThreeTables(String datasetID, String [] fileIDs) {
+    Connection conn = null;
+    try{
+      conn = getDBConnection(dbName);
+      // If no file IDs are given, delete all from this dataset
+      if(fileIDs==null){
+        String idField = MyUtil.getIdentifierField(dbName, "file");
+        DBResult filesRes = getFiles(datasetID);
+        fileIDs = new String[filesRes.size()];
+        for(int i=0; i<fileIDs.length; ++i){
+          fileIDs[i] = (String) filesRes.getValue(i, idField);
+        }
+      }
+    }
+    catch(SQLException e1){
+      e1.printStackTrace();
+      try{
+        conn.close();
+      }
+      catch(Exception ee){
+      }
+    }
+    LogFile logFile = GridPilot.getClassMgr().getLogFile();
     boolean ok = true;
     Debug.debug("Deleting files "+MyUtil.arrayToString(fileIDs), 2);
     for(int i=0; i<fileIDs.length; ++i){

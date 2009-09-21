@@ -1247,7 +1247,7 @@ public class ATLASDatabase extends DBCache implements Database{
         user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
       }
       // Make the connection
-      GridPilot.getClassMgr().sqlConnection(
+      GridPilot.getClassMgr().establishJDBCConnection(
           alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, lrcPoolSize);
       Connection conn = getDBConnection(alias);
@@ -1349,7 +1349,7 @@ public class ATLASDatabase extends DBCache implements Database{
         user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
       }
       // Make the connection
-      GridPilot.getClassMgr().sqlConnection(
+      GridPilot.getClassMgr().establishJDBCConnection(
           alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, lrcPoolSize);
       if(gridAuth){
@@ -1450,7 +1450,7 @@ public class ATLASDatabase extends DBCache implements Database{
           user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
         }
         // Make the connection
-        GridPilot.getClassMgr().sqlConnection(
+        GridPilot.getClassMgr().establishJDBCConnection(
             alias, driver, database, user, passwd, gridAuth,
             connectTimeout, socketTimeout, lrcPoolSize);
         conn = getDBConnection(alias);

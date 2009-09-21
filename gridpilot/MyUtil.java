@@ -1042,7 +1042,7 @@ private static String fixUrl(String _url){
     Vector resultVector = new Vector();
     String [][] resultArray = null;
     try{
-      Debug.debug(dbName+" >> "+req, 3);
+      Debug.debug(dbName+" >> "+req, 2);
       DBResult rset = GridPilot.getClassMgr().getDBPluginMgr(dbName).executeQuery(dbName, req);
       while(rset.moveCursor()){
         for(int i=0; i<fields.length;i++){
@@ -1069,13 +1069,11 @@ private static String fixUrl(String _url){
   }
 
   public static String [] getFileDatasetReference(String dbName){
-    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName,
-      "file dataset reference");
+    String [] ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName, "file dataset reference");
     if(ret==null || ret.length<2){
       ret = new String [] {"name", "datasetName"};
     }
-    Debug.debug("file dataset reference for "+dbName
-        +" : "+arrayToString(ret), 2);
+    Debug.debug("file dataset reference for "+dbName+" : "+arrayToString(ret), 2);
     return ret;
   }
 
@@ -1288,42 +1286,7 @@ private static String fixUrl(String _url){
     sb.trimToSize();
     return sb.toString();
   }
-
-  /**
-   * Extracts the table names from an SQL statement.
-   * 
-   * @param the SQL string
-   * @return and array of table names
-   */
-  public static String [] getTableNames(String sql){
-    String table = null;
-    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (\\S+)$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return split(table, ",");
-    }
-    table = sql.replaceFirst("^(?i)(?s)SELECT .* FROM (.+) WHERE .*$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return split(table, ",");
-    }
-    table = sql.replaceFirst("^(?i)(?s)INSERT INTO (\\S+) .*$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return new String []{table};
-    }
-    table = sql.replaceFirst("^(?i)(?s)UPDATE (\\S+) .*$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return new String []{table};
-    }
-    table = sql.replaceFirst("^(?i)(?s)DELETE FROM (\\S+) .*$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return new String []{table};
-    }
-    table = sql.replaceFirst("^(?i)(?s)CREATE TABLE (\\S+)\\s*\\(.*$", "$1");
-    if(table!=null && table.length()>0 && !table.equalsIgnoreCase(sql)){
-      return new String []{table};
-    }
-    return null;
-  }
-
+  
   public static String [] getColumnNames(String sql){
     String fields = null;
     fields = sql.replaceFirst("^(?i)SELECT (.*) FROM .*", "$1");

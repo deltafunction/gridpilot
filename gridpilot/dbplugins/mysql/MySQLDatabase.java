@@ -33,7 +33,7 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.ResThread;
-import gridpilot.DBPluginMgr;
+
 import gridpilot.Database;
 import gridpilot.GridPilot;
 import gridpilot.MyLogFile;
@@ -198,33 +198,33 @@ public class MySQLDatabase extends DBCache implements Database {
     catch(Exception e){
       e.printStackTrace();
     }
-    if(datasetFields==null || datasetFields.length<1){
+    if(datasetFields==null){
       makeTable("dataset");
     }
-    if(jobDefFields==null || jobDefFields.length<1){
+    if(jobDefFields==null){
       makeTable("jobDefinition");
     }
-    if(executableFields==null || executableFields.length<1){
+    if(executableFields==null){
       makeTable("executable");
     }
-    if(runtimeEnvironmentFields==null || runtimeEnvironmentFields.length<1){
+    if(runtimeEnvironmentFields==null){
       makeTable("runtimeEnvironment");
     }
-    if(t_lfnFields==null || t_lfnFields.length<1){
+    if(t_lfnFields==null){
       try{
         makeTable("t_lfn");
       }
       catch(Exception e){
       }
     }
-    if(t_pfnFields==null || t_pfnFields.length<1){
+    if(t_pfnFields==null){
       try{
         makeTable("t_pfn");
       }
       catch(Exception e){
       }
     }
-    if(t_metaFields==null || t_metaFields.length<1){
+    if(t_metaFields==null){
       try{
         makeTable("t_meta");
       }
@@ -250,8 +250,8 @@ public class MySQLDatabase extends DBCache implements Database {
   }
   
   public String connect() throws SQLException, ClassNotFoundException,
-  ProxoolException {
-    GridPilot.getClassMgr().sqlConnection(dbName, driver, database, user, passwd, gridAuth,
+     ProxoolException {
+    GridPilot.getClassMgr().establishJDBCConnection(dbName, driver, database, user, passwd, gridAuth,
         connectTimeout, socketTimeout, MAX_CONNECTIONS);
     return "";
   }
@@ -671,10 +671,7 @@ public class MySQLDatabase extends DBCache implements Database {
     
     String req = selectRequest;
     boolean withStar = false;
-    int identifierColumn = -1;
     boolean fileTable = false;
-    int urlColumn = -1;
-    int nameColumn = -1;
     Pattern patt;
     Matcher matcher;
 
@@ -710,8 +707,7 @@ public class MySQLDatabase extends DBCache implements Database {
       if(req.matches("SELECT (.+) FROM file WHERE (.+)")){
         patt = Pattern.compile("SELECT (.+) FROM file WHERE (.+)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE ($2) AND " +
-                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+        req = matcher.replaceFirst("SELECT $1 FROM t_pfn JOIN t_lfn USING (guid) JOIN t_meta USING (guid) WHERE $2");
         patt = Pattern.compile("WHERE(\\W+)guid(\\s*=.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("WHERE$1t_lfn.guid$2");
@@ -719,8 +715,7 @@ public class MySQLDatabase extends DBCache implements Database {
       if(req.matches("SELECT (.+) FROM file\\b(.*)")){
         patt = Pattern.compile("SELECT (.+) FROM file", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
-        req = matcher.replaceFirst("SELECT $1 FROM t_pfn, t_lfn, t_meta WHERE " +
-                "t_lfn.guid=t_pfn.guid AND t_meta.guid=t_pfn.guid");
+        req = matcher.replaceFirst("SELECT $1 FROM t_pfn JOIN t_lfn USING (guid) JOIN t_meta USING (guid)");
       }
       patt = Pattern.compile("SELECT (.*) guid FROM", Pattern.CASE_INSENSITIVE);
       matcher = patt.matcher(req);
@@ -778,124 +773,10 @@ public class MySQLDatabase extends DBCache implements Database {
     matcher = patt.matcher(req);
     req = matcher.replaceAll("$1 '$2'");
     
-    Debug.debug(">>> sql string is: "+req, 3);
+    Debug.debug(">>> sql string is: "+req, 2);
     
     try{
-      String [] tables = MyUtil.getTableNames(req);
-      String [] fields = null;
-      if(withStar){
-        String [] tmpFields = null;
-        Vector fieldsSet = new Vector();
-        for(int i=0; i<tables.length; ++i){
-          tmpFields = getFieldNames(tables[i]);
-          for(int j=0; j<tmpFields.length; ++j){
-            if(!fieldsSet.contains(tmpFields[j])){
-              fieldsSet.add(tmpFields[j]);
-            }
-          }
-        }
-        fields = new String [fieldsSet.size()];
-        int count = 0;
-        for(Iterator it=fieldsSet.iterator(); it.hasNext();){
-          fields[count] = (String) it.next();
-          ++count;
-        }
-        Debug.debug("found fields: "+MyUtil.arrayToString(fields), 3);
-      }
-      else{
-        fields = MyUtil.getColumnNames(req);
-        Debug.debug("found fields: "+MyUtil.arrayToString(fields), 3);
-      }
-      for(int j=0; j<fields.length; ++j){
-        // If we did select *, make sure that the identifier
-        // row is at the end as it should be
-        if(withStar && fields[j].equalsIgnoreCase(idField) && 
-            j!=fields.length-1){
-          identifierColumn = j;
-        }
-        // Find the outFileMapping column number
-        if(fileTable && fields[j].equalsIgnoreCase("outFileMapping") && 
-            j!=fields.length-1){
-          urlColumn = j;
-          // replace "outFileMapping" with "url" in the Table.
-          fields[j] = "url";
-        }
-        // Find the name column number
-        if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
-            j!=fields.length-1){
-          nameColumn = j;
-          // replace "name" with the what's defined in the config file
-          fields[j] = MyUtil.getNameField(dbName, "file");
-        }
-      }
-      if(withStar && identifierColumn>-1){
-        fields[identifierColumn] = fields[fields.length-1];
-        fields[fields.length-1] = idField;
-      }
-      DBResult rset = executeQuery(dbName, req);
-      String [][] values = new String[rset.values.length][fields.length];
-      int i=0;
-      if(rset.fields.length!=fields.length){
-        Debug.debug("ERROR: inconsistent number of fields "+rset.fields.length+"!="+fields.length, 1);
-        return new DBResult(0, 0); 
-      }
-      while(rset.moveCursor()){
-        for(int j=0; j<rset.fields.length; ++j){
-          Debug.debug("sorting "+withStar+" "+identifierColumn+" "+
-              rset.fields.length, 3);
-          if(withStar && identifierColumn>-1){
-            if(j==identifierColumn){
-              // identifier column is not at the end, so we swap
-              // identifier column and the last column
-              String foo = (String) rset.getElement(rset.fields.length);
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
-            else if(j==rset.fields.length-1){
-              String foo = (String) rset.getElement(identifierColumn+1);
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
-            else{
-              String foo =  (String) rset.getElement(j+1);
-              Debug.debug("values "+i+" "+foo, 2);
-              values[i][j] = foo;
-            }
-          }
-          else if(fileTable && urlColumn>-1 && j==urlColumn){
-            // The first output file specified in outFileMapping
-            // is by convention *the* output file.
-            String [] foos = MyUtil.split((String) rset.getElement(j+1));
-            String foo = "";
-            if(foos.length>1){
-              foo = foos[1];
-            }
-            else{
-              Debug.debug("WARNING: no output file found!", 1);
-            }
-            Debug.debug("values "+i+" "+foo, 2);
-            values[i][j] = foo;
-          }
-          else{
-            String foo = (String) rset.getElement(j+1);
-            Debug.debug("values "+i+" "+foo, 2);
-            values[i][j] = foo;
-          }
-        }
-        // Add extension to name
-        if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
-          int lastSlash = values[i][urlColumn].lastIndexOf("/");
-          String fileName = null;
-          if(lastSlash>-1){
-            fileName = values[i][urlColumn].substring(lastSlash + 1);
-          }
-          if(fileName.startsWith(values[i][nameColumn])){
-            values[i][nameColumn] = fileName;
-          }
-        }
-        i++;
-      }
-      return new DBResult(fields, values);
+      return doSelect(req, withStar, idField, fileTable);
     }
     catch(SQLException e){
       e.printStackTrace();
@@ -904,6 +785,138 @@ public class MySQLDatabase extends DBCache implements Database {
     }
   }
   
+  private DBResult doSelect(String req, boolean withStar, String idField, boolean fileTable) throws SQLException {
+    int identifierColumn = -1;
+    int urlColumn = -1;
+    int nameColumn = -1;
+    String [] tables = MyUtil.getTableNames(req);
+    String [] fields = null;
+    String [] tmpFields = null;
+    Vector fieldsSet = new Vector();
+    if(withStar){
+      for(int i=0; i<tables.length; ++i){
+        tmpFields = getFieldNames(tables[i]);
+        for(int j=0; j<tmpFields.length; ++j){
+          if(!fieldsSet.contains(tmpFields[j])){
+            fieldsSet.add(tmpFields[j]);
+          }
+        }
+      }
+    }
+    else{
+      tmpFields = MyUtil.getColumnNames(req);
+      for(int j=0; j<tmpFields.length; ++j){
+        if(!fieldsSet.contains(tmpFields[j])){
+          fieldsSet.add(tmpFields[j]);
+        }
+      }
+    }
+    fields = new String [fieldsSet.size()];
+    int count = 0;
+    for(Iterator it=fieldsSet.iterator(); it.hasNext();){
+      fields[count] = (String) it.next();
+      ++count;
+    }
+    Debug.debug("found fields: "+MyUtil.arrayToString(fields), 2);
+    for(int j=0; j<fields.length; ++j){
+      // Make sure that the identifier
+      // column is at the end as it should be
+      if(withStar && fields[j].equalsIgnoreCase(idField) && 
+          j!=fields.length-1){
+        identifierColumn = j;
+      }
+      // Find the outFileMapping column number
+      if(fileTable && fields[j].equalsIgnoreCase("outFileMapping") && 
+          j!=fields.length-1){
+        urlColumn = j;
+        // replace "outFileMapping" with "url" in the Table.
+        fields[j] = "url";
+      }
+      // Find the name column number
+      if(fileTable && fields[j].equalsIgnoreCase(MyUtil.getNameField(dbName, "jobDefinition")) && 
+          j!=fields.length-1){
+        nameColumn = j;
+        // replace "name" with the what's defined in the config file
+        fields[j] = MyUtil.getNameField(dbName, "file");
+      }
+    }
+    if(withStar && identifierColumn>-1){
+      fields[identifierColumn] = fields[fields.length-1];
+      fields[fields.length-1] = idField;
+    }
+    DBResult rset = executeQuery(dbName, req);
+    String [][] values = new String[rset.values.length][fields.length];
+    int i=0;
+    if(rset.fields.length!=fields.length){
+      Debug.debug("ERROR: inconsistent number of fields "+rset.fields.length+"!="+fields.length+
+          " : "+MyUtil.arrayToString(rset.fields)+" : "+MyUtil.arrayToString(fields), 1);
+      return new DBResult(0, 0); 
+    }
+    Debug.debug("Fields: "+MyUtil.arrayToString(fields)+":"+MyUtil.arrayToString(rset.fields), 2);
+    while(rset.moveCursor()){
+      for(int j=0; j<fields.length; ++j){
+        for(int k=0; k<rset.fields.length; ++k){
+          if(fields[j].equalsIgnoreCase(rset.fields[k])){
+            values[i][j] = selectValue(i, k, withStar, identifierColumn, rset, fileTable, urlColumn);
+            break;
+          }
+        }
+      }
+      // Add extension to name
+      if(nameColumn>-1 && urlColumn>-1 && values[i][urlColumn].indexOf("/")>0){
+        int lastSlash = values[i][urlColumn].lastIndexOf("/");
+        String fileName = null;
+        if(lastSlash>-1){
+          fileName = values[i][urlColumn].substring(lastSlash + 1);
+        }
+        if(fileName.startsWith(values[i][nameColumn])){
+          values[i][nameColumn] = fileName;
+        }
+      }
+      i++;
+    }
+    return new DBResult(fields, values);
+  }
+
+  private String selectValue(int i, int j, boolean withStar, int identifierColumn, DBResult rset,
+      boolean fileTable, int urlColumn) {
+    String foo;
+    if(withStar && identifierColumn>-1){
+      /*if(j==identifierColumn){
+        // identifier column is not at the end, so we swap
+        // identifier column and the last column
+        foo = (String) rset.getElement(rset.fields.length);
+        Debug.debug("values "+i+" "+foo, 2);
+      }
+      else if(j==rset.fields.length-1){
+        foo = (String) rset.getElement(identifierColumn+1);
+        Debug.debug("values "+i+" "+foo, 2);
+      }
+      else{*/
+        foo = (String) rset.getElement(j+1);
+        Debug.debug("values "+i+" "+foo, 2);
+      //}
+    }
+    else if(fileTable && urlColumn>-1 && j==urlColumn){
+      // The first output file specified in outFileMapping
+      // is by convention *the* output file.
+      String [] foos = MyUtil.split((String) rset.getElement(j+1));
+      foo = "";
+      if(foos.length>1){
+        foo = foos[1];
+      }
+      else{
+        Debug.debug("WARNING: no output file found!", 1);
+      }
+      Debug.debug("values "+i+" "+foo, 2);
+    }
+    else{
+      foo = (String) rset.getElement(j+1);
+      Debug.debug("values "+i+" "+foo, 2);
+    }
+    return foo;
+  }
+
   public synchronized DBRecord getDataset(String datasetID){
     
     String idField = MyUtil.getIdentifierField(dbName, "dataset");
@@ -1226,7 +1239,13 @@ public class MySQLDatabase extends DBCache implements Database {
           String val = "";
           for(int j=0; j<jobDefFields.length; ++j){
             if(fieldname.equalsIgnoreCase(jobDefFields[j])){
-              val = rset.getString(fieldname);
+              if(fieldname.equalsIgnoreCase("metaData")){
+                // TODO: dbDecode?                
+                val = rset.getString(fieldname);
+              }
+              else{
+                val = rset.getString(fieldname);
+              }
               break;
             }
             val = "";
@@ -1427,6 +1446,9 @@ public class MySQLDatabase extends DBCache implements Database {
           jobDefFields[i].equalsIgnoreCase("cpuSeconds")) &&
           (values[i]==null || values[i].equals(""))){
         values[i] = "'0'";
+      }
+      else if(jobDefFields[i].equalsIgnoreCase("metaData") || jobDefFields[i].equalsIgnoreCase("validationResult")){
+        values[i] = "'"+dbEncode(values[i])+"'";
       }
       else{
         values[i] = "'"+values[i]+"'";
@@ -2302,7 +2324,7 @@ public class MySQLDatabase extends DBCache implements Database {
         }
       }
     }
-    try {
+    try{
       conn.close();
     }
     catch(SQLException e){
@@ -2332,6 +2354,7 @@ public class MySQLDatabase extends DBCache implements Database {
       catch (Exception e) {
         e.printStackTrace();
       }
+      Debug.debug("Returning URLs "+MyUtil.arrayToString(urls), 2);
       return urls;
     }
     else{
@@ -2524,10 +2547,10 @@ public class MySQLDatabase extends DBCache implements Database {
     sql = "INSERT INTO t_lfn (lfname, guid) VALUES ('"+
        dbEncode(lfn) + "', '" + fileID +
     "'); ";
-    Debug.debug(sql, 2);
+    Debug.debug("Creating file in DB "+dbName+" >> "+sql, 2);
     boolean execok2 = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok2 = false;
@@ -2540,7 +2563,7 @@ public class MySQLDatabase extends DBCache implements Database {
     Debug.debug(sql, 2);
     boolean execok3 = true;
     try{
-      executeUpdate(sql, dbName);
+      executeUpdate(dbName, sql);
     }
     catch(Exception e){
       execok3 = false;
@@ -2582,14 +2605,14 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         req = "DELETE FROM t_pfn WHERE guid = '"+fileIDs[i]+"'";
         Debug.debug(">> "+req, 3);
-        rowsAffected = executeUpdate(req, dbName);
+        rowsAffected = executeUpdate(dbName, req);
         if(rowsAffected==0){
           error = "WARNING: could not delete guid "+fileIDs[i]+" from t_pfn";
           logFile.addMessage(error);
         }
         req = "DELETE FROM t_meta WHERE guid = '"+fileIDs[i]+"'";
         Debug.debug(">> "+req, 3);
-        rowsAffected = executeUpdate(req, dbName);
+        rowsAffected = executeUpdate(dbName, req);
         if(rowsAffected==0){
           error = "WARNING: could not delete guid "+fileIDs[i]+" from t_meta";
           logFile.addMessage(error);
@@ -2607,27 +2630,23 @@ public class MySQLDatabase extends DBCache implements Database {
     String ret = null;
     if(isFileCatalog()){
       try{
-        Connection conn = getDBConnection(dbName);
         ret = MyUtil.getValues(dbName, "t_lfn", "lfname", lfn, new String [] {"guid"})[0][0];
-        conn.close();
       }
-      catch(SQLException e){
+      catch(Exception e){
         e.printStackTrace();
       }
       return ret;
     }
     else if(isJobRepository()){
       try{
-        Connection conn = getDBConnection(dbName);
         // an autoincremented integer is of no use... Except for when pasting:
         // then we need it to get the pfns.
         String nameField = MyUtil.getNameField(dbName, "jobDefinition");
         String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
         ret = MyUtil.getValues(dbName, "jobDefinition", nameField, lfn,
             new String [] {idField})[0][0];
-        conn.close();
       }
-      catch(SQLException e){
+      catch(Exception e){
         e.printStackTrace();
       }
       return ret;
@@ -2646,9 +2665,9 @@ public class MySQLDatabase extends DBCache implements Database {
     retStr = str.replace('\n',' ');
     retStr = str.replace('\r',' ');
     retStr = retStr.replaceAll("\n","\\\\n");
-    retStr = retStr.replaceAll("\'","\\\\'");
-    Debug.debug("Encoded: "+str+"->"+retStr, 3);
-    return str;
+    retStr = retStr.replaceAll("\'","\\\\\\'");
+    Debug.debug("Encoded: "+str+"->"+retStr, 2);
+    return retStr;
   }
   
   public String getFileID(String datasetName, String name){

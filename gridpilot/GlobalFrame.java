@@ -104,7 +104,7 @@ public class GlobalFrame extends GPFrame{
     statusBar.setLabel("GridPilot welcomes you!");
     container.add(tabbedPane, BorderLayout.CENTER);
     container.validate();
-    selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+    selectedPanel = getActiveDBPanel();
 
    /**
     * Detect click over X in tab
@@ -270,7 +270,7 @@ public class GlobalFrame extends GPFrame{
   * Remove panel.
   */
   public void removePanel(){
-    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    ListPanel panel = getActiveDBPanel();
     removePanel(panel);
   }
   
@@ -290,19 +290,19 @@ public class GlobalFrame extends GPFrame{
   // Edit-cut | About action performed
   public void menuEditCut_actionPerformed(){
     Debug.debug("Cutting", 3);
-    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    ListPanel panel = getActiveDBPanel();
     panel.cut();
   }
   // Edit-copy | About action performed
   public void menuEditCopy_actionPerformed(){
     Debug.debug("Copying", 3);
-    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    ListPanel panel = getActiveDBPanel();
     panel.copy();
   }
   // Edit-paste | About action performed
   public void menuEditPaste_actionPerformed(){
     Debug.debug("Pasting", 3);
-    ListPanel panel = (ListPanel)allPanels.elementAt(tabbedPane.getSelectedIndex());
+    ListPanel panel = getActiveDBPanel();
     panel.paste();
   }
   
@@ -634,7 +634,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+              selectedPanel = getActiveDBPanel();
             }
           });
           mDB.add(miNewTab);
@@ -660,7 +660,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+              selectedPanel = getActiveDBPanel();
             }
           });
           mDB.add(miNewTab);
@@ -688,7 +688,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+              selectedPanel = getActiveDBPanel();
             }
           });
           mDB.add(miNewTab);
@@ -715,7 +715,7 @@ public class GlobalFrame extends GPFrame{
                 Debug.debug("Could not add panel ", 1);
                 ex.printStackTrace();
               }
-              selectedPanel = (DBPanel) tabbedPane.getSelectedComponent();
+              selectedPanel = getActiveDBPanel();
             }
           });
           mDB.add(miNewTab);

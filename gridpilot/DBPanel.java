@@ -531,7 +531,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       pButtonSelectPanel.add(new JLabel("  "));
       // Add tickbox to search panel
       JPanel pFindAll = new JPanel();
-      pFindAll.add(new JLabel("Find all PFNs"));
+      pFindAll.add(new JLabel("Find all PFN(s)"));
+      cbFindAllFiles.setToolTipText("Find all physical file names (URLs)");
       pFindAll.add(cbFindAllFiles);
       pButtonSelectPanel.add(pFindAll);
       pButtonSelectPanel.add(new JLabel(" "));
@@ -3830,10 +3831,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           datasetNameIndex = i;
         }
       }
+      if(datasetNameIndex==-1){
+        MyUtil.showError("To copy from this table, "+datasetNameField+" must be displayed.");
+        return;
+      }
+      if(nameIndex==-1){
+        MyUtil.showError("To copy from this table, "+nameField+" must be displayed.");
+        return;
+      }
+      Debug.debug("Indices: "+datasetNameIndex+":"+nameIndex, 2);
       for(int i=0; i<ids.length; ++i){
         copyObjects[i] = 
-          "'"+tableResults.getUnsortedValueAt(rows[i], datasetNameIndex).toString()+"'::'"+
-          tableResults.getUnsortedValueAt(rows[i], nameIndex).toString()+"'::'"+
+          "'"+tableResults.getUnsortedValueAt(rows[i], datasetNameIndex)+"'::'"+
+          tableResults.getUnsortedValueAt(rows[i], nameIndex)+"'::'"+
           ids[i]+"'";
       }
     }
@@ -3872,7 +3882,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       records[0] = head[0];
       records[1] = head[1];
-      records[2] = head[2]+"'";
+      records[2] = head[2]+(recs.length>1?"'":"");
       for(int i=1; i<recs.length-1; ++i){
         records[i+2] = "'"+recs[i]+"'";
       }
@@ -3899,6 +3909,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // ask for prefix if this is the case.
         // Only datasets have unique names.
         try{
+          Debug.debug("Pasting "+records[i], 2);
           pasteRecord(records[i], db, table);
         }
         catch(Exception e){
@@ -3992,7 +4003,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       String rest = record.substring(index+4);
       index = rest.indexOf("'::'");
       name = rest.substring(0, index);
-      id = rest.substring(index+4, rest.length()-2);
+      id = rest.substring(index+4, rest.length()-1);
     }
     insertRecord(db, table, id, name, datasetName);
   }

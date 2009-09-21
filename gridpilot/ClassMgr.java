@@ -470,7 +470,7 @@ public class ClassMgr{
    * @param milliseconds timeout in milliseconds of establishing a socket
    * @param _poolSize the number of connections in the Proxool pool
    */
-  public void sqlConnection(String dbName, String driver, String databaseUrl,
+  public void establishJDBCConnection(String dbName, String driver, String databaseUrl,
       String user, String passwd, boolean gridAuth, String connectionTimeout,
       String socketTimeout, String _poolSize) throws SQLException{
     
@@ -529,6 +529,7 @@ public class ClassMgr{
     try{
       Class.forName("org.logicalcobwebs.proxool.ProxoolDriver");
       info.setProperty("proxool.maximum-connection-count", poolSize);
+      info.setProperty("proxool.trace", "true");
       //info.setProperty("proxool.house-keeping-test-sql", "select CURRENT_DATE");
       info.setProperty("verbose", "true");
       info.setProperty("trace", "true");
