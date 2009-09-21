@@ -3195,12 +3195,10 @@ public class DBPluginMgr extends DBCache implements Database{
     return res;
   }
     
-  public String [] getDBDefFields(String tableName){
-    HashMap dbDefFields = new HashMap();
+  public static String [] getDBDefFields(String dbName, String tableName){
     String [] ret;
     try{
-      ret = configFile.getValues(dbName, "default "+tableName+" fields");
-      dbDefFields.put(tableName, ret);
+      ret = GridPilot.getClassMgr().getConfigFile().getValues(dbName, "default "+tableName+" fields");
       return ret;
     }
     catch(Exception e){

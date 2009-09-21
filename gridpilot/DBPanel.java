@@ -208,7 +208,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
        jobDefIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "jobDefinition");
      }
 
-     defaultFields = dbPluginMgr.getDBDefFields(tableName);
+     defaultFields = DBPluginMgr.getDBDefFields(dbName, tableName);
      Debug.debug("Default fields "+defaultFields.length, 3);
 
      fieldNames = dbPluginMgr.getFieldNames(tableName);
@@ -1841,10 +1841,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void editFile(){
     // This should be safe. Only mysql and hsqldb contain jobDefinitions and are directly editable.
     // TODO: support editing other file catalogs
-    if(dbPluginMgr.isJobRepository() && !dbPluginMgr.isFileCatalog()){
+    /*if(dbPluginMgr.isJobRepository() && !dbPluginMgr.isFileCatalog()){
       editJobDef("jobDefinition");
     }
-    else{
+    else{*/
       // Just display the content
       int i = tableResults.getSelectedRow();
       String [] values = new String [fieldNames.length];
@@ -1864,7 +1864,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
       }
       MyUtil.showResult(fieldNames, values, "file", MyUtil.OK_OPTION, "Skip");
-    }
+    //}
   }
   
   private void deleteFiles(){

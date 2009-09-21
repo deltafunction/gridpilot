@@ -59,6 +59,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
   private int fileCatalogType = FILE_CATALOG_TYPE_NO_TABLE;
   private boolean jobRepository = false;
   private boolean stop = false;
+  private String [] defaultFileFields;
   
   private static String SERVER_RUNNING = "no";
   private static String MAX_CONNECTIONS = "15";
@@ -72,17 +73,24 @@ public class HSQLDBDatabase extends DBCache implements Database{
     dbName = _dbName;
     
     configFile = GridPilot.getClassMgr().getConfigFile();
-
-    if(configFile.getValue(dbName, "file field names")!=null){
+    
+    String [] fileFields = configFile.getValues(dbName, "file field names");
+    if(fileFields!=null && fileFields.length>0){
       if(configFile.getValue(dbName, "t_lfn field names")!=null){
         fileCatalogType = FILE_CATALOG_TYPE_THREE_TABLES;
       }
-      else{
+      else if(configFile.getValue(dbName, "t_lfn field types")!=null){
         fileCatalogType = FILE_CATALOG_TYPE_ONE_TABLE;
       }
     }
-    else{
-      fileCatalogType = FILE_CATALOG_TYPE_NO_TABLE;
+    Debug.debug("File catalog type: "+fileCatalogType, 2);
+    
+    defaultFileFields = fileFields;
+    if(defaultFileFields==null || defaultFileFields.length==0){
+      String identifierField = MyUtil.getIdentifierField(dbName, "dataset");
+      String nameField = MyUtil.getNameField(dbName, "dataset");
+      String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
+      defaultFileFields = new String [] {refFields[1], nameField, "url", identifierField};
     }
 
     if(configFile.getValue(dbName, "jobDefinition field names")!=
@@ -499,11 +507,9 @@ public class HSQLDBDatabase extends DBCache implements Database{
      throws SQLException {
     Debug.debug("getFieldNames for table "+table, 3);
     if(table.equalsIgnoreCase("file")){
-      String nameField = MyUtil.getNameField(dbName, "dataset");
-      String [] refFields = MyUtil.getJobDefDatasetReference(dbName);
       // The case of no independent file table - file information is kept in the jobDefinition table.
       if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
-        return new String [] {refFields[1], nameField, "url"};
+        return defaultFileFields;
       }
       // The case of separate file tables. The case of one table is handled below.
       else if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
@@ -876,6 +882,10 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
     else if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
       // The "file" table is a pseudo table constructed from "jobDefinitions".
+      // A * is replaced with all file fields
+      if(withStar){
+        req = "SELECT "+MyUtil.arrayToString(defaultFileFields, ", ")+" FROM file";
+      }
       // We replace "url" with "outFileMapping" and parse the values of
       // outFileMapping later.
       // We replace "bytes" "outputFileBytes" and "checksum" with "outputFileChecksum".
@@ -916,7 +926,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         patt = Pattern.compile("SELECT (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 FROM jobDefinition $2");
-        Debug.debug("new pseudo search: "+req, 3);
+        Debug.debug("new pseudo search: "+req, 2);
       }
     }
 
