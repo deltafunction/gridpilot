@@ -3,6 +3,7 @@ package gridpilot;
 import javax.swing.*;
 
 import java.awt.event.*;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Enumeration;
@@ -68,7 +69,8 @@ public class SubmissionControl{
   private int PREPROCESS_TIMEOUT = 240000;
   /** Number of milliseconds to wait for each submit thread. */
   private int SUBMIT_TIMEOUT = 240000;
-  private static final int CANNOT_PREPROCESS_OR_RUN = 0;
+  private static final int CAN_NEVER_PREPROCESS_OR_RUN = -1;
+  private static final int CANNOT_PREPROCESS_OR_RUN_NOW = 0;
   private static final int CAN_PREPROCESS = 1;
   private static final int CAN_RUN = 2;
 
@@ -610,7 +612,11 @@ public class SubmissionControl{
     catch(Exception e){
       e.printStackTrace();
     }
-    if(runOk!=CAN_PREPROCESS){
+    if(runOk==CAN_NEVER_PREPROCESS_OR_RUN){
+      failJob(job);
+      return;
+    }
+    else if(runOk!=CAN_PREPROCESS){
       toPreprocessJobs.remove(job);
       toPreprocessJobs.add(job);
       return;
@@ -703,7 +709,8 @@ public class SubmissionControl{
    * If the job can be preprocessed, the best host is chosen among the already
    * booted ones and set with JobInfo.setHost().
    * @param job
-   * @return 0 if nothing should be done,
+   * @return -1 if there is a problem and this job can never be run,
+   *         0 if nothing should be done right now,
    *         1 if the job can be prepared but not submitted,
    *         2 if the job can be submitted
    */
@@ -712,12 +719,20 @@ public class SubmissionControl{
     if(submittingJobs.size()>=maxSimultaneousSubmissions){
       Debug.debug("Cannot preprocess or run: "+
           submittingJobs.size()+">="+maxSimultaneousSubmissions, 3);
-      return CANNOT_PREPROCESS_OR_RUN;
+      return CANNOT_PREPROCESS_OR_RUN_NOW;
     }
     
-    if(!checkDependenceOnOtherJobs(job)){
+    boolean depsOk;
+    try{
+      depsOk = checkDependenceOnOtherJobs(job);
+    }
+    catch (IOException e){
+      return CAN_NEVER_PREPROCESS_OR_RUN;
+    }
+    
+    if(!depsOk){
       Debug.debug("Cannot preprocess or run. Dependencies of job not met.", 3);
-      return CANNOT_PREPROCESS_OR_RUN;
+      return CANNOT_PREPROCESS_OR_RUN_NOW;
     }
     
     int runningJobs = 0;
@@ -782,7 +797,7 @@ public class SubmissionControl{
           if(job.getDBStatus()==DBPluginMgr.PREPARED &&
               tmpJob.getHost()!=null && tmpJob.getHost().equals(job.getHost())){
             Debug.debug("Race condition - backing out for now.", 2);
-            return CANNOT_PREPROCESS_OR_RUN;
+            return CANNOT_PREPROCESS_OR_RUN_NOW;
           }
           Debug.debug("Upping submitting job count for CS "+csNames[i], 3);
           ++rJobsByCS[i];
@@ -804,7 +819,7 @@ public class SubmissionControl{
       }
       if(runningJobsOnThisHost>=maxRunningPerHostOnEachCS.get(job.getHost())){
         Debug.debug("Cannot run job "+job.getName()+" on host "+job.getHost(), 1);
-        return CANNOT_PREPROCESS_OR_RUN;
+        return CANNOT_PREPROCESS_OR_RUN_NOW;
       }
     }
     
@@ -918,8 +933,9 @@ public class SubmissionControl{
    * Check if a job has to wait for the finishing of other jobs.
    * @param job
    * @return
+   * @throws IOException 
    */
-  private boolean checkDependenceOnOtherJobs(MyJobInfo job) {
+  private boolean checkDependenceOnOtherJobs(MyJobInfo job) throws IOException {
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String [] depJobs;
     if(job.getDepJobs()!=null){
@@ -945,7 +961,12 @@ public class SubmissionControl{
     String status;
     for(int i=0; i<depJobs.length; ++i){
       status = inputMgr.getJobDefStatus(depJobs[i]);
-      if(status==null || DBPluginMgr.getStatusId(status)!=DBPluginMgr.VALIDATED){
+      if(status==null){
+        String msg = "Job "+job.getName()+ " depends on a non-existing job "+depJobs[i];
+        logFile.addMessage(msg);
+        throw new IOException(msg);
+      }
+      else if(DBPluginMgr.getStatusId(status)!=DBPluginMgr.VALIDATED){
         Debug.debug("Job "+depJobs[i]+" has not finished. Cannot start "+job.getIdentifier(), 2);
         return false;
       }
