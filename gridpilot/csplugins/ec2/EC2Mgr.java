@@ -44,6 +44,8 @@ public class EC2Mgr {
   private String owner = null;
   private String runDir = null;
   private MyTransferControl transferControl;
+  private HashMap<String, List<ImageDescription>> patternToIdCache;
+
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
@@ -68,6 +70,8 @@ public class EC2Mgr {
   public EC2Mgr(String server, int port, String path, boolean secure,
       String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir, MyTransferControl _transferControl) {
+    
+    patternToIdCache = new HashMap<String, List<ImageDescription>>();
     
     instanceTypes.put(EC2Mgr.INSTANCE_TYPES[0], new int [] {1, 1700, 150000});//1xi386, 1.7 GB, 150 GB /mnt
     instanceTypes.put(EC2Mgr.INSTANCE_TYPES[1], new int [] {2, 7500, 420000});//2xi386_64, 1.7 GB, 2x420 GB /mnt
@@ -409,6 +413,13 @@ public class EC2Mgr {
   }
   
   /**
+   * Clear the cache kept by listAvailableAMIs();
+   */
+  public void clearCache(){
+    patternToIdCache.clear();
+  }
+  
+  /**
    * List available AMIs.
    * 
    * @param onlyPublicAMIs list only AMIs owned by me
@@ -418,6 +429,9 @@ public class EC2Mgr {
    * @throws EC2Exception
    */
   public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, String pattern) throws EC2Exception{
+    if(patternToIdCache.containsKey(pattern)){
+      return patternToIdCache.get(pattern);
+    }
     List list = new ArrayList();
     List params = new ArrayList();
     List images = ec2.describeImages(params);
@@ -434,6 +448,7 @@ public class EC2Mgr {
         list.add(img);
       }
     }
+    patternToIdCache.put(pattern, list);
     return list;
   }
   

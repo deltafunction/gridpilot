@@ -394,6 +394,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
 
   public boolean preProcess(JobInfo job) throws Exception{
     boolean ret = true;
+    Exception retE = null;
     try{
       // choose the host
       String host = selectHost(job);
@@ -414,7 +415,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
          setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
     }
     catch(Exception e){
-      logFile.addMessage("ERROR: could prepare job.", e);
+      logFile.addMessage("ERROR: could not prepare job.", e);
+      retE = e;
     }
     finally{
       try{
@@ -422,6 +424,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       }
       catch(Exception ee){
       }
+    }
+    if(retE!=null){
+      throw retE;
     }
     return ret;
   }

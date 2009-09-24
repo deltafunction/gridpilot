@@ -727,11 +727,12 @@ public class SubmissionControl{
       depsOk = checkDependenceOnOtherJobs(job);
     }
     catch (IOException e){
+      e.printStackTrace();
       return CAN_NEVER_PREPROCESS_OR_RUN;
     }
     
     if(!depsOk){
-      Debug.debug("Cannot preprocess or run. Dependencies of job not met.", 3);
+      Debug.debug("Cannot preprocess or run. Dependencies of job "+job.getName()+" not met.", 2);
       return CANNOT_PREPROCESS_OR_RUN_NOW;
     }
     
@@ -823,7 +824,7 @@ public class SubmissionControl{
       }
     }
     
-    int ret = -1;
+    int ret = CANNOT_PREPROCESS_OR_RUN_NOW;
     if(jobCsIndex>=0 && ppJobsByCS[jobCsIndex]>0 &&
         job.getDBStatus()==DBPluginMgr.PREPARED && 
         runningJobs<totalMaxRunning &&
@@ -1002,9 +1003,17 @@ public class SubmissionControl{
       toPreprocessJobs.remove(job);
       preprocessingJobs.add(job);
       statusTable.setValueAt(iconProcessing, job.getTableRow(), JobMgr.FIELD_CONTROL);
-      ok = csPluginMgr.preProcess(job);
+      boolean bailOut = false;
+      try{
+        ok = csPluginMgr.preProcess(job);
+      }
+      catch(Exception e){
+        logFile.addMessage("ERROR: something went wrong with the preprocessing of the job " +
+            job.getName()+". Bailing out.");
+        bailOut = true;
+      }
       statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
-      if(ok){
+      if(!bailOut && ok){
         dbStatus = DBPluginMgr.PREPARED;
         if(!submitTimer.isRunning()){
           submitTimer.restart();
@@ -1012,7 +1021,7 @@ public class SubmissionControl{
         preprocessRetryJobs.remove(job);
         preprocessingDone(job, dbStatus);
       }
-      else if(checkPreprocessTimeout(job)){
+      else if(!bailOut && checkPreprocessTimeout(job)){
         dbStatus = DBPluginMgr.DEFINED;
         Debug.debug("Job "+job.getName()+" cannot be preprocessed right now, leaving in queue.", 1);
         preprocessingJobs.remove(job);

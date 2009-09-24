@@ -98,6 +98,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   }
   
   protected String [][] getAvailableImages() throws EC2Exception{
+    ec2mgr.clearCache();
     List amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), amiPattern.getText());
     String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;

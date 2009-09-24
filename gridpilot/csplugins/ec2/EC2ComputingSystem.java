@@ -53,6 +53,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String [] requiredRuntimeEnvs = null;
   private EC2Mgr ec2mgr = null;
   private String fallbackAmiID = null;
+  private String fallbackAmiName = null;  
   // max time to wait for booting a virtual machine when submitting a job
   private static long MAX_BOOT_WAIT = 5*60*1000;
   // the user to use for running jobs on the virtual machines
@@ -569,8 +570,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     DBRecord rte;
     String rteName;
-    String amiId;
-    Exception eee = null;
+    String amiId = null;
     try{
       for(Iterator<DBRecord> it=allEC2RTEs.get(dbMgr.getDBName()).iterator(); it.hasNext();){
         amiId = null;
@@ -582,7 +582,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
           }
           catch(Exception ee){
-            eee = ee;
+            ee.printStackTrace();
           }
           if(amiId!=null){
             job.setOpSys(rteName);
@@ -599,15 +599,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     catch(Exception e){
       e.printStackTrace();
     }
+    if(fallbackAmiID==null || fallbackAmiID.equals("")){
+      logFile.addMessage("No RTE found that provides "+MyUtil.arrayToString(job.getRTEs())+
+          " and could not find location/name/manifest of fallback AMI "+fallbackAmiID+":"+fallbackAmiName);
+      return null;
+    }
     logFile.addInfo("No RTE found that provides all "+MyUtil.arrayToString(job.getRTEs())+
-        ". Falling back to "+fallbackAmiID);
-    if(eee!=null){
-      eee.printStackTrace();
-    }
-    if(fallbackAmiID!=null && !fallbackAmiID.equals("")){
-      job.setOpSys(null);
-      job.setOpSysRTE(null);
-    }
+        ". Falling back to "+fallbackAmiID+":"+fallbackAmiName);
+    job.setOpSys(fallbackAmiName);
+    job.setOpSysRTE(fallbackAmiName);
     return fallbackAmiID;
   }
   
@@ -822,6 +822,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       if(!desc.getImageType().equalsIgnoreCase("machine")){
         continue;
       }
+      // Since we are anyway iterating through the long list of AMIs,
+      // find the name/manifest of the fallback AMI
+      if(desc.getImageId().equalsIgnoreCase(fallbackAmiID)){
+        fallbackAmiName = manifestToRTEName(desc.getImageLocation());
+      }
       if(AMI_PREFIX!=null && !AMI_PREFIX.equals("")){
         try{
           files.add(getTmpCatalogFile(desc.getImageId()));
@@ -833,7 +838,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
       }
       // If no custom RDF file was found, add standard entry to RTE table
-      createAmiOsRte(desc.getImageLocation().replaceFirst("\\.manifest\\.xml$", ""),
+      createAmiOsRte(manifestToRTEName(desc.getImageLocation()),
           desc.getImageLocation(),
           desc.getArchitecture()+" "+desc.getImageType()+" "+
           /* This is a hack until Typica provides a getPlatform() method. */
@@ -843,6 +848,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     File [] ret = files.toArray(new File[files.size()]);
     Debug.debug("Saved the following RTE catalogs: "+MyUtil.arrayToString(ret), 2);
+    return ret;
+  }
+  
+  private String manifestToRTEName(String manifest){
+    String ret = manifest.replaceFirst("(?i)\\.xml$", "");
+    ret = ret.replaceFirst("(?i)\\.manifest$", "");
     return ret;
   }
   
@@ -889,10 +900,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    */
   private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
     String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
-    String rdfFile = manifest;
-    rdfFile = rdfFile.replaceFirst("(?i)\\.xml$", "");
-    rdfFile = rdfFile.replaceFirst("(?i)\\.manifest$", "");
-    rdfFile = rdfFile+".rdf";
+    String rdfFile = manifestToRTEName(manifest)+".rdf";
     Debug.debug("RDF file --> "+rdfFile, 2);
     File tmpCatalogFile = downloadFromSSS(rdfFile);
     GridPilot.addTmpFile(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
@@ -1092,7 +1100,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
         Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
         mountEBSVolumes(inst, ebsSnapshots);
-        String [] tarPackages = getTarPackageRTEs(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
+        String [] tarPackages = getTarPackageRTEs(job);
         Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
         installTarPackages(inst, job.getOpSysRTE(), tarPackages);
         hosts[i] = inst.getDnsName();
@@ -1142,24 +1150,46 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   /**
    * Find names of the parent MetaPackages of TarPackages that should be installed inside the AMI.<br><br>
    * Notice that VMForkComputingSystem has a different convention and installs these on the host machine.
-   * @param opsysRte
-   * @param dbName
+   * @param job
    * @return a list of MetaPackage (RTE) names
    * @throws Exception
    */
-  private String[] getTarPackageRTEs(String opsysRte, String dbName) throws Exception{
+  private String[] getTarPackageRTEs(JobInfo job) throws Exception{
+    String opsysRte = job.getOpSysRTE();
     RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();
-    MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
-    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
-    Vector<String> deps = depsMap.get(null);
-    Collections.addAll(deps, requiredRuntimeEnvs);
+    Vector<String> deps = new Vector<String>();
+    HashMap<String, Vector<String>> depsMap;
     Vector<String> provides = new Vector<String>();
-    Collections.addAll(provides, opsysMp.provides);
-    if(opsysMp.virtualMachine!=null && opsysMp.virtualMachine.os!=null){
-      provides.add(opsysMp.virtualMachine.os);
+    try{
+      // getVmRteDepends() throws an exception if no instance package can be found -
+      // which is the case if opsysRte is an AMI name with no AMIPackage defined in
+      // the catalog. Just ignore it.
+      MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
+      depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+      deps.addAll(depsMap.get(null));
+      Collections.addAll(provides, opsysMp.provides);
+      if(opsysMp.virtualMachine!=null && opsysMp.virtualMachine.os!=null){
+        provides.add(opsysMp.virtualMachine.os);
+      }
     }
-    Debug.debug("Found TarPackage dependencies "+deps+" on "+opsysMp.name+" providing "+provides, 2);
+    catch(Exception e){
+    }
+    Collections.addAll(deps, requiredRuntimeEnvs);
+    try{
+      if(job.getRTEs()!=null && job.getRTEs().length>0){
+        Vector<String> rtesVec = new Vector<String>();
+        Collections.addAll(rtesVec, job.getRTEs());
+        Vector<String> depsVec = rteMgr.getRteDepends(rtesVec, job.getOpSys(), true);
+        // The first entry is the OS.
+        depsVec.remove(0);
+        deps.addAll(depsVec);
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    Debug.debug("Found TarPackage dependencies "+deps+" on "+opsysRte+" providing "+provides, 2);
     return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), provides.toArray(new String[provides.size()]));
   }
 
@@ -1181,7 +1211,17 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
     RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();
-    HashMap<String, Vector<String>> depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+    HashMap<String, Vector<String>> depsMap =  new HashMap<String, Vector<String>>();
+    try{
+      // getVmRteDepends() throws an exception if no instance package can be found -
+      // which is the case if opsysRte is an AMI name with no AMIPackage defined in
+      // the catalog. Just ignore it.
+      depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+    }
+    catch(Exception e){
+      //e.printStackTrace();
+      return new EBSSnapshotPackage[] {};
+    }
     Vector<String> deps = depsMap.get(opsysRte);
     Debug.debug("Found EBSSnapshot dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
     String dep;
@@ -1280,14 +1320,33 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     
     RTEInstaller rteInstaller;
     MetaPackage mp;
-    InstancePackage ip;
+    InstancePackage ip = null;
     for(int i=0; i<rtes.length; ++i){
       try{
         // First find the InstancePackage
         mp = catalog.getMetaPackage(rtes[i]);
-        ip = rteMgr.getInstancePackage(mp, os);
+        if(mp==null){
+          logFile.addInfo("WARNING: no MetaPackage found with name "+rtes[i]+". Skipping.");
+        }
+        ip = null;
+        try{
+          ip = rteMgr.getInstancePackage(mp, os);
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
+        if(mp!=null && ip==null){
+          // If no InstancePackage could be found on the give OS, the OS is probably
+          // an AMI not registered in the catalog - in this case, we just try the first
+          // InstancePackage found...
+          ip = rteMgr.getInstancePackage(mp, null);
+          if(ip!=null){
+            logFile.addInfo(rtes[i]+" has no TarPackage instance on "+os+". Defaulting to "+ip.url+
+                " on "+ip.baseSystem);
+          }
+        }
         // If it's a TarPackage, install it
-        if(!ip.getClass().getCanonicalName().equals(RTECatalog.TarPackage.class.getCanonicalName())){
+        if(ip==null || !ip.getClass().getCanonicalName().equals(RTECatalog.TarPackage.class.getCanonicalName())){
           logFile.addInfo(rtes[i]+" has no TarPackage instance on "+os+". Skipping.");
           continue;
         }

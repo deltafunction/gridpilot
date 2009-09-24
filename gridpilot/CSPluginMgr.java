@@ -768,9 +768,11 @@ public class CSPluginMgr implements MyComputingSystem{
   }
   
   /**
+   * Attention: this method propagates exceptions of the preProcess() of the called computing system.
+   * @throws Exception if the called preProcess() throws an exception 
    * @see MyComputingSystem#preProcess(MyJobInfo)
    */
-  public boolean preProcess(final JobInfo job){
+  public boolean preProcess(final JobInfo job) throws Exception{
 
     ResThread t = new ResThread(){
       boolean res = false;
@@ -778,12 +780,9 @@ public class CSPluginMgr implements MyComputingSystem{
         try{
           res = ((MyComputingSystem) cs.get(((MyJobInfo) job).getCSName())).preProcess(job);
         }
-        catch(Throwable t){
-          t.printStackTrace();
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + ((MyJobInfo) job).getCSName() +
-                             " during preProcessing", t);
+        catch(Exception e){
           res = false;
+          setException(e);
         }
       }
       public boolean getBoolRes(){
@@ -793,10 +792,15 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing")){
-      return t.getBoolRes();
+    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing") &&
+        t.getBoolRes()){
+      return true;
     }
     else{
+      if(t.getException()!=null){
+        Debug.debug("Detected exception - propagating to caller.", 1);
+        throw t.getException();
+      }
       return false;
     }
   }
