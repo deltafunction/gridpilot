@@ -1964,7 +1964,6 @@ private static String fixUrl(String _url){
       ret = Integer.parseInt(tmp);
     }
     catch(Exception e){
-      e.printStackTrace();
       logFile.addInfo("WARNING: Value of \"max simultaneous running\" is not"+
                                   " defined properly for "+csName);
     }

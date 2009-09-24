@@ -76,7 +76,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     // Fill maxRunningJobs with a constant number
     maxRunningJobs = new int[maxMachines];
     Arrays.fill(maxRunningJobs, maxRunningJobsPerHost);
-    Debug.debug("Jobs per machine: "+MyUtil.arrayToString(maxRunningJobs), 2);
+    Debug.debug("Max running jobs per host: "+MyUtil.arrayToString(maxRunningJobs), 2);
     // Fill hosts with nulls and assign values as jobs are submitted.
     hosts = new String [maxMachines];
     localRteDir = GridPilot.RUNTIME_DIR;

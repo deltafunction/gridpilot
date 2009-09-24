@@ -58,10 +58,12 @@ public class SubmissionControl{
   private int totalMaxPreprocessing;
   /** Maximum total number of simultaneously running jobs per CS. */
   private int [] maxPreprocessingPerCS;
-  /** Delay between the begin of two submission threads. */
-  private int timeBetweenSubmissions = 10000;
-  /** Number of times to try and find a host for a job. */
-  private int PREPROCESS_RETRIES = 3;
+  /** Delay between the begin of two submission threads - in milliseconds. */
+  private int timeBetweenSubmissions = 15000;
+  /** Number of times to try and find a host for a job. This means that each job
+   * will sit at most PREPROCESS_RETRIES * timeBetweenSubmissions in GridPilots
+   * preprocessing queue. */
+  private int preprocessRetries = 30;
   private HashMap<MyJobInfo, Integer> preprocessRetryJobs;
   private String isRand = null;
   private String [] csNames;
@@ -197,6 +199,20 @@ public class SubmissionControl{
     }
     else{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "time between submissions") + "\n" +
+                              "Default value = " + timeBetweenSubmissions);
+    }
+    tmp = configFile.getValue("Computing systems", "Submit retries");
+    if(tmp!=null){
+      try{
+        preprocessRetries = Integer.parseInt(tmp);
+      }
+      catch(NumberFormatException nfe){
+        logFile.addMessage("Value of \"submit retries\" is not"+
+                                    " an integer in configuration file", nfe);
+      }
+    }
+    else{
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "submit retries") + "\n" +
                               "Default value = " + timeBetweenSubmissions);
     }
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
@@ -807,19 +823,21 @@ public class SubmissionControl{
     }
     
     if(job.getHost()!=null &&
-       maxRunningPerHostOnEachCS.get(job.getHost())!=null &&
+       maxRunningPerHostOnEachCS.get(job.getCSName())!=null &&
        job.getDBStatus()==DBPluginMgr.PREPARED){
       for(Iterator<MyJobInfo> it=monitoredJobs.iterator(); it.hasNext();){
         tmpJob = it.next();
         if((tmpJob.getStatus()==MyJobInfo.STATUS_RUNNING ||
             tmpJob.getDBStatus()==DBPluginMgr.SUBMITTED) &&
-            tmpJob.getHost()!=null && tmpJob.getHost().equals(job.getHost())){
+            tmpJob.getHost()!=null && !tmpJob.getHost().trim().equals("") &&
+            tmpJob.getHost().equals(job.getHost())){
           Debug.debug("This host, "+job.getHost()+" is already running job "+tmpJob.getName(), 2);
           ++runningJobsOnThisHost;
         }
       }
-      if(runningJobsOnThisHost>=maxRunningPerHostOnEachCS.get(job.getHost())){
-        Debug.debug("Cannot run job "+job.getName()+" on host "+job.getHost(), 1);
+      if(runningJobsOnThisHost>=maxRunningPerHostOnEachCS.get(job.getCSName())){
+        Debug.debug("Cannot run job "+job.getName()+" on host "+job.getHost()+
+            " : "+runningJobsOnThisHost+">="+maxRunningPerHostOnEachCS.get(job.getCSName()), 1);
         return CANNOT_PREPROCESS_OR_RUN_NOW;
       }
     }
@@ -842,7 +860,7 @@ public class SubmissionControl{
     }
     
     Debug.debug("Found running jobs: "+
-        runningJobsOnThisHost+"<"+maxRunningPerHostOnEachCS.get(job.getHost())+":"+
+        runningJobsOnThisHost+"<"+maxRunningPerHostOnEachCS.get(job.getCSName())+":"+
         submittingJobs.size()+"<"+maxSimultaneousSubmissions+":"+
         runningJobs+"<"+totalMaxRunning+":"+
         preprocessingJobs.size()+"<"+totalMaxPreprocessing+":"+
@@ -1081,8 +1099,8 @@ public class SubmissionControl{
     retr = preprocessRetryJobs.get(job);
     ++retr;
     Debug.debug("Checking if we can still preprocess this job, "+
-        job.getName()+":"+retr+">"+PREPROCESS_RETRIES, 2);
-    if(retr>PREPROCESS_RETRIES){
+        job.getName()+":"+retr+">"+preprocessRetries, 2);
+    if(retr>preprocessRetries){
       preprocessRetryJobs.remove(job);
       return false;
     }

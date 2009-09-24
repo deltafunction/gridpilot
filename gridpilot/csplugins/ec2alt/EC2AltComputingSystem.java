@@ -76,7 +76,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     String jobsPerMachine = "1";
     try{
       jobsPerMachine = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Jobs per machine");
+         "Max running jobs per host");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -87,7 +87,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     maxRunningJobs = new String[maxMachines];
     Arrays.fill(maxRunningJobs, jobsPerMachine);
     
-    submittingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -172,7 +172,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     for(Iterator<RunningInstance> it=instances.iterator(); it.hasNext();){
       hostName = it.next().getPublicDnsName();
       remoteShellMgrs.put(hostName, null);
-      submittingHostJobs.put(hostName, new HashSet());
+      preprocessingHostJobs.put(hostName, new HashSet());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -379,7 +379,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
         if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
           maxR = Integer.parseInt(maxRunningJobs[i]);
         }
-        submitting = (host!=null&&submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
+        submitting = (host!=null&&preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0);
         if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
@@ -432,7 +432,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
           }
           hosts[i] = inst.getPublicDnsName();
           Debug.debug("Returning host "+hosts[i]+" "+inst.getInstanceState().getName(), 1);
-          submittingHostJobs.put(hosts[i], new HashSet());
+          preprocessingHostJobs.put(hosts[i], new HashSet());
           return hosts[i];
         }
       }

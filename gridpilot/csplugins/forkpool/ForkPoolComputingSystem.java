@@ -32,7 +32,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected String [] maxRunningJobs = null;
   protected String [] maxPreprocessingJobs = null;
   // Map of host -> Set of jobs that are being submitted
-  protected HashMap<String, HashSet<String>> submittingHostJobs = null;
+  protected HashMap<String, HashSet<String>> preprocessingHostJobs = null;
   protected String [] users = null;
   protected String [] passwords = null;
   
@@ -87,9 +87,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         // host null not accepted...
       }
     }
-    submittingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
     for(int i=0; i<hosts.length; ++i){
-      submittingHostJobs.put(hosts[i], new HashSet());
+      preprocessingHostJobs.put(hosts[i], new HashSet());
     }
   }
   
@@ -148,8 +148,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected synchronized String selectHost(JobInfo job){
     String host = null;
     int maxP = 1;
-    int submitting = 0;
-    //Shell mgr = null;
+    int preprocessing = 0;
+    //Shell shell = null;
     //int maxR = 1;
     for(int i=0; i<hosts.length; ++i){
       host = hosts[i];
@@ -157,18 +157,18 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         if(maxPreprocessingJobs!=null && maxPreprocessingJobs.length>i && maxPreprocessingJobs[i]!=null){
           maxP = Integer.parseInt(maxPreprocessingJobs[i]);
         }
-        submitting = (host!=null &&
-            submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0);
-        if(submitting>=maxP){
+        preprocessing = (host!=null &&
+            preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0);
+        if(preprocessing>=maxP){
           continue;
-        } 
+        }
+        Debug.debug("Selecting host "+host+" for job "+job.getName()+" : "+preprocessing+"<"+maxP, 2);
         return host;
-        // Not necessary
-        /*mgr = getShell(host);
+        /*shell = getShell(host);
         if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
           maxR = Integer.parseInt(maxRunningJobs[i]);
         }
-        if(mgr.getJobsNumber()+submitting<maxR+maxP){
+        if(shell.getJobsNumber()<maxR){
           return host;
         }*/
       }
@@ -252,7 +252,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       return false;
     }
     finally{
-      ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
+      ((HashSet) preprocessingHostJobs.get(job.getHost())).remove(job);
     }
   }
 
@@ -400,8 +400,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       String host = selectHost(job);
       if(host==null){
         ret = false;
-        throw new Exception("No free slot on any host.");
+        Debug.debug("No free slot on any host.", 2);
+        return false;
       }
+      ((HashSet) preprocessingHostJobs.get(host)).add(job);
       Debug.debug("Getting ShellMgr for host "+host, 2);
       Shell mgr = getShell(host);
       job.setHost(host);
@@ -410,20 +412,18 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       if(!getShell(job.getHost()).existsFile(runDir(job))){
         getShell(job.getHost()).mkdirs(runDir(job));
       }
-      ((HashSet) submittingHostJobs.get(host)).add(job);
       ret = setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
          setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
+      // With this, jobs can queue up indefinitely on a single host
+      /*try{
+        ((HashSet) preprocessingHostJobs.get(job.getHost())).remove(job);
+      }
+      catch(Exception ee){
+      }*/
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not prepare job.", e);
       retE = e;
-    }
-    finally{
-      try{
-        ((HashSet) submittingHostJobs.get(job.getHost())).remove(job);
-      }
-      catch(Exception ee){
-      }
     }
     if(retE!=null){
       throw retE;

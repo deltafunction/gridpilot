@@ -167,7 +167,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String jobsPerMachine = "1";
     try{
       jobsPerMachine = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Jobs per machine");
+         "Max running jobs per host");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -178,7 +178,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     maxRunningJobs = new String[maxMachines];
     Arrays.fill(maxRunningJobs, jobsPerMachine);
     
-    submittingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -306,7 +306,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       inst = it.next();
       hostName = inst.getDnsName();
       remoteShellMgrs.put(hostName, null);
-      submittingHostJobs.put(hostName, new HashSet());
+      preprocessingHostJobs.put(hostName, new HashSet());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -534,19 +534,17 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   private boolean checkHostForJobs(int i) throws JSchException {
     String host = hosts[i];
-    Shell mgr = null;
-    int maxR = 1;
-    int submitting = 0;
-    maxR = 1;
-    mgr = getShell(host);
-    if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
-      maxR = Integer.parseInt(maxRunningJobs[i]);
+    int maxP = 1;
+    int preprocessing = 0;
+    maxP = 1;
+    if(maxPreprocessingJobs!=null && maxPreprocessingJobs.length>i && maxPreprocessingJobs[i]!=null){
+      maxP = Integer.parseInt(maxPreprocessingJobs[i]);
     }
-    Debug.debug("Checking host "+host+" for running jobs - max "+maxR, 2);
-    submitting = submittingHostJobs.get(host)!=null?((HashSet)submittingHostJobs.get(host)).size():0;
-    Debug.debug("--> Submitting: "+submitting, 2);
-    Debug.debug("--> Running: "+mgr.getJobsNumber(), 2);
-    if(mgr.getJobsNumber()+submitting<maxR){
+    Debug.debug("Checking host "+host+" for preprocessing jobs - max "+maxP, 2);
+    preprocessing = preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0;
+    Debug.debug("--> Preprocessing: "+preprocessing, 2);
+    if(preprocessing<maxP){
+      Debug.debug("Selecting host "+host+" : "+preprocessing+"<"+maxP, 2);
       return true;
     }
     return false;
@@ -980,9 +978,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           continue;
         }
         Debug.debug("Checking if we can reuse host "+hosts[i]+
-            " from "+MyUtil.arrayToString(submittingHostJobs.keySet().toArray()), 2);
+            " from "+MyUtil.arrayToString(preprocessingHostJobs.keySet().toArray()), 2);
         if(/* This means that the host has been added by discoverInstances, i.e. that we can use it */
-            submittingHostJobs.containsKey(hosts[i])){
+            preprocessingHostJobs.containsKey(hosts[i])){
           if(checkHostProvides(hosts[i], job)){
             Debug.debug("Dependencies provided by host", 2);
             if(checkHostForJobs(i)){
@@ -1002,7 +1000,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return bootedHost;
     }
     // then see if we can queue the job on a host
-    return super.selectHost(job);
+    //return super.selectHost(job);
+    return null;
   }
   
   private boolean hostIsRunning(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
@@ -1105,7 +1104,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         installTarPackages(inst, job.getOpSysRTE(), tarPackages);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
-        submittingHostJobs.put(hosts[i], new HashSet());
+        preprocessingHostJobs.put(hosts[i], new HashSet());
         return hosts[i];
       }
       catch(Exception e){
@@ -1113,6 +1112,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         return null;
       }
     }
+    logFile.addMessage("Problem finding host.");
     return null;
   }
   
