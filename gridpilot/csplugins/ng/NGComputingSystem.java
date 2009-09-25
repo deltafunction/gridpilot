@@ -1217,7 +1217,7 @@ public class NGComputingSystem implements MyComputingSystem{
     final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stdout";
     final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
-    // input files are already there
+    // input files are uploaded as part of the submission process
     return true;
   }
   

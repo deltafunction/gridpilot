@@ -278,8 +278,11 @@ public class NGScriptGenerator extends ScriptGenerator{
       // Runtime environment dependencies. Text from runtimeEnvironment.init
       writeBlock(bufScript, "runtime environment dependencies", 1, "# ");
       for(int i=0; i<uses.length; ++i){
+        String initTxt = (String) dbPluginMgr.getRuntimeInitText(uses[i], csName);
+        if(initTxt==null){
+          throw new IOException("Runtime environment "+uses[i]+" not available on computing system "+csName);
+        }
         writeBlock(bufScript, "use "+ uses[i], 2, "# ");
-        String initTxt = dbPluginMgr.getRuntimeInitText(uses[i], csName).toString();
         writeLine(bufScript, MyUtil.dos2unix(initTxt));
         writeLine(bufScript, "");
       }
