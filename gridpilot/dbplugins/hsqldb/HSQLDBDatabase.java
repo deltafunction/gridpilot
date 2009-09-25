@@ -308,6 +308,11 @@ public class HSQLDBDatabase extends DBCache implements Database{
     }
   }
   
+  /**
+   * Checks if there are field names defined in the configuration file for a given table name.
+   * @param table
+   * @return
+   */
   private boolean checkTable(String table){
     String [] fields = null;
     //String [] fieldTypes = null;
@@ -358,6 +363,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     Debug.debug("Creating table "+table, 3);
 
     if(!checkTable(table)){
+      Debug.debug("The table "+table+" has no field names defined in the configuration file.", 1);
       return false;
     }
     
@@ -366,20 +372,20 @@ public class HSQLDBDatabase extends DBCache implements Database{
     String [] fields = MyUtil.split(configFile.getValue(dbName, table+" field names"), ",");
     String [] fieldTypes = MyUtil.split(configFile.getValue(dbName, table+" field types"), ",");
     if(fields==null || fieldTypes==null || fields.length!=fieldTypes.length){
-      return false;
+      Debug.debug("The table "+table+" has no field types defined in the configuration file.", 1);
+       return false;
     }
     String sql = "CREATE TABLE "+table+"(";
     for(int i=0; i<fields.length; ++i){
       if(i>0){
         sql += ", ";
       }
-      //Debug.debug("-->"+fields[i], 3);
+      Debug.debug("-->"+fields[i], 3);
       sql += fields[i];
-      //Debug.debug("-->"+fieldTypes[i], 3);
+      Debug.debug("-->"+fieldTypes[i], 3);
       sql += " "+fieldTypes[i];
     }
     sql += ")";
-    Debug.debug(sql, 2);
     boolean execok = true;
     try{
       Debug.debug("Creating table. "+sql, 1);
