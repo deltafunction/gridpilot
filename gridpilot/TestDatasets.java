@@ -1,6 +1,5 @@
 package gridpilot;
 
-import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
 import gridfactory.common.LogFile;
@@ -14,7 +13,6 @@ import java.net.URL;
 public class TestDatasets {
   
   private LogFile logFile = null;
-  private ConfigFile configFile = null;
   private String executableDirectory = null;
   
   private static String myDatasetName = "my_dataset";
@@ -25,7 +23,6 @@ public class TestDatasets {
 
   public TestDatasets() {
     logFile = GridPilot.getClassMgr().getLogFile();
-    configFile = GridPilot.getClassMgr().getConfigFile();
     executableDirectory = GridPilot.getClassMgr().getConfigFile().getValue(
         "Fork", "Executable directory");
     if(executableDirectory==null){
@@ -75,7 +72,7 @@ public class TestDatasets {
       }
       // Make sure scripts exist
       createMyExecutableScript(shellMgr);
-      createTestExecutableScript(shellMgr);
+      //createTestExecutableScript(shellMgr);
     }
     try{
       if(dbPluginMgr==null){
@@ -86,7 +83,7 @@ public class TestDatasets {
       }
       // Make sure executables exist in local database
       createMyExecutable(dbPluginMgr);
-      createTestExecutable(dbPluginMgr);
+      //createTestExecutable(dbPluginMgr);
       // Make sure dataset exists
       createMyDataset(dbPluginMgr);
     }

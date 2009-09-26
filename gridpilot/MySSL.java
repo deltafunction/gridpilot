@@ -397,115 +397,118 @@ public class MySSL extends SSL{
                                                //GridPilot.proxyTimeValid,
                                                null, // use default mechanism - GSI
                                                GSSCredential.INITIATE_AND_ACCEPT);
+        // if credential ok, return
+        if(credential!=null && credential.getRemainingLifetime()>=GridPilot.PROXY_TIME_LEFT_LIMIT){
+          Debug.debug("proxy ok --> "+credential.getRemainingLifetime()+">="+GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
+          return;
+        }
       }
     }
     catch(Exception e){
       e.printStackTrace();
     }
     
-    // if credential ok, return
-    if(credential!=null && credential.getRemainingLifetime()>=GridPilot.PROXY_TIME_LEFT_LIMIT){
-      Debug.debug("proxy ok", 3);
-      return;
-    }
     // if no valid proxy, init
-    else{
-      Debug.debug("proxy not ok: "+credential+": "+
-          (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
-          GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
-      // Create new proxy
-      Debug.debug("creating new proxy", 3);
-      String [] credentials = null;
-      GlobusCredential cred = null;
-      FileOutputStream out = null;
-      /**
-       * Query for password max 4 times in total. If VOMS server is specified in
-       * config file, try max 2 times to create VOMS proxy, then max 2 times to
-       * create normal proxy.
-       */
-      for(int i=0; i<=4; ++i){
-        // First see if we can decrypt using any supplied password or "".
-        if(GridPilot.KEY_FILE!=null && !GridPilot.KEY_FILE.equals("") &&
-            GridPilot.CERT_FILE!=null && !GridPilot.CERT_FILE.equals("") &&
-            i==0){
-          credentials = getFirstCheckCredentials();
-        }
-        // Otherwise, ask for password
-        else{
-          try{
-            credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
-                GridPilot.KEY_PASSWORD);
-          }
-          catch(IllegalArgumentException e){
-            // cancelling
-            e.printStackTrace();
-            break;
-          }
-        }
-        try{
-          Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
-          certFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[2])))).getAbsolutePath();
-          keyFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[1])))).getAbsolutePath();
-          keyPassword = credentials[0];
-          if(GridPilot.VOMS_SERVER_URL==null || GridPilot.VOMS_SERVER_URL.equals("") ||
-              i>1){
-            /* Old implementation - no VOMS attributes. */
-            cred = createProxy(credentials[1], credentials[2], credentials[0],
-                GridPilot.PROXY_TIME_VALID, GridPilot.PROXY_STRENGTH, getProxyType());
-            credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
-          }
-          else{
-            String vomsDir = GridPilot.VOMS_DIR==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.VOMS_DIR));
-            String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
-            
-            // This works with gLite and ARC
-            VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
-                GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
-                certFile, keyFile, caCertsDirStr, vomsDir,
-                GridPilot.PROXY_TIME_VALID, VomsProxyFactory.DELEGATION_FULL,
-                getVomsProxyType(),
-                GridPilot.FQAN);
-            credential = vpf.createProxy();
-            if(credential instanceof GlobusGSSCredentialImpl) {
-              cred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-            }
-          }
-          // Keep password in memory - needed by mysql plugin
-          Debug.debug("Setting grid password to "+credentials[0], 3);
-          GridPilot.KEY_PASSWORD = credentials[0];
-          // Store key and cert locations in config file.
-          String newKeyFile = MyUtil.replaceWithTildeLocally(keyFile);
-          String newCertFile = MyUtil.replaceWithTildeLocally(certFile);
-          if(!newKeyFile.equals(GridPilot.KEY_FILE) || !newCertFile.equals(GridPilot.CERT_FILE)){
-            GridPilot.KEY_FILE = MyUtil.replaceWithTildeLocally(keyFile);
-            GridPilot.CERT_FILE = MyUtil.replaceWithTildeLocally(certFile);
-            GridPilot.getClassMgr().getConfigFile().setAttributes(
-                new String [] {GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION},
-                new String [] {"Certificate file", "Key file"},
-                new String [] {GridPilot.CERT_FILE, GridPilot.KEY_FILE}
-            );
-          }
+    doInitGridProxy();
+  }
 
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          continue;
-        }
+  private void doInitGridProxy() throws GSSException, IOException {
+    File proxy = getProxyFile();
+    Debug.debug("proxy not ok: "+credential+": "+
+        (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
+        GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
+    // Create new proxy
+    Debug.debug("creating new proxy", 3);
+    String [] credentials = null;
+    GlobusCredential cred = null;
+    FileOutputStream out = null;
+    /**
+     * Query for password max 4 times in total. If VOMS server is specified in
+     * config file, try max 2 times to create VOMS proxy, then max 2 times to
+     * create normal proxy.
+     */
+    for(int i=0; i<=4; ++i){
+      // First see if we can decrypt using any supplied password or "".
+      if(GridPilot.KEY_FILE!=null && !GridPilot.KEY_FILE.equals("") &&
+          GridPilot.CERT_FILE!=null && !GridPilot.CERT_FILE.equals("") &&
+          i==0){
+        credentials = getFirstCheckCredentials();
+      }
+      // Otherwise, ask for password
+      else{
         try{
-          // if we managed to create proxy, save it to default location
-          out = new FileOutputStream(proxy);
-          cred.save(out);
-          out.close();
-          return;
+          credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
+              GridPilot.KEY_PASSWORD);
         }
-        catch(Exception e){
-          Debug.debug("ERROR: problem saving proxy. "+e.getMessage(), 3);
+        catch(IllegalArgumentException e){
+          // cancelling
           e.printStackTrace();
           break;
-        }          
+        }
       }
-      throw new IOException("ERROR: could not initialize grid proxy");
+      try{
+        Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
+        certFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[2])))).getAbsolutePath();
+        keyFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[1])))).getAbsolutePath();
+        keyPassword = credentials[0];
+        if(GridPilot.VOMS_SERVER_URL==null || GridPilot.VOMS_SERVER_URL.equals("") ||
+            i>1){
+          /* Old implementation - no VOMS attributes. */
+          cred = createProxy(credentials[1], credentials[2], credentials[0],
+              GridPilot.PROXY_TIME_VALID, GridPilot.PROXY_STRENGTH, getProxyType());
+          credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
+        }
+        else{
+          String vomsDir = GridPilot.VOMS_DIR==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.VOMS_DIR));
+          String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
+          
+          // This works with gLite and ARC
+          VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
+              GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
+              certFile, keyFile, caCertsDirStr, vomsDir,
+              GridPilot.PROXY_TIME_VALID, VomsProxyFactory.DELEGATION_FULL,
+              getVomsProxyType(),
+              GridPilot.FQAN);
+          credential = vpf.createProxy();
+          if(credential instanceof GlobusGSSCredentialImpl) {
+            cred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+          }
+        }
+        // Keep password in memory - needed by mysql plugin
+        Debug.debug("Setting grid password to "+credentials[0], 3);
+        GridPilot.KEY_PASSWORD = credentials[0];
+        // Store key and cert locations in config file.
+        String newKeyFile = MyUtil.replaceWithTildeLocally(keyFile);
+        String newCertFile = MyUtil.replaceWithTildeLocally(certFile);
+        if(!newKeyFile.equals(GridPilot.KEY_FILE) || !newCertFile.equals(GridPilot.CERT_FILE)){
+          GridPilot.KEY_FILE = MyUtil.replaceWithTildeLocally(keyFile);
+          GridPilot.CERT_FILE = MyUtil.replaceWithTildeLocally(certFile);
+          GridPilot.getClassMgr().getConfigFile().setAttributes(
+              new String [] {GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION},
+              new String [] {"Certificate file", "Key file"},
+              new String [] {GridPilot.CERT_FILE, GridPilot.KEY_FILE}
+          );
+        }
+
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        continue;
+      }
+      try{
+        // if we managed to create proxy, save it to default location
+        out = new FileOutputStream(proxy);
+        cred.save(out);
+        out.close();
+        return;
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: problem saving proxy. "+e.getMessage(), 3);
+        e.printStackTrace();
+        break;
+      }          
     }
+    throw new IOException("ERROR: could not initialize grid proxy");
   }
 
   /**

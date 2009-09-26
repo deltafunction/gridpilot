@@ -1532,7 +1532,7 @@ private static String fixUrl(String _url){
   }
   
   /**
-   * Create "Linux" and "Windows" RTEs. Selecting one of these as RTE amounts to requiring
+   * Create "Linux", "Windows" and "Mac OS X" RTEs. Selecting one of these as RTE amounts to requiring
    * Linux or Windows but not caring about the specific distro or version.
    * @param oses
    * @param csName

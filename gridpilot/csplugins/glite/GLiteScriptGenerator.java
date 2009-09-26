@@ -83,7 +83,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       writeBlock(bufScript, "runtime environment dependencies", 1, "# ");
       for(int i=0; i<uses.length; ++i){
         writeBlock(bufScript, "use "+ uses[i], 2, "# ");
-        String initTxt = dbPluginMgr.getRuntimeInitText(uses[i], csName).toString();
+        String initTxt = (String) dbPluginMgr.getRuntimeInitText(uses[i], csName);
+        if(initTxt==null){
+          throw new IOException("Runtime environment "+uses[i]+" not available on computing system "+csName);
+        }
         writeLine(bufScript, MyUtil.dos2unix(initTxt));
         writeLine(bufScript, "");
       }

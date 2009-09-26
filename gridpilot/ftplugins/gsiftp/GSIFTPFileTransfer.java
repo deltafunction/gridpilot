@@ -90,6 +90,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     FileAppender ap = new MyFileAppender();
     ap.setFile(GridPilot.LOG_FILE_NAME);  
     ap.setName("GridPilot Log");
+    ap.setLayout(myLayout);
     ap.activateOptions();
     rootLogger.addAppender(ap);
   }

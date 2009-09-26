@@ -43,6 +43,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
   // Only here to use checkRequirements
   private PullMgr pullMgr;
+  private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -349,7 +350,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       return;
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes, !virtEnforce,
-        true, new String [] {"Linux", "Windows"}, false);
+        true, basicOSRTES, false);
   }
   
   /**

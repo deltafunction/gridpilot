@@ -52,12 +52,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   // every RTE_SYNC_DELAY milliseconds.
   private static int RTE_SYNC_DELAY = 60000;
   
+  private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
+  
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
       cleanupRuntimeEnvironments(csName);
       MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, runtimeDBs, toDeleteRtes,
-          false, true,  new String [] {"Linux", "Windows"}, false);
+          false, true,  basicOSRTES, false);
     }
   });
   private boolean onWindows;
