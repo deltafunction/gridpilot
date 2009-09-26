@@ -349,7 +349,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       return;
     }
     MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRtes, !virtEnforce,
-        true, new String [] {"Linux", "Windows"}, true);
+        true, new String [] {"Linux", "Windows"}, false);
   }
   
   /**
