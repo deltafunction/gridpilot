@@ -1915,7 +1915,7 @@ private static String fixUrl(String _url){
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     if(wb==null || wb.getLastURL()==null || !wb.getLastURL().startsWith(finBaseUrl)){
       Debug.debug("ERROR: Could not open URL "+finBaseUrl+":"+wb.getLastURL(), 1);
-      throw new IOException("No download directory; "+wb.getLastURL());
+      throw new IOException("No directory chosen; "+wb.getLastURL());
     }
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
     String ret = wb.getLastURL().substring(finBaseUrl.length());

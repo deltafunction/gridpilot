@@ -3223,7 +3223,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   protected void exportDataset(String datasetID) {
     try{
-      String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+      String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
