@@ -243,9 +243,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   
     // The executable script
     String scriptFileName = dbPluginMgr.getExecutableFile(jobDefID);
-    // names starting with file: will be uploaded, names starting with
-    // / or c:\ are considered to be locally available on the server
-    localInputFilesList.add(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)));
+    // names starting with file: will be uploaded, others are considered to be locally available on the server
+    if(scriptFileName.startsWith("file:")){
+      localInputFilesList.add(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)));
+    }
   
     String shortExeFileName = new File(exeFileName).getName();
     String jdlExeFileName = MyUtil.clearTildeLocally(MyUtil.clearFile(exeFileName));
@@ -290,25 +291,22 @@ public class GLiteScriptGenerator extends ScriptGenerator {
             
       for(int i=0; i<inputFiles.length; ++i){
         inputFileURL = null;
-        if(inputFiles[i].startsWith("http://") ||
-            inputFiles[i].startsWith("https://") ||
-            inputFiles[i].startsWith("gsiftp://") ||
-            inputFiles[i].startsWith("ftp://")){
-          inputFileURL = inputFiles[i];
-        }
-        else{
+        if(MyUtil.isLocalFileName(inputFiles[i])){
           // URL is full path of input file
           inputFileURL = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));
         }
-        Debug.debug("Input file physical name: "+inputFileURL, 3);
+        else{
+          inputFileURL = inputFiles[i];
+        }
+        Debug.debug("Input file physical name: "+inputFiles[i]+"-->"+inputFileURL, 3);
        
         // Add local files to the return value.
-        // Files starting with / are assumed to already be on the server.
+        // Files not starting with file: are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
           jdlLine += "\"" + inputFileURL + "\", ";
           localInputFilesList.add(inputFileURL);
         }
-        else if(inputFiles[i].startsWith("/")){
+        else if(MyUtil.isLocalFileName(inputFiles[i]) && !inputFiles[i].startsWith("file:")){
           // do nothing
         }
         else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
@@ -358,13 +356,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Various options
       //writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      writeLine(bufJdl, "Requirements =" +
+      String requirements = "Requirements = " +
           (cpuTime==null||cpuTime.equals("")?"":"(other.GlueCEPolicyMaxCPUTime >= "+cpuTime+") ") +
           (cpuTime!=null&&!cpuTime.equals("")?" && ":"")+
           (memory==null||memory.equals("")?"":"(other.other.GlueHostMainMemoryRAMSize >= "+memory+") ") +
           ((cpuTime==null||cpuTime.equals(""))&&(memory!=null&&!memory.equals(""))?" && ":"")+
-          "(other.GlueCEStateStatus == \"Production\")" +
-          ";");
+          "(other.GlueCEStateStatus == \"Production\")";
       writeLine(bufJdl, "rank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "DefaultRank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "SignificantAttributes = { \"Requirements\",\"Rank\",\"FuzzyRank\" };");
@@ -377,15 +374,26 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
       
       // Runtime environments
+      String rteReq;
       if(uses!=null && uses.length>0 && uses[0]!=null){
         for(int i=0; i<uses.length; ++i){
           // At least for now, we only have Linux resources on EGEE
           if(uses[i].equals(GLiteComputingSystem.OS)){
             continue;
           }
-          writeLine(bufJdl,"Requirements = Member(\""+MyUtil.dos2unix(uses[i])+"\", " +
-          "other.GlueHostApplicationSoftwareRunTimeEnvironment);");
+          rteReq = "Requirements = Member(\""+MyUtil.dos2unix(uses[i])+"\", " +
+             "other.GlueHostApplicationSoftwareRunTimeEnvironment)";
+          if(requirements!=null && !requirements.trim().equals("")){
+            requirements = requirements.replaceFirst("Requirements = ", rteReq+" && ");
+          }
+          else{
+            requirements = rteReq;
+          }
         }
+      }
+      
+      if(requirements!=null && !requirements.trim().equals("")){
+        writeLine(bufJdl, requirements+";");
       }
     
       // Output files

@@ -507,6 +507,7 @@ public class SubmissionControl{
         job.setHost(null);
         job.setStatusReady();
         statusTable.setValueAt(job.getHost()==null?"":job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
+        statusTable.setValueAt("", job.getTableRow(), JobMgr.FIELD_STATUS);
         submitables.get(job.getDBName()).add(job);
       }
     }

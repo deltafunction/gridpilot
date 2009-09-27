@@ -79,6 +79,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String GLITE_STATUS_UNKNOWN = "Unknown";
   private static String GLITE_STATUS_DONE = "Done";
   private static String GLITE_STATUS_WAIT = "Wait";
+  private static String GLITE_STATUS_READY = "Ready";
+  private static String GLITE_STATUS_SCHEDULED = "Scheduled";
   private static String GLITE_STATUS_ERROR = "Error";
   private static String GLITE_STATUS_FAILED = "Failed";
   private static String GLITE_STATUS_RUNNING = "Running";
@@ -632,6 +634,12 @@ public class GLiteComputingSystem implements MyComputingSystem{
         // try to clean up, just in case...
         //getOutput(job);
         job.setStatusError();
+      }
+      else if(status.equals(GLITE_STATUS_READY)){
+        job.setStatusReady();
+      }
+      else if(status.equals(GLITE_STATUS_SCHEDULED)){
+        job.setStatusReady();
       }
       else if(status.equals(GLITE_STATUS_RUNNING)){
         job.setStatusRunning();

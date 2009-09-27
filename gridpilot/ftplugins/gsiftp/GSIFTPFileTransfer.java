@@ -139,7 +139,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
       GridPilot.getClassMgr().getSSL().activateProxySSL();
       GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
       gridFtpClient = new GridFTPClient(host, port);
-      gridFtpClient.authenticate(credential);
+      // For some reason this no longer works
+      //gridFtpClient.authenticate(credential);
+      // but this does
+      gridFtpClient.authenticate(null);
     }
     catch(Exception e){
       Debug.debug("Could not connect "+e.getMessage(), 1);
