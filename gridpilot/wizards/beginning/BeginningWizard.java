@@ -743,17 +743,15 @@ public class BeginningWizard{
     "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
     " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
     "or CERNPROD.\n\n" +
-    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified.\n" +
-    "If you have write access there with your grid certificates, all is fine. Otherwise you need to\n" +
-    "specify a \"home catalog site MySQL database\". This must be a full MySQL URL and\n" +
-    "you must have write permission there, either via a user name and password given in the URL, like e.g.\n" +
+    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified\n" +
+    "where you have write access, either via a user name and password given in the URL, like e.g.\n" +
     "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
     "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
     "mysql://my.regional.server:3306/localreplicas.\n" +
     "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
     "you want to save your datasets.\n\n" +
-    "If you don't understand the above or don't have write access to a valid MySQL database, you can\n" +
-    "safely leave the three fields empty. Then you will have only read access.\n";
+    "If you don't understand the above or don't have write access to a remote file catalog, you can\n" +
+    "safely leave the fields empty. Then you will have only read access.\n";
     JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
     atlasLabel.setEditable(false);
     atlasLabel.setOpaque(false);
@@ -773,11 +771,7 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("Home catalog site MySQL database: "), BorderLayout.WEST);
-    row.add(new JLabel("   "), BorderLayout.EAST);
-    JTextField tfHomeSiteAlias = new JTextField(TEXTFIELDWIDTH);
-    tfHomeSiteAlias.setText("");
-    row.add(tfHomeSiteAlias, BorderLayout.CENTER);
+    row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
     atlasDetails.add(row,
         new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -923,22 +917,11 @@ public class BeginningWizard{
     home site = FZKDISK mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas
     */
     if(cbAtlas.isSelected() && tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
-      if(tfHomeSiteAlias.getText()!=null && !tfHomeSiteAlias.getText().equals("")){
-        configFile.setAttributes(
-            new String [] {"ATLAS", "ATLAS", "ATLAS"},
-            new String [] {"Enabled", "Home site", "User path"},
-            new String [] {"yes",
-                tfHomeSite.getText().trim()+" "+tfHomeSiteAlias.getText().trim(),
-                lfcPath.replaceFirst("^/grid/atlas", "")}
-            );
-      }
-      else{
-        configFile.setAttributes(
-            new String [] {"ATLAS", "ATLAS"},
-            new String [] {"Enabled", "home site"},
-            new String [] {"yes", tfHomeSite.getText().trim()}
-            );
-      }
+      configFile.setAttributes(
+          new String [] {"ATLAS", "ATLAS", "ATLAS"},
+          new String [] {"Enabled", "Home site", "User path"},
+          new String [] {"yes", tfHomeSite.getText().trim(), lfcPath.replaceFirst("^/grid/atlas", "")}
+          );
     }
       
     return choice;

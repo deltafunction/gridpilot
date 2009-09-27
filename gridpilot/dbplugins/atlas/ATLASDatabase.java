@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.rmi.RemoteException;
@@ -27,7 +29,11 @@ import java.util.regex.Pattern;
 import javax.swing.JProgressBar;
 import javax.xml.rpc.ServiceException;
 
+import org.glite.lfc.LFCConfig;
+import org.glite.lfc.LFCServer;
+import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSCredential;
 
 
 import gridfactory.common.ConfigFile;
@@ -72,8 +78,10 @@ public class ATLASDatabase extends DBCache implements Database{
   private HashSet<String> httpSwitches = new HashSet<String>();
   private boolean forceFileDelete = false;
   private DQ2Access dq2Access = null;
+  private LFCConfig lfcConfig = new LFCConfig();
+
  
-  private static boolean sslActivated = false;
+  private boolean sslActivated = false;
 
   // when creating user datasets, this will be prepended with /grid/atlas
   public String lfcUserBasePath = null;
@@ -85,7 +93,7 @@ public class ATLASDatabase extends DBCache implements Database{
   public boolean findPFNs = true;
   public int pathConventions = 4;
   public String homeSite;
-  public String homeServerMysqlAlias;
+  //public String homeServerMysqlAlias;
   public String error;
 
   public ATLASDatabase(String _dbName) throws IOException, GeneralSecurityException{
@@ -147,7 +155,7 @@ public class ATLASDatabase extends DBCache implements Database{
     skipSites = configFile.getValues(dbName, "ignored sites");
     // Set home server and possible mysql alias
     homeSite = configFile.getValue(dbName, "home site");
-    if(homeSite!=null){
+    /*if(homeSite!=null){
       String [] servers = MyUtil.split(homeSite);
       if(servers.length==2){
         homeSite = servers[0];
@@ -156,7 +164,7 @@ public class ATLASDatabase extends DBCache implements Database{
       else if(servers.length==0 || servers.length>2){
         homeSite = null;
       }
-    }
+    }*/
     // Get and cache the TOA file
     String toaLocation = configFile.getValue(dbName, "Tiers of atlas");
     toa = new TiersOfAtlas(toaLocation);
@@ -183,11 +191,13 @@ public class ATLASDatabase extends DBCache implements Database{
     forceFileDelete = (forceDeleteStr!=null && forceDeleteStr.equalsIgnoreCase("yes"));
   }
   
-  protected static void activateSsl() throws Exception{
+  protected void activateSsl() throws Exception{
     if(sslActivated){
       return;
     }
     GridPilot.getClassMgr().getSSL().activateSSL();
+    GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
+    lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
     sslActivated = true;
   }
   
@@ -286,7 +296,7 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     Debug.debug("fields: "+MyUtil.arrayToString(fields, ":"), 3);
     
-    // TODO: disallow expensive wildcard searches
+    // TODO: display error for expensive wildcard searches that are not allowed
     // When searching for nothing, for this database we return
     // nothing (in other cases we return a complete wildcard search result).
     if(req.matches("SELECT (.+) FROM (\\S+)")){
@@ -1218,6 +1228,7 @@ public class ATLASDatabase extends DBCache implements Database{
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
    * LFC is not supported.
    */
+  // TODO: implement LFC support
   private void deleteLFNs(String _catalogServer, String [] lfns)
      throws Exception {
     
@@ -1415,9 +1426,32 @@ public class ATLASDatabase extends DBCache implements Database{
    * Registers an array of SURLs for the given file name (lfn).
    * The catalog server string must be of the form
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
-   * LFC is not supported.
+   * @throws URISyntaxException 
    */
+
   private void registerLFNs(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
+      String [] checksums, boolean sync)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException {
+    if(_catalogServer.toLowerCase().startsWith("mysql:")){
+      registerLFNsInMySQL(_catalogServer, guids, lfns, pfns, lfcPaths, sizes,
+          checksums, sync);
+    }
+    else if(_catalogServer.toLowerCase().startsWith("lfc:")){
+      registerLFNsInLFC(_catalogServer, guids, lfns, pfns, lfcPaths, sizes,
+          checksums, sync);
+    }
+  }
+
+  private void registerLFNsInLFC(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
+      String [] checksums, boolean sync)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException {
+    LFCServer lfcServer = new LFCServer(lfcConfig, new URI(_catalogServer));
+    // TODO
+  }
+
+  private void registerLFNsInMySQL(String _catalogServer, String [] guids,
       String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
       String [] checksums, boolean sync)
      throws RemoteException, ServiceException, MalformedURLException, SQLException {
@@ -1687,14 +1721,10 @@ public class ATLASDatabase extends DBCache implements Database{
         try{
           Debug.debug("Querying TOA for "+i+":"+locationsArray[i], 2);
           String catalogServer = null;
-          // If trying to query the home lfc server, first try the mysql alias if possible
-          // TODO: fall back to LFC
-          String tryAgainServer = null;
           String fallbackServer = null;
-          if(homeSite!=null && homeServerMysqlAlias!=null &&
+          if(homeSite!=null && 
               locationsArray[i].equalsIgnoreCase(homeSite)){
-            catalogServer = homeServerMysqlAlias;
-            tryAgainServer = toa.getFileCatalogServer(locationsArray[i], false); 
+            catalogServer = toa.getFileCatalogServer(locationsArray[i], false); 
           }
           else{
             if(!httpSwitches.contains(locationsArray[i])){
@@ -1719,11 +1749,6 @@ public class ATLASDatabase extends DBCache implements Database{
             }
             catch(Exception e){
               e.printStackTrace();
-            }
-            if(tryAgainServer!=null && (pfns==null || pfns.length==0)){
-              Debug.debug("No PFNs found, trying alias "+tryAgainServer, 2);
-              pfns = lookupPFNs(tryAgainServer, lfName, findAll);
-              catalogServer = tryAgainServer;
             }
             if(fallbackServer!=null && (pfns==null || pfns.length==0)){
               Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
@@ -2007,19 +2032,12 @@ public class ATLASDatabase extends DBCache implements Database{
       // Notice: we delete ONLY one entry per lfn, the one in the home catalog
       GridPilot.getClassMgr().getStatusBar().setLabel("Cleaning up home catalog...");
       try{
-        // if we're using an alias, just flag for deletion
-        if(homeServerMysqlAlias!=null){
-          setDeleteLFNs(homeServerMysqlAlias, toDeleteLfns);
-        }
-        // otherwise, it is assumed that we're using a mysql catalog and that we can delete
-        else{
-          deleteLFNs(toa.getFileCatalogServer(homeSite, false), toDeleteLfns);
-        }
+        deleteLFNs(toa.getFileCatalogServer(homeSite, false), toDeleteLfns);
       }
       catch(Exception e){
         deleteFromCatalogOK = false;
         logFile.addMessage("WARNING: failed to delete LFNs "+MyUtil.arrayToString(toDeleteLfns)+
-            " on "+homeServerMysqlAlias+". Please delete them by hand.");
+            ". Please delete them by hand.", e);
       }
     }
     
@@ -2060,8 +2078,7 @@ public class ATLASDatabase extends DBCache implements Database{
     else if(locations.getComplete().length==1){
       location = locations.getComplete()[0];
     }
-    if(!location.equalsIgnoreCase(homeSite) || homeServerMysqlAlias==null ||
-        homeServerMysqlAlias.equals("")){
+    if(!location.equalsIgnoreCase(homeSite)){
       error = "Can only delete files on home catalog server or MySQL alias. Ignoring "+location;
       throw new Exception(error);
     }
@@ -2109,14 +2126,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       // Get the pfns
       try{
-        // if we're using an alias
-        if(homeServerMysqlAlias!=null){
-          pfnsArr = lookupPFNs(homeServerMysqlAlias, toDeleteLfns[i], true);
-        }
-        // otherwise, it is assumed that we're using a mysql catalog
-        else{
-          pfnsArr = lookupPFNs(homeSite, toDeleteLfns[i], true);
-        }
+        pfnsArr = lookupPFNs(homeSite, toDeleteLfns[i], true);
         if(pfnsArr!=null && pfnsArr.length>2){
           for(int j=2; j<pfnsArr.length; ++j){
             Debug.debug("Will delete "+pfnsArr[j], 2);
@@ -2128,8 +2138,8 @@ public class ATLASDatabase extends DBCache implements Database{
       }
       catch(Exception e){
         logFile.addMessage("WARNING: failed to find PFNs to delete, "+
-            MyUtil.arrayToString(toDeleteLfns)+
-            " on "+homeServerMysqlAlias+" or "+homeSite+". Please delete them by hand.");
+            MyUtil.arrayToString(toDeleteLfns)+" on "+homeSite+". Please delete them by hand.");
+        return deleted;
       }
     }      
     // Then construct a HashMap of Vectors of files on the same server.
@@ -2285,17 +2295,7 @@ public class ATLASDatabase extends DBCache implements Database{
     // Register in home MySQL catalog.
     boolean catalogRegOk = true;
     try{
-      if(homeServerMysqlAlias==null || homeServerMysqlAlias.equals("")){
-        throw new Exception("Cannot register when no home mysql server defined");
-      }
-      GridPilot.getClassMgr().getStatusBar().setLabel("Registering new location " +url+
-          " in file catalog "+homeServerMysqlAlias);
-      
       try{
-        // If we're using an alias, write in alias and flag for writing.
-        // Also, in this case, remember to write the path, so it can be
-        // synced to LFC
-        // if lfn is not an lpn, i.e. has no slashes, prepend the user path
         String path;
         int lastSlash = lfn.lastIndexOf("/");
         if(lastSlash<0){
@@ -2308,21 +2308,12 @@ public class ATLASDatabase extends DBCache implements Database{
           }
           
         }
-        if(homeServerMysqlAlias!=null){
-          registerLFNs(homeServerMysqlAlias, new String [] {guid},
-              new String [] {lfn}, new String [] {url}, new String [] {path},
-              new String [] {size}, new String [] {checksum}, true);
-        }
-        // otherwise, assume that home server is a mysql server and just write there
-        else{
-          registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
-              new String [] {lfn}, new String [] {url}, null,
-              new String [] {size}, new String [] {checksum}, false);
-        }
+        registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
+            new String [] {lfn}, new String [] {url}, null,
+            new String [] {size}, new String [] {checksum}, false);
       }
       catch(Exception e){
-        logFile.addMessage("WARNING: failed to register LFN "+lfn+
-            " on "+homeServerMysqlAlias+". Please delete them by hand.", e);
+        logFile.addMessage("WARNING: failed to register LFN "+lfn, e);
       }
       clearCacheEntries("file");
     }
