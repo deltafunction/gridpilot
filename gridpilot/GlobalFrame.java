@@ -46,9 +46,9 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
   private JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
   private JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
+  private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   private JMenuItem menuEditPrefs = new JMenuItem("Preferences");
   private ListPanel cutPanel = null;
-  private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
   private JMenuItem miDbDeleteRecords = new JMenuItem("Delete record(s)");
   private JMenu mDbDefineRecords = new JMenu("Define new record(s)");
@@ -65,6 +65,12 @@ public class GlobalFrame extends GPFrame{
    * Constructor
    */
   public GlobalFrame() throws Exception{
+    if(MyUtil.onMacOSX()){
+      menuEditCopy.setText("Copy (cmd c)");
+      menuEditCut.setText("Cut (cmd x)");
+      menuEditPaste.setText("Paste (cmd v)");
+      cbMonitor.setText("Show monitor (cmd m)");
+    }
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector<ListPanel>();
   }
@@ -128,7 +134,7 @@ public class GlobalFrame extends GPFrame{
        ).addKeyEventDispatcher(
            new KeyEventDispatcher(){
       public boolean dispatchKeyEvent(KeyEvent e){
-        if(!e.isControlDown()){
+        if(!MyUtil.isModifierDown(e)){
           return false;
         }
         if(e.getID()==KeyEvent.KEY_PRESSED){

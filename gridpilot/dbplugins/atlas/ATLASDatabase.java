@@ -30,7 +30,9 @@ import javax.swing.JProgressBar;
 import javax.xml.rpc.ServiceException;
 
 import org.glite.lfc.LFCConfig;
+import org.glite.lfc.LFCException;
 import org.glite.lfc.LFCServer;
+
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
@@ -1228,8 +1230,50 @@ public class ATLASDatabase extends DBCache implements Database{
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
    * LFC is not supported.
    */
-  // TODO: implement LFC support
   private void deleteLFNs(String _catalogServer, String [] lfns)
+     throws Exception {
+   if(_catalogServer.toLowerCase().startsWith("mysql:")){
+     deleteLFNsInMySQL(_catalogServer, lfns);
+   }
+   else if(_catalogServer.toLowerCase().startsWith("lfc:")){
+     deleteLFNsInLFC(_catalogServer, lfns);
+   }
+   else{
+     error = "ERROR: protocol not supported: "+_catalogServer;
+     Debug.debug(error, 1);
+     throw new MalformedURLException(error);
+   }
+  }
+
+private void deleteLFNsInLFC(String catalogServer, String[] lfns) throws URISyntaxException, LFCException {
+    if(getStop()){
+      return;
+    }
+    LFCServer lfcServer = new LFCServer(lfcConfig, new URI(catalogServer));
+    lfcServer.connect();
+    String guid;
+    for(int i=0; i<lfns.length; ++i){
+      try{
+        guid = lfcServer.fetchFileDesc(lfns[i]).getGuid();
+        lfcServer.deleteFile(guid, lfns[i]);
+      }
+      catch(Exception e){
+        error = "WARNING: problem deleting lfn "+lfns[i]+" on "+catalogServer;
+        e.printStackTrace();
+        logFile.addMessage(error, e);
+      }
+
+      if(getStop()){
+        lfcServer.disconnect();
+        lfcServer.dispose();
+        return;
+      }
+    }
+    lfcServer.disconnect();
+    lfcServer.dispose();
+  }
+
+private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
      throws Exception {
     
     if(getStop()){
@@ -1328,12 +1372,90 @@ public class ATLASDatabase extends DBCache implements Database{
       throw new MalformedURLException(error);
     }
   }
-
+  
   /**
-   * Flags a set of LFNs to be deleted on a MySQL alias catalog.
+   * Registers an array of SURLs for the given file name (lfn).
+   * The catalog server string must be of the form
+   * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
+   * @throws URISyntaxException 
+   * @throws LFCException 
    */
-  private void setDeleteLFNs(String _catalogServer, String [] lfns)
-     throws Exception {
+
+  private void registerLFNs(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, String [] sizes,
+      String [] checksums)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException, LFCException {
+    if(_catalogServer.toLowerCase().startsWith("mysql:")){
+      registerLFNsInMySQL(_catalogServer, guids, lfns, pfns, sizes,
+          checksums);
+    }
+    else if(_catalogServer.toLowerCase().startsWith("lfc:")){
+      registerLFNsInLFC(_catalogServer, guids, lfns, pfns, sizes,
+          checksums);
+    }
+    else{
+      error = "ERROR: protocol not supported: "+_catalogServer;
+      Debug.debug(error, 1);
+      throw new MalformedURLException(error);
+    }
+  }
+
+  private void registerLFNsInLFC(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, String [] sizes,
+      String [] checksums)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException, LFCException {
+    if(getStop()){
+      return;
+    }
+    LFCServer lfcServer = new LFCServer(lfcConfig, new URI(_catalogServer));
+    lfcServer.connect();
+    int colonIndex;
+    String chksumType;
+    String chksum;
+    long size;
+    for(int i=0; i<lfns.length; ++i){
+      try{
+        size = -1L;
+        try{
+          size = Long.parseLong(sizes[i]);
+        }
+        catch(Exception ee){
+        }
+        chksumType = null;
+        chksum = null;
+        if(checksums[i]!=null && !checksums[i].trim().equals("")){
+          colonIndex = checksums[i].indexOf(":");
+          if(colonIndex>0){
+            chksumType = checksums[i].substring(0, colonIndex);
+            chksum = checksums[i].substring(colonIndex+1);
+          }
+          else{
+            chksumType = "md5";
+            chksum = checksums[i];
+          }
+        }
+        lfcServer.register(new URI(pfns[i]), lfns[i], size);
+        lfcServer.setFileSize(guids[i], size, chksumType, chksum);
+      }
+      catch(Exception e){
+        error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+_catalogServer;
+        logFile.addMessage(error, e);
+        GridPilot.getClassMgr().getStatusBar().setLabel(error);
+      }
+      if(getStop()){
+        lfcServer.disconnect();
+        lfcServer.dispose();
+        return;
+      }
+    }
+    lfcServer.disconnect();
+    lfcServer.dispose();
+  }
+
+  private void registerLFNsInMySQL(String _catalogServer, String [] guids,
+      String [] lfns, String [] pfns, String [] sizes,
+      String [] checksums)
+     throws RemoteException, ServiceException, MalformedURLException, SQLException {
     
     if(getStop()){
       return;
@@ -1342,7 +1464,8 @@ public class ATLASDatabase extends DBCache implements Database{
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
-    if(catalogUrl.getProtocol().equals("mysql")){
+    Connection conn = null;
+    try{
       // Set parameters
       String driver = "org.gjt.mm.mysql.Driver";
       String port = catalogUrl.getPort()==-1 ? "" : ":"+catalogUrl.getPort();
@@ -1357,18 +1480,17 @@ public class ATLASDatabase extends DBCache implements Database{
       // gridAuth to authenticate
       if(user.equals("")){
         gridAuth = true;
+        activateSsl();
         user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
       }
       // Make the connection
       GridPilot.getClassMgr().establishJDBCConnection(
           alias, driver, database, user, passwd, gridAuth,
           connectTimeout, socketTimeout, lrcPoolSize);
-      if(gridAuth){
-        activateSsl();
-      }
-      Connection conn = getDBConnection(alias);
-      String lfn = null;
+      conn = getDBConnection(alias);
       int rowsAffected = 0;
+      String req = null;
+      // Do the insertions in t_lfn and t_pfn
       for(int i=0; i<lfns.length; ++i){
         
         if(getStop()){
@@ -1376,213 +1498,71 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         
         try{
-          lfn = lfns[i];
-          // get rid of the path if any
-          lfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
-          // First query the t_lfn table to get the guid
-          String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
-          ResultSet rset = null;
-          String guid = null;
-          Vector<String> resultVector = new Vector<String>();
-          Debug.debug(">> "+req, 3);
-          rset = conn.createStatement().executeQuery(req);
-          while(rset.next()){
-            resultVector.add(rset.getString("guid"));
-          }
-          if(resultVector.size()==0){
-            error = "ERROR: no guid with found for lfn "+lfn;
-            throw new SQLException(error);
-          }
-          else if(resultVector.size()>1){
-            error = "WARNING: More than one ("+resultVector.size()+") guids with found for lfn "+lfn;
-            logFile.addMessage(error);
-          }
-          guid = resultVector.get(0);
-          // Now flag this guid for deletion in t_meta
-          req = "UPDATE t_meta SET sync = 'delete' WHERE guid ='"+guid+"'";
+          req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
+             "('"+lfns[i]+"', '"+guids[i]+"')";
           Debug.debug(">> "+req, 3);
           rowsAffected = conn.createStatement().executeUpdate(req);
           if(rowsAffected==0){
-            error = "WARNING: could flag guid "+guid+" for deletion in t_meta on "+catalogServer;
+            error = "WARNING: could not insert lfn "+lfns[i]+" on "+catalogServer;
+            logFile.addMessage(error);
+          }
+          req = "INSERT INTO t_pfn (pfname, guid) VALUES " +
+          "('"+pfns[i]+"', '"+guids[i]+"')";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          if(rowsAffected==0){
+            error = "WARNING: could not insert pfn "+pfns[i]+" on "+catalogServer;
             logFile.addMessage(error);
           }
         }
         catch(Exception e){
+          error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+catalogServer;
+          logFile.addMessage(error, e);
+          GridPilot.getClassMgr().getStatusBar().setLabel(error);
+        }
+        // First, just try and create the metadata entry - in case it's not there already
+        try{ 
+          req = "INSERT INTO t_meta (guid) VALUES " + "('"+guids[i]+"')";
+          Debug.debug(">> "+req, 3);
+          rowsAffected = conn.createStatement().executeUpdate(req);
+          Debug.debug("rowsAffected "+rowsAffected, 3);
+        }
+        catch(Exception e){
           e.printStackTrace();
-          error = "WARNING: problem deleting lfn "+lfns[i]+" on "+catalogServer;
+        }
+        try{
+          req = "UPDATE t_meta SET ";
+          boolean comma = false;
+          // if a size or a checksum is specified, use it
+          if(sizes!=null && sizes[i]!=null && !sizes[i].equals("")){
+            req += "fsize = '"+sizes[i]+"'";
+            comma = true;
+          }
+          if(checksums!=null && checksums[i]!=null && checksums[i].startsWith("md5:")){
+            if(comma){
+              req += ", ";
+            }
+            req += "md5sum = '"+checksums[i].substring(4)+"'";
+            comma = true;
+          }
+          if(comma){
+            req += " WHERE guid ='"+guids[i]+"'";
+            rowsAffected = conn.createStatement().executeUpdate(req);
+          }
+        }
+        catch(Exception e){
+          error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
           logFile.addMessage(error);
         }
       }
       conn.close();
     }
-    else{
-      error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
-      Debug.debug(error, 1);
-      throw new MalformedURLException(error);
-    }
-  }
-  
-  /**
-   * Registers an array of SURLs for the given file name (lfn).
-   * The catalog server string must be of the form
-   * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
-   * @throws URISyntaxException 
-   */
-
-  private void registerLFNs(String _catalogServer, String [] guids,
-      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
-      String [] checksums, boolean sync)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException {
-    if(_catalogServer.toLowerCase().startsWith("mysql:")){
-      registerLFNsInMySQL(_catalogServer, guids, lfns, pfns, lfcPaths, sizes,
-          checksums, sync);
-    }
-    else if(_catalogServer.toLowerCase().startsWith("lfc:")){
-      registerLFNsInLFC(_catalogServer, guids, lfns, pfns, lfcPaths, sizes,
-          checksums, sync);
-    }
-  }
-
-  private void registerLFNsInLFC(String _catalogServer, String [] guids,
-      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
-      String [] checksums, boolean sync)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException {
-    LFCServer lfcServer = new LFCServer(lfcConfig, new URI(_catalogServer));
-    // TODO
-  }
-
-  private void registerLFNsInMySQL(String _catalogServer, String [] guids,
-      String [] lfns, String [] pfns, String [] lfcPaths, String [] sizes,
-      String [] checksums, boolean sync)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException {
-    
-    if(getStop()){
-      return;
-    }
-    
-    // get rid of the :/, which GlobusURL doesn't like
-    String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
-    GlobusURL catalogUrl = new GlobusURL(catalogServer);
-    if(catalogUrl.getProtocol().equals("mysql")){
-      Connection conn = null;
+    catch(Exception e){
       try{
-        // Set parameters
-        String driver = "org.gjt.mm.mysql.Driver";
-        String port = catalogUrl.getPort()==-1 ? "" : ":"+catalogUrl.getPort();
-        String user = catalogUrl.getUser()==null ? "" : catalogUrl.getUser();
-        String passwd = catalogUrl.getPwd()==null ? "" : catalogUrl.getPwd();
-        String path = catalogUrl.getPath()==null ? "" : "/"+catalogUrl.getPath();
-        String host = catalogUrl.getHost();
-        String alias = host.replaceAll("\\.", "_");
-        String database = "jdbc:mysql://"+host+port+path;
-        boolean gridAuth = false;
-        // The (GridPilot) convention is that if no user name is given (in TOA), we use
-        // gridAuth to authenticate
-        if(user.equals("")){
-          gridAuth = true;
-          activateSsl();
-          user = GridPilot.getClassMgr().getSSL().getGridDatabaseUser();
-        }
-        // Make the connection
-        GridPilot.getClassMgr().establishJDBCConnection(
-            alias, driver, database, user, passwd, gridAuth,
-            connectTimeout, socketTimeout, lrcPoolSize);
-        conn = getDBConnection(alias);
-        int rowsAffected = 0;
-        String req = null;
-        // Do the insertions in t_lfn and t_pfn
-        for(int i=0; i<lfns.length; ++i){
-          
-          if(getStop()){
-            break;
-          }
-          
-          try{
-            req = "INSERT INTO t_lfn (lfname, guid) VALUES " +
-               "('"+lfns[i]+"', '"+guids[i]+"')";
-            Debug.debug(">> "+req, 3);
-            rowsAffected = conn.createStatement().executeUpdate(req);
-            if(rowsAffected==0){
-              error = "WARNING: could not insert lfn "+lfns[i]+" on "+catalogServer;
-              logFile.addMessage(error);
-            }
-            req = "INSERT INTO t_pfn (pfname, guid) VALUES " +
-            "('"+pfns[i]+"', '"+guids[i]+"')";
-            Debug.debug(">> "+req, 3);
-            rowsAffected = conn.createStatement().executeUpdate(req);
-            if(rowsAffected==0){
-              error = "WARNING: could not insert pfn "+pfns[i]+" on "+catalogServer;
-              logFile.addMessage(error);
-            }
-          }
-          catch(Exception e){
-            error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+catalogServer;
-            logFile.addMessage(error, e);
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-          }
-          // First, just try and create the metadata entry - in case it's not there already
-          try{ 
-            req = "INSERT INTO t_meta (sync, guid, path) VALUES " +
-               "('', '"+guids[i]+"', '"+lfcPaths[i]+"')";
-            Debug.debug(">> "+req, 3);
-            rowsAffected = conn.createStatement().executeUpdate(req);
-            Debug.debug("rowsAffected "+rowsAffected, 3);
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-          try{
-            req = "UPDATE t_meta SET ";
-            boolean comma = false;
-            // if a size or a checksum is specified, use it
-            if(sizes!=null && sizes[i]!=null && !sizes[i].equals("")){
-              req += "fsize = '"+sizes[i]+"'";
-              comma = true;
-            }
-            if(checksums!=null && checksums[i]!=null && checksums[i].startsWith("md5:")){
-              if(comma){
-                req += ", ";
-              }
-              req += "md5sum = '"+checksums[i].substring(4)+"'";
-              comma = true;
-            }
-            if(sync){
-              if(comma){
-                req += ", ";
-              }
-              // Now flag this guid for write in t_meta
-              req += "sync = 'write'";
-              Debug.debug(">> "+req, 3);
-              comma = true;
-            }
-            if(comma){
-              req += " WHERE guid ='"+guids[i]+"'";
-              rowsAffected = conn.createStatement().executeUpdate(req);
-              if(sync && rowsAffected==0){
-                error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
-                logFile.addMessage(error);
-              }
-            }
-          }
-          catch(Exception e){
-            error = "WARNING: could flag guid "+guids[i]+" for write in t_meta on "+catalogServer;
-            logFile.addMessage(error);
-          }
-        }
         conn.close();
       }
-      catch(Exception e){
-        try{
-          conn.close();
-        }
-        catch(Exception ee){
-        }
+      catch(Exception ee){
       }
-    }
-    else{
-      error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
-      Debug.debug(error, 1);
-      throw new MalformedURLException(error);
     }
   }
   
@@ -2309,8 +2289,8 @@ public class ATLASDatabase extends DBCache implements Database{
           
         }
         registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
-            new String [] {lfn}, new String [] {url}, null,
-            new String [] {size}, new String [] {checksum}, false);
+            new String [] {lfn}, new String [] {url},
+            new String [] {size}, new String [] {checksum});
       }
       catch(Exception e){
         logFile.addMessage("WARNING: failed to register LFN "+lfn, e);

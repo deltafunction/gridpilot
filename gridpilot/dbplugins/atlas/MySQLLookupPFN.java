@@ -40,19 +40,12 @@ public class MySQLLookupPFN  extends LookupPFN {
         alias, driver, database, user, passwd, gridAuth,
         db.connectTimeout, db.socketTimeout, db.lrcPoolSize);
     if(gridAuth){
-      ATLASDatabase.activateSsl();
+      db.activateSsl();
     }
     Connection conn = db.getDBConnection(alias);
     // First query the t_lfn table to get the guid
     String req = null;
-    if(db.homeSite!=null && db.homeServerMysqlAlias!=null &&
-        catalogServer.equalsIgnoreCase(db.homeServerMysqlAlias)){
-      req = "SELECT t_lfn.guid, sync FROM t_lfn, t_meta WHERE lfname ='"+lfn+"' AND " +
-              "t_lfn.guid=t_meta.guid";
-    }
-    else{
-      req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
-    }
+    req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
     ResultSet rset = null;
     String guid = null;
     Vector guidVector = new Vector();
@@ -63,12 +56,6 @@ public class MySQLLookupPFN  extends LookupPFN {
         rset.close();
         conn.close();
         return null;
-      }
-      // Don't display records flagged for deletion
-      if(db.homeSite!=null && db.homeServerMysqlAlias!=null &&
-          catalogServer.equalsIgnoreCase(db.homeServerMysqlAlias) &&
-          rset.getString("sync").equals("delete")){
-        continue;
       }
       guidVector.add(rset.getString("guid"));
     }

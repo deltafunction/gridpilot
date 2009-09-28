@@ -911,17 +911,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           //menuHelpAbout_actionPerformed();
         }
         else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
-          if(e.isControlDown()){
+          if(MyUtil.isModifierDown(e)){
             cut();
           }
         }
         else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c")){
-          if(e.isControlDown()){
+          if(MyUtil.isModifierDown(e)){
             copy();
           }
         }
         else if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("v")){
-          if(e.isControlDown()){
+          if(MyUtil.isModifierDown(e)){
             paste();
           }
         }
@@ -954,7 +954,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
             KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
-          if(e.isControlDown()){
+          if(MyUtil.isModifierDown(e)){
             clipboardOwned = false;
             menuEditPaste.setEnabled(clipboardOwned);
           }

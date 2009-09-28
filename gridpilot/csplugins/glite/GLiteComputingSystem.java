@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -82,6 +83,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String GLITE_STATUS_READY = "Ready";
   private static String GLITE_STATUS_SCHEDULED = "Scheduled";
   private static String GLITE_STATUS_ERROR = "Error";
+  private static String GLITE_STATUS_ABORTED = "Aborted";
   private static String GLITE_STATUS_FAILED = "Failed";
   private static String GLITE_STATUS_RUNNING = "Running";
   
@@ -632,7 +634,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       }
       else if(status.equals(GLITE_STATUS_ERROR)){
         // try to clean up, just in case...
-        //getOutput(job);
+        //getOutputs(job);
         job.setStatusError();
       }
       else if(status.equals(GLITE_STATUS_READY)){
@@ -644,8 +646,18 @@ public class GLiteComputingSystem implements MyComputingSystem{
       else if(status.equals(GLITE_STATUS_RUNNING)){
         job.setStatusRunning();
       }
+      else if(status.equals(GLITE_STATUS_ABORTED)){
+        try{
+          // try to clean up, just in case...
+          getOutputs(job);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        job.setStatusFailed();
+      }
       else if(status.equals(GLITE_STATUS_FAILED)){
-          job.setStatusFailed();
+        job.setStatusFailed();
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       else{
@@ -772,6 +784,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
 
   // Download all sandbox output files to the local run directory.
   private void getOutputs(MyJobInfo job) throws Exception{
+    GridPilot.getClassMgr().getSSL().activateProxySSL();
     String url = null;
     StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
     StringAndLongType [] outs = outList.getFile();
@@ -1067,6 +1080,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
    * the stdout/stderr downloaded from the sandbox to the working dir.
    */
   public String[] getCurrentOutput(JobInfo job) throws IOException{
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not activate proxy credentials.", e);
+      return null;
+    }
     // if the job is done, get the files from their final destination
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
@@ -1269,6 +1289,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
   }
 
   public boolean preProcess(JobInfo job){
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not activate proxy credentials.", e);
+      return false;
+    }
     // preserve ~ in tmp stdout/stderr, so checking from another machine might work
     final String stdoutFile = unparsedWorkingDir+"/"+job.getName() + "/" + "stdout";
     final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + "stderr";

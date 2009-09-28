@@ -175,20 +175,13 @@ public class MySSL extends SSL{
       // avoids that dozens of popups open if
       // you submit dozen of jobs and proxy not initialized
       try{
-        if(credential==null || credential.getRemainingLifetime()<GridPilot.PROXY_TIME_LEFT_LIMIT ||
-            !getProxyFile().exists()){
-          Debug.debug("Initializing credential", 3);
-          initGridProxy();
-          Debug.debug("Initialized credential", 3);
-          gridProxyInitialized = Boolean.TRUE;
-          if(credential!=null){
-            Debug.debug("Initialized credential "+credential.getRemainingLifetime()+
-                ":"+GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
-          }
-        }
-        else{
-          Debug.debug("Grid proxy already initialized. "+credential.getRemainingLifetime(), 2);
-          gridProxyInitialized = Boolean.TRUE;
+        Debug.debug("Initializing credential", 3);
+        initGridProxy();
+        Debug.debug("Initialized credential", 3);
+        gridProxyInitialized = Boolean.TRUE;
+        if(credential!=null){
+          Debug.debug("Initialized credential "+credential.getRemainingLifetime()+
+              ":"+GridPilot.PROXY_TIME_LEFT_LIMIT, 3);
         }
         // set the proxy default location
         prop.setProxyFile(getProxyFile().getAbsolutePath());
@@ -377,6 +370,12 @@ public class MySSL extends SSL{
     return GSIConstants.GSI_4_IMPERSONATION_PROXY;
   }
   
+  /**
+   * Try to load credentials from proxy file.
+   * If unsuccesfull, generate new proxy credentials and file.
+   * @throws IOException
+   * @throws GSSException
+   */
   private void initGridProxy() throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();

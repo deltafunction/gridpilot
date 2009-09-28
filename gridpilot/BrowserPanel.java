@@ -752,7 +752,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     // Close window with ctrl+w
     jtFilter.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
-        if(!e.isControlDown()){
+        if(!MyUtil.isModifierDown(e)){
           return;
         }
         switch(e.getKeyCode()){
@@ -765,7 +765,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     currentUrlBox.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
-        if(!e.isControlDown()){
+        if(!MyUtil.isModifierDown(e)){
           return;
         }
         switch(e.getKeyCode()){
@@ -778,7 +778,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     ep.addKeyListener(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
-        if(!e.isControlDown()){
+        if(!MyUtil.isModifierDown(e)){
           return;
         }
         switch(e.getKeyCode()){
