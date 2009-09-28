@@ -844,9 +844,9 @@ public class GSIFTPFileTransfer implements FileTransfer {
                                        checkClient.getLastModified(urlCopy.getDestinationUrl().getPath()));
                 }
                 catch(Exception e){
-                  GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache. ", e);
+                  GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache for "+urlCopy, e);
                 }
-                if(!cacheOk){
+                if(cacheOk){
                   Debug.debug("Cache ok, not starting the actual transfer...", 2);
                   //urlCopy.cancel();
                   ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();

@@ -90,10 +90,8 @@ public class ATLASDatabase extends DBCache implements Database{
   public String connectTimeout = "10000";
   public String socketTimeout = "30000";
   public String lrcPoolSize = "5";
-  public int pathConvention = 1;
   public boolean stop = false;
   public boolean findPFNs = true;
-  public int pathConventions = 4;
   public String homeSite;
   //public String homeServerMysqlAlias;
   public String error;
@@ -200,6 +198,7 @@ public class ATLASDatabase extends DBCache implements Database{
     GridPilot.getClassMgr().getSSL().activateSSL();
     GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
     lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    Debug.debug("Created new LFCConfig from ID "+lfcConfig.globusCredential.getIdentity(), 1);
     sslActivated = true;
   }
   
@@ -241,7 +240,6 @@ public class ATLASDatabase extends DBCache implements Database{
     clearCacheEntries("file");
     toa.clear();
     dqLocationsCache.clear();
-    pathConvention = 1;
   }
   
   private void setFindPFNs(boolean doit){
@@ -778,7 +776,7 @@ public class ATLASDatabase extends DBCache implements Database{
         Debug.debug("Finding PFNs "+findPFNs, 2);
         if(findPFNs){
           try{
-            catalogs = MyUtil.arrayToString(findPFNs(vuid, lfn, findAll).toArray());
+            catalogs = MyUtil.arrayToString(findPFNs(vuid, dsn, lfn, findAll).toArray());
             bytes = (bytes.equals("")&&fileBytes!=null?fileBytes:bytes);
             checksum = (checksum.equals("")&&fileChecksum!=null?fileChecksum:checksum);
           }
@@ -1046,97 +1044,6 @@ public class ATLASDatabase extends DBCache implements Database{
     }
     System.out.println("atlasLpn: "+atlasLpn);
   }
-
-  // Construct path following ATLAS conventions
-  public String makeAtlasPath(String lfn){
-    
-    String atlasLpn = null;
-    String [] lfnMetaData = MyUtil.split(lfn, "\\.");
-    String baseStr = null;
-    String [] baseMetaData = null;
-    Debug.debug("lfnMetaData: "+ lfnMetaData.length+":"+MyUtil.arrayToString(lfnMetaData), 2);
-    
-    switch(pathConvention){
-    
-    case 4:
-      Debug.debug("Using very very new path convention", 2);
-      // trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421 -->
-      // /grid/atlas/dq2/trig1_misal1_mc12/AOD/trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421/AOD.016421._00002.pool.root.12
-      baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
-      baseMetaData = MyUtil.split(baseStr, "\\.");
-      Debug.debug("baseStr: "+baseStr, 2);
-      Debug.debug("--> length: "+baseMetaData.length, 2);
-      if(baseMetaData.length==6){
-        atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0]+"/"+lfnMetaData[4];
-        //atlasLPN += "/"+lfnMetaData[3];
-        atlasLpn += "/"+baseStr;
-        atlasLpn += "/"+lfn;
-      }
-      else{
-        atlasLpn = lfn;
-      }
-      break;
-      
-    case 3:
-      Debug.debug("Using very new path convention", 2);
-      // trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6 ->
-      // /grid/atlas/dq2/trig1_misal1_mc11/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6
-      baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
-      baseMetaData = MyUtil.split(baseStr, "\\.");
-      Debug.debug("baseStr: "+baseStr, 2);
-      Debug.debug("--> length: "+baseMetaData.length, 2);
-      if(baseMetaData.length==6){
-        atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0];
-        //atlasLPN += "/"+lfnMetaData[3];
-        atlasLpn += "/"+baseStr;
-        atlasLpn += "/"+lfn;
-      }
-      else{
-        atlasLpn = lfn;
-      }
-      break;
-      
-     case 2:
-       Debug.debug("Using old path convention", 2);
-       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
-       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
-       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
-         atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0];
-         //atlasLPN += "/"+lfnMetaData[3];
-         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
-            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
-         atlasLpn += "/"+lfn;
-       }
-       else{
-         atlasLpn = lfn;
-       }
-       break;
-       
-     case 1:
-       Debug.debug("Using new path convention", 2);
-       // New (or old?) convention:
-       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
-       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/AOD/
-       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
-         atlasLpn = /*"datafiles/"+*/"dq2/"+lfnMetaData[0];
-         atlasLpn += "/"+lfnMetaData[4];
-         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
-            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
-         atlasLpn += "/"+lfn;
-       }
-       else{
-         atlasLpn = lfn;
-       }
-       break;
-       
-     default:
-       Debug.debug("pathConvention not in range: "+pathConvention, 2);
-       throw new IndexOutOfBoundsException("pathConvention not in range: "+pathConvention);
-
-    }
-    
-    return atlasLpn;
-  }
   
   /**
    * Returns an array of: size, checksum, SURL1, SURL2, ... for the given file name (lfn).
@@ -1158,7 +1065,7 @@ public class ATLASDatabase extends DBCache implements Database{
      (0, '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<!-- Edited By POOL -->\n<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">\n<POOLFILECATALOG>\n\n  <META name="fsize" type="string"/>\n\n  <META name="md5sum" type="string"/>\n\n  <META name="lastmodified" type="string"/>\n\n  <META name="archival" type="string"/>\n\n  <File ID="af97820a-8cee-4b3b-808a-713e6bd21e8e">\n    <physical>\n      <pfn filetype="" name="srm://dcsrm.usatlas.bnl.gov/pnfs/usatlas.bnl.gov/others01/2007/06/trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432_sub0/trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432._00001.job.log.tgz.1"/>\n    </physical>\n    <logical>\n      <lfn name="trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432._00001.job.log.tgz.1"/>\n    </logical>\n    <metadata att_name="archival" att_value="V"/>\n    <metadata att_name="fsize" att_value="2748858"/>\n    <metadata att_name="lastmodified" att_value="1171075105"/>\n    <metadata att_name="md5sum" att_value="8a74295a00637eecdd8443cd36df49a7"/>\n  </File>\n\n</POOLFILECATALOG>\n') 
    */
   
-  private String [] lookupPFNs(final String _catalogServer, final String lfn, final boolean findAll){
+  private String [] lookupPFNs(final String _catalogServer, final String dsn, final String lfn, final boolean findAll){
     ResThread t = new ResThread(){
       String [] res = null;
       public String [] getString2Res(){
@@ -1169,7 +1076,7 @@ public class ATLASDatabase extends DBCache implements Database{
           return;
         }
         try{
-          res = doLookupPFNs(_catalogServer, lfn, findAll);
+          res = doLookupPFNs(_catalogServer, dsn, lfn, findAll);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1194,6 +1101,7 @@ public class ATLASDatabase extends DBCache implements Database{
   /**
    * 
    * @param _catalogServer
+   * @param dsn
    * @param lfn
    * @param findAll
    * @return an array where the first two entries are bytes, checksums, then
@@ -1203,13 +1111,14 @@ public class ATLASDatabase extends DBCache implements Database{
    * @throws MalformedURLException
    * @throws SQLException
    */
-  private String [] doLookupPFNs(String _catalogServer, String lfn, boolean findAll)
+  private String [] doLookupPFNs(String _catalogServer, String dsn, String lfn, boolean findAll)
      throws Exception {
+    activateSsl();
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("lfc")){
-      return (new LFCLookupPFN(this, lfcConfig, catalogServer, lfn, findAll)).lookup();
+      return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, findAll, false)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       return (new MySQLLookupPFN(this, catalogServer, lfn, findAll)).lookup();
@@ -1675,7 +1584,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
    * Returns a Vector of catalogServers corresponding to the
    * Vector of PFNs.
    */
-  private Vector<String> findPFNs(String vuid, String lfn, boolean findAll){
+  private Vector<String> findPFNs(String vuid, String dsn, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
@@ -1725,14 +1634,14 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
           try{
             try{
-              pfns = lookupPFNs(catalogServer, lfName, findAll);
+              pfns = lookupPFNs(catalogServer, dsn, lfName, findAll);
             }
             catch(Exception e){
               e.printStackTrace();
             }
             if(fallbackServer!=null && (pfns==null || pfns.length==0)){
               Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
-              pfns = lookupPFNs(fallbackServer, lfName, findAll);
+              pfns = lookupPFNs(fallbackServer, dsn, lfName, findAll);
               catalogServer = fallbackServer;
               if(pfns!=null && pfns.length>2){
                 Debug.debug("Switching to http for "+locationsArray[i], 2);
@@ -1897,7 +1806,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String bytes = "";
     String checksum = "";
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
-      catalogs = MyUtil.arrayToString(findPFNs(vuid, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
+      catalogs = MyUtil.arrayToString(findPFNs(vuid, dsn, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
       for(int j=2; j<pfnVector.size(); ++j){
         resultVector.add(pfnVector.get(j));
       }
@@ -1996,8 +1905,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     if(cleanup){
       // Delete physical files
       int deleted = 0;
+      String datasetName = getDatasetName(datasetID);
       try{
-        deleted = deletePhysicalFiles(datasetID, toDeleteLfns);
+        deleted = deletePhysicalFiles(datasetID, datasetName, toDeleteLfns);
       }
       catch(Exception e){
         deletePhysOk = false;
@@ -2093,7 +2003,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     return true;
   }
   
-  private int deletePhysicalFiles(String datasetID, String [] toDeleteLfns)
+  private int deletePhysicalFiles(String datasetID, String datasetName, String [] toDeleteLfns)
      throws IOException, InterruptedException{
     int deleted = 0;
     // Delete the physical files.
@@ -2106,7 +2016,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
       // Get the pfns
       try{
-        pfnsArr = lookupPFNs(homeSite, toDeleteLfns[i], true);
+        pfnsArr = lookupPFNs(homeSite, datasetName, toDeleteLfns[i], true);
         if(pfnsArr!=null && pfnsArr.length>2){
           for(int j=2; j<pfnsArr.length; ++j){
             Debug.debug("Will delete "+pfnsArr[j], 2);
