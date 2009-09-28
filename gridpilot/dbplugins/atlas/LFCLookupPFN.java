@@ -4,46 +4,61 @@ import gridfactory.common.Debug;
 import gridpilot.MyUtil;
 
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.rmi.RemoteException;
+import java.util.ArrayList;
+import java.util.Vector;
+
+import javax.xml.rpc.ServiceException;
+
+import org.glite.lfc.LFCConfig;
+import org.glite.lfc.LFCServer;
+import org.glite.lfc.internal.ReplicaDesc;
 
 public class LFCLookupPFN extends LookupPFN {
   
-  public LFCLookupPFN(ATLASDatabase db, String catalogServer,
-      String lfn, boolean findAll) throws MalformedURLException {
+  LFCConfig lfcConfig;
+  LFCServer lfcServer;
+  String host;
+  DataLocationInterface dli;
+  URL dliUrl;
+  
+  public LFCLookupPFN(ATLASDatabase db, LFCConfig _lfcConfig, String catalogServer,
+      String lfn, boolean findAll) throws MalformedURLException, URISyntaxException {
     super(db, catalogServer, lfn, findAll);
-  }
-
-  public String [] lookup() throws Exception {
-    
-    String path = catalogUrl.getPath()==null ? "" : catalogUrl.getPath();
-    String host = catalogUrl.getHost();
-    DataLocationInterface dli = new DataLocationInterfaceLocator();
+    lfcServer = new LFCServer(lfcConfig, new URI(catalogServer));
+    host = catalogUrl.getHost();
     /*e.g. "http://lfc-atlas.cern.ch:8085", "http://lxb1941.cern.ch:8085"
            "http://lfc-atlas-test.cern.ch:8085" */
+    dli = new DataLocationInterfaceLocator();
+    dliUrl = new URL("http://"+host+":8085");
+  }
+  
+  public String [] lookup() throws Exception { 
+    
+    String path = catalogUrl.getPath()==null ? "" : catalogUrl.getPath();
     String basePath = "/"+path+(path.endsWith("/")?"":"/");
-    URL dliUrl = new URL("http://"+host+":8085");
-    Debug.debug("Connecting to DLI web service at "+dliUrl.toExternalForm(), 2);
     String [] pfns = null;
     String [] ret = null;
     // If the LFN starts with "user." assume lfcUserBasePath
     if(lfn.startsWith("user.")){
       String atlasLPN = basePath+db.lfcUserBasePath+lfn;
       try{
-        pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
-            "lfn", atlasLPN);
+        pfns = lfcLookup(atlasLPN);
       }
       catch(Exception e){
       }
     }
     for(int i=0; i<db.pathConventions; ++i){
-      if(db.getStop() || !db.findPFNs){
-        return null;
+      if(pfns!=null && pfns.length>0 || db.getStop() || !db.findPFNs){
+        break;
       }
       String atlasLPN = basePath+db.makeAtlasPath(lfn);
       Debug.debug("LPN: "+atlasLPN, 2);
       try{
-        pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
-            "lfn", atlasLPN);
+        pfns = lfcLookup(atlasLPN);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -76,6 +91,43 @@ public class LFCLookupPFN extends LookupPFN {
     
     return ret;
     
+  }
+
+  private String[] lfcLookup(String atlasLPN) throws Exception {
+    String [] pfns = null;
+    Exception ee = null;
+    try{
+      Debug.debug("Connecting to LFN server at "+dliUrl.toExternalForm(), 2);
+      lfcServer.connect();
+      ArrayList<ReplicaDesc> replicas = lfcServer.getReplicasByPath(atlasLPN);
+      pfns = new String[replicas.size()];
+      for(int i=0; i<pfns.length; ++i){
+        pfns[i] = replicas.get(i).getSfn();
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      ee = e;
+    }
+    if(pfns!=null){
+      return pfns;
+    }
+    try{
+      Debug.debug("Connecting to DLI web service at "+dliUrl.toExternalForm(), 2);
+      pfns = dli.getDataLocationInterface(dliUrl).listReplicas(
+          "lfn", atlasLPN);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      ee = e;
+    }
+    if(pfns!=null){
+      return pfns;
+    }
+    if(ee!=null){
+      throw ee;
+    }
+    return pfns;
   }
     
 }

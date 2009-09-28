@@ -1209,7 +1209,7 @@ public class ATLASDatabase extends DBCache implements Database{
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("lfc")){
-      return (new LFCLookupPFN(this, catalogServer, lfn, findAll)).lookup();
+      return (new LFCLookupPFN(this, lfcConfig, catalogServer, lfn, findAll)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       return (new MySQLLookupPFN(this, catalogServer, lfn, findAll)).lookup();
