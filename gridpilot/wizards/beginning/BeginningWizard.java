@@ -771,19 +771,13 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
-    atlasDetails.add(row,
-        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("LFC path: "), BorderLayout.WEST);
     row.add(new JLabel("   "), BorderLayout.EAST);
     JTextField tfLfcPath = new JTextField(TEXTFIELDWIDTH);
     tfLfcPath.setText(lfcPath);
     row.add(tfLfcPath, BorderLayout.CENTER);
     atlasDetails.add(row,
-        new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     
