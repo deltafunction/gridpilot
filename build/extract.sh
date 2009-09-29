@@ -11,6 +11,7 @@ sed -e "s/<\!--date-->/`date`/" ../README.in > README.txt
 unix2dos README.txt
 
 cp resources/aviateur* ./
+cp resources/mac_icon.icns ./
 
 # cd ..
 # sh compile.sh
