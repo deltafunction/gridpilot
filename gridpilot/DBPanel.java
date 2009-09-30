@@ -338,7 +338,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bReplicate =  MyUtil.mkButton("replicate.png", "Replicate file(s)", "Replicate files from or to a remote server");
     bSubmit =  MyUtil.mkButton("run.png", "Submit job(s)", "Submit job(s) to a computing backend");
     bMonitor =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s)");
-    bProcessDatasets =  MyUtil.mkButton("run.png", "Execute", "Execute application(s)/dataset(s)");
+    bProcessDatasets =  MyUtil.mkButton("run.png", "Run", "Run application(s)/dataset(s)");
     bMonitorDatasets =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s) of application(s)/dataset(s)");
     bCleanupDatasets =  MyUtil.mkButton("clean.png", "Cleanup", "Cleanup job(s) and file(s) of application(s)/dataset(s)");
 

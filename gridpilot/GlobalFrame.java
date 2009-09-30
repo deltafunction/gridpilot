@@ -582,7 +582,13 @@ public class GlobalFrame extends GPFrame{
    
     if(!GridPilot.isApplet()){
       menuFile.addSeparator();
-      JMenuItem miExit = new JMenuItem("Quit (ctrl q)");
+      JMenuItem miExit;
+      if(MyUtil.onMacOSX()){
+        miExit = new JMenuItem("Quit (cmd q)");
+      }
+      else{
+        miExit = new JMenuItem("Quit (ctrl q)");
+      }
       miExit.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           GridPilot.exit(0);
@@ -595,7 +601,13 @@ public class GlobalFrame extends GPFrame{
     
     menuView.addSeparator();
 
-    JMenuItem miBrowser = new JMenuItem("New browser (ctrl o)");
+    JMenuItem miBrowser;
+    if(MyUtil.onMacOSX()){
+      miBrowser = new JMenuItem("New browser (cmd o)");
+    }
+    else{
+      miBrowser = new JMenuItem("New browser (ctrl o)");
+    }
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         ResThread t = (new ResThread(){

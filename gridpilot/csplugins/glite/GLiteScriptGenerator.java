@@ -356,12 +356,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Various options
       //writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
-      String requirements = "Requirements = " +
-          (cpuTime==null||cpuTime.equals("")?"":"(other.GlueCEPolicyMaxCPUTime >= "+cpuTime+") ") +
-          (cpuTime!=null&&!cpuTime.equals("")?" && ":"")+
-          (memory==null||memory.equals("")?"":"(other.other.GlueHostMainMemoryRAMSize >= "+memory+") ") +
-          ((cpuTime==null||cpuTime.equals(""))&&(memory!=null&&!memory.equals(""))?" && ":"")+
-          "(other.GlueCEStateStatus == \"Production\")";
+      Vector<String> reqVec = new Vector<String>();
+      if(cpuTime!=null&&!cpuTime.equals("")){
+        reqVec.add("(other.GlueCEPolicyMaxCPUTime >= "+cpuTime+")");
+      }
+      if(memory!=null&&!memory.equals("")){
+        reqVec.add("(other.other.GlueHostMainMemoryRAMSize >= "+memory+")");
+      }
+      reqVec.add("(other.GlueCEStateStatus == \"Production\")");
       writeLine(bufJdl, "rank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "DefaultRank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "SignificantAttributes = { \"Requirements\",\"Rank\",\"FuzzyRank\" };");
@@ -381,21 +383,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           if(uses[i].equals(GLiteComputingSystem.OS)){
             continue;
           }
-          rteReq = "Requirements = Member(\""+MyUtil.dos2unix(uses[i])+"\", " +
+          rteReq = "Member(\""+MyUtil.dos2unix(uses[i])+"\", " +
              "other.GlueHostApplicationSoftwareRunTimeEnvironment)";
-          if(requirements!=null && !requirements.trim().equals("")){
-            requirements = requirements.replaceFirst("Requirements = ", rteReq+" && ");
-          }
-          else{
-            requirements = rteReq;
-          }
+          reqVec.add(rteReq);
         }
       }
       
-      if(requirements!=null && !requirements.trim().equals("")){
-        writeLine(bufJdl, requirements+";");
-      }
-    
+      writeLine(bufJdl, "Requirements = "+
+          MyUtil.arrayToString(reqVec.toArray(new String[reqVec.size()]), " && ")+";");    
       // Output files
       jdlLine = "OutputSandbox = {\"stdout\", \"stderr\"";
       // upload output files
