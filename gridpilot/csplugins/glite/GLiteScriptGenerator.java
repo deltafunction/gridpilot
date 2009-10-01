@@ -10,6 +10,7 @@ import gridpilot.MyJobInfo;
 import gridpilot.MyUtil;
 
 import java.io.*;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
@@ -23,6 +24,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   List lfcInputFilesList = null;
   String replicaCatalog = null;
   String [] uses = null;
+  protected HashMap<String, String> reverseRteTranslationMap;
   DBPluginMgr dbPluginMgr = null;
   MyJobInfo job = null;
   String exeFileName = null;
@@ -47,6 +49,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
+    reverseRteTranslationMap = GridPilot.getClassMgr().getReverseRteTranslationMap(csName);
     localInputFilesList = new Vector();
     remoteInputFilesList = new Vector();
     lfcInputFilesList = new Vector();
@@ -83,7 +86,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       writeBlock(bufScript, "runtime environment dependencies", 1, "# ");
       for(int i=0; i<uses.length; ++i){
         writeBlock(bufScript, "use "+ uses[i], 2, "# ");
-        String initTxt = (String) dbPluginMgr.getRuntimeInitText(uses[i], csName);
+        String initTxt = (String) dbPluginMgr.getRuntimeInitText(reverseTranslateRte(uses[i]), csName);
         if(initTxt==null){
           throw new IOException("Runtime environment "+uses[i]+" not available on computing system "+csName);
         }
@@ -235,6 +238,13 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       logFile.addMessage("ERROR generating job scripts", ioe);
       return;
     }
+  }
+
+  private String reverseTranslateRte(String rte) {
+    if(reverseRteTranslationMap.containsKey(rte)){
+      reverseRteTranslationMap.get(rte);
+    }
+    return rte;
   }
 
   public void createJDL(){

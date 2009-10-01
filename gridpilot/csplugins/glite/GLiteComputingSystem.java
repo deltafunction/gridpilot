@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -64,11 +65,14 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private MDS mds = null;
   private String [] rteClusters = null;
   private String [] rteVos = null;
-  private String [] rteTags = null;
+  private String [] rtePathTags = null;
+  private String[] rteTranslationTags;
   private HashSet rteScriptMappings = null;
+  private HashSet rteTranslationMappings = null;
   private String defaultUser;
   private String delegationId = null;
   private MyTransferControl transferControl;
+  protected HashMap<String, String> reverseRteTranslationMap;
   
   private static boolean CONFIRM_RUN_DIR_CREATION = false;
   private static String BDII_PORT = "2170";
@@ -111,6 +115,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       workingDir = workingDir.substring(0, workingDir.length()-1);
     }
     Debug.debug("Working dir: "+workingDir, 2);
+    reverseRteTranslationMap = GridPilot.getClassMgr().getReverseRteTranslationMap(csName);
     try{
       rteVos = GridPilot.getClassMgr().getConfigFile().getValues(
           csName, "runtime vos");
@@ -120,11 +125,19 @@ public class GLiteComputingSystem implements MyComputingSystem{
       logFile.addMessage(error, e);
     }
     try{
-      rteTags = GridPilot.getClassMgr().getConfigFile().getValues(
-          csName, "runtime tags");
+      rtePathTags = GridPilot.getClassMgr().getConfigFile().getValues(
+          csName, "runtime path tags");
     }
     catch(Exception e){
-      error = "WARNING: runtime tags for "+csName+" not defined. Showing all RTEs";
+      error = "WARNING: runtime path tags for "+csName+" not defined. Showing all RTEs";
+      logFile.addMessage(error, e);
+    }
+    try{
+      rteTranslationTags = GridPilot.getClassMgr().getConfigFile().getValues(
+          csName, "runtime translation tags");
+    }
+    catch(Exception e){
+      error = "WARNING: runtime translation tags for "+csName+" not defined. Cross-grid submission not possible.";
       logFile.addMessage(error, e);
     }
     try{
@@ -287,7 +300,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
           // Write the entry in the local DB
           for(int i=0; i<runtimeEnvironmentFields.length; ++i){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-              rtVals[i] = name;
+              rtVals[i] = translateRte(name);
             }
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
               rtVals[i] = csName;
@@ -315,17 +328,54 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
   
+  private String translateRte(String name) {
+    if(rteTranslationMappings==null){
+      rteTranslationMappings = new HashSet();
+      String [] mappings = null;
+      if(rteTranslationTags!=null){
+        for(int i=0; i<rteVos.length; ++i){
+          mappings = null;
+          try{
+            mappings = GridPilot.getClassMgr().getConfigFile().getValues(
+               csName, rteTranslationTags[i]);
+          }
+          catch(Exception e){
+          }
+          if(mappings!=null){
+            rteTranslationMappings.add(mappings);
+          }
+        }
+      }
+    }
+
+    String [] patternAndReplacements = null;
+    String ret = "";
+    for(Iterator it=rteTranslationMappings.iterator(); it.hasNext();){
+      patternAndReplacements = (String []) it.next();
+      if(patternAndReplacements!=null && patternAndReplacements.length>1 &&
+          name.matches(patternAndReplacements[0])){
+        ret = name;
+        for(int i=1; i<patternAndReplacements.length; ++i){
+          ret = ret.replaceFirst(patternAndReplacements[0], patternAndReplacements[i]);
+        }
+      }
+    }
+    Debug.debug("Mapping gLite RTE "+name+" to "+ret, 2);
+    reverseRteTranslationMap.put(ret, name);
+    return ret;
+  }
+
   private String mapRteNameToScriptPaths(String name){
     if(rteScriptMappings==null){
       // Try to find (guess...) the paths to the setup scripts
       rteScriptMappings = new HashSet();
       String [] mappings = null;
-      if(rteTags!=null){
+      if(rtePathTags!=null){
         for(int i=0; i<rteVos.length; ++i){
           mappings = null;
           try{
             mappings = GridPilot.getClassMgr().getConfigFile().getValues(
-               csName, rteTags[i]);
+               csName, rtePathTags[i]);
           }
           catch(Exception e){
           }

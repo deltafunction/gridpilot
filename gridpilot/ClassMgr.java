@@ -61,6 +61,8 @@ public class ClassMgr{
   private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
   private Vector urlList = new Vector();
   private FileCacheMgr fileCacheMgr;
+  private HashMap<String, HashMap<String, String>> reverseRteTranslationMap =
+     new HashMap<String, HashMap<String, String>>();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   
@@ -581,6 +583,13 @@ public class ClassMgr{
       fileCacheMgr = new FileCacheMgr(GridPilot.DATE_FORMAT_STRING);
     }
     return fileCacheMgr;
+  }
+  
+  public HashMap<String, String> getReverseRteTranslationMap(String csName){
+    if(!reverseRteTranslationMap.containsKey(csName)){
+      reverseRteTranslationMap.put(csName, new HashMap<String, String>());
+    }
+    return reverseRteTranslationMap.get(csName);
   }
   
 }
