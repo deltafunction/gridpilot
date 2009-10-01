@@ -571,6 +571,10 @@ public class GridPilot extends JApplet{
    */
 
   private void initGUI() throws Exception{
+    if(MyUtil.onMacOSX()){
+      System.setProperty("com.apple.macos.useScreenMenuBar", "true");
+      System.setProperty("com.apple.mrj.application.growbox.intrudes", "false");
+    }
     splashShow("Initializing GUI");
     SwingUtilities.invokeAndWait(
       new Runnable(){

@@ -244,7 +244,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
     });
     
-    sAutoResubmit.setPreferredSize(new Dimension(34, 21));
+    sAutoResubmit.setPreferredSize(new Dimension(40, 21));
     sAutoResubmit.setModel(new SpinnerNumberModel(0, 0, 9, 1));
     sAutoResubmit.addChangeListener(new ChangeListener(){
       public void stateChanged(ChangeEvent e){
