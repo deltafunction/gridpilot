@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<install4j version="4.1.3" transformSequenceNumber="2">
-  <directoryPresets config="./README.txt" />
-  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.0" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
-    <languages skipLanguageSelection="false">
+<install4j version="4.2.4" transformSequenceNumber="2">
+  <directoryPresets config="." />
+  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" missingFilesStrategy="warn" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.0" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" installerName="" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
+    <languages skipLanguageSelection="false" languageSelectionInPrincipalLanguage="false">
       <principalLanguage id="en" customLocalizationFile="" />
       <additionalLanguages />
     </languages>
@@ -34,8 +34,8 @@
     <components />
   </files>
   <launchers>
-    <launcher name="gridpilot" id="70" external="false" excludeFromMenu="false" menuName="" icnsFile="" pngIcon16File="./aviateur-16x16.png" pngIcon32File="./aviateur-32x32.png" macServiceDependencies="" swtApp="false" fileset="">
-      <executable name="gridpilot" type="1" iconSet="true" iconFile="./aviateur.ico" executableDir="" redirectStderr="true" stderrFile="error.log" redirectStdout="false" stdoutFile="output.log" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="true" workingDirectory="." singleInstance="true" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker">
+    <launcher name="gridpilot" id="70" external="false" excludeFromMenu="false" menuName="" icnsFile="./mac_icon.icns" pngIcon16File="./aviateur-16x16.png" pngIcon32File="./aviateur-32x32.png" macServiceDependencies="" swtApp="false" fileset="">
+      <executable name="gridpilot" type="1" iconSet="true" iconFile="./aviateur.ico" executableDir="" redirectStderr="true" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="true" workingDirectory="." singleInstance="true" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false">
         <versionInfo include="false" fileVersion="" fileDescription="" legalCopyright="" internalName="" />
       </executable>
       <splashScreen show="false" autoOff="true" alwaysOnTop="true" width="0" height="0" bitmapFile="" java6SplashScreen="false">
@@ -44,7 +44,7 @@
           <versionLine x="20" y="40" text="version ${compiler:sys.version}" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
         </text>
       </splashScreen>
-      <java mainClass="gridpilot.GridPilot" vmParameters="-XX:-UseGCOverheadLimit -Xms128m -Xmx1024m" arguments="" allowVMPassthroughParameters="true" preferredVM="">
+      <java mainClass="gridpilot.GridPilot" vmParameters="-XX:-UseGCOverheadLimit -Xms128m -Xmx1024m" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true">
         <classPath>
           <archive location="gridpilot.jar" failOnError="true" />
           <scanDirectory location="lib" failOnError="false" />
@@ -59,6 +59,29 @@
     </launcher>
     <launcher name="gridpilot.sh" id="174" external="true" excludeFromMenu="true" menuName="" externalFile="gridpilot.sh" />
     <launcher name="gridpilot.bat" id="175" external="true" excludeFromMenu="true" menuName="" externalFile="gridpilot.bat" />
+    <launcher name="gridpilot_mac" id="224" external="false" excludeFromMenu="false" menuName="" icnsFile="./mac_icon.icns" pngIcon16File="./aviateur-16x16.png" pngIcon32File="./aviateur-32x32.png" macServiceDependencies="" swtApp="false" fileset="">
+      <executable name="gridpilot" type="1" iconSet="true" iconFile="./aviateur.ico" executableDir="" redirectStderr="true" stderrFile="error.log" stderrMode="overwrite" redirectStdout="false" stdoutFile="output.log" stdoutMode="overwrite" failOnStderrOutput="true" executableMode="1" changeWorkingDirectory="true" workingDirectory="." singleInstance="true" serviceStartType="2" serviceDependencies="" serviceDescription="" jreLocation="" executionLevel="asInvoker" checkConsoleParameter="false">
+        <versionInfo include="false" fileVersion="" fileDescription="" legalCopyright="" internalName="" />
+      </executable>
+      <splashScreen show="false" autoOff="true" alwaysOnTop="true" width="0" height="0" bitmapFile="" java6SplashScreen="false">
+        <text>
+          <statusLine x="20" y="20" text="" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+          <versionLine x="20" y="40" text="version ${compiler:sys.version}" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
+        </text>
+      </splashScreen>
+      <java mainClass="gridpilot.GridPilot" vmParameters="-XX:-UseGCOverheadLimit -Xms128m -Xmx1024m -Xdock:name=&quot;GridPilot&quot; -Xdock:icon=&quot;mac_icon.icns&quot;" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true">
+        <classPath>
+          <archive location="gridpilot.jar" failOnError="true" />
+          <scanDirectory location="lib" failOnError="false" />
+        </classPath>
+        <nativeLibraryDirectories />
+      </java>
+      <includedFiles />
+      <unextractableFiles />
+      <customScript mode="1" file="">
+        <scriptLines />
+      </customScript>
+    </launcher>
   </launchers>
   <installerGui installerType="1" suggestPreviousProgramGroup="false" addOnAppId="" suggestPreviousLocations="true">
     <customCode useInstalledFiles="false" />
@@ -269,6 +292,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
                   </java>
                 </serializedBean>
                 <initScript />
+                <visibiltyScript />
               </formComponent>
             </formComponents>
           </screen>
@@ -362,7 +386,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     </applications>
   </installerGui>
   <mediaSets>
-    <win32 name="Windows" id="176" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" runAsAdmin="false">
+    <win32 name="Windows" id="176" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="32" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" runAsAdmin="false">
       <excludedLaunchers>
         <launcher id="174" />
       </excludedLaunchers>
@@ -372,7 +396,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
       <exclude />
       <variables />
     </win32>
-    <unixInstaller name="Unix Installer" id="177" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="">
+    <unixInstaller name="Unix Installer" id="177" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="">
       <excludedLaunchers>
         <launcher id="175" />
       </excludedLaunchers>
@@ -385,14 +409,14 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
         <scriptLines />
       </installerScript>
     </unixInstaller>
-    <macos name="Mac OS X Single Bundle" id="178" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" launcherId="70">
+    <macos name="Mac OS X Single Bundle" id="178" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" launcherId="224">
       <excludedComponents />
       <excludedBeans />
       <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
       <exclude />
       <variables />
     </macos>
-    <unixArchive name="Unix Archive" id="179" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false">
+    <unixArchive name="Unix Archive" id="179" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false">
       <excludedLaunchers />
       <excludedComponents />
       <excludedBeans />
@@ -400,7 +424,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
       <exclude />
       <variables />
     </unixArchive>
-    <linuxRPM name="Linux RPM" id="219" mediaFileName="" installDir="/opt/gridpilot" overridePrincipalLanguage="false" requires64bit="false" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" os="linux" arch="i386">
+    <linuxRPM name="Linux RPM" id="219" mediaFileName="" installDir="/opt/gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" os="linux" arch="i386">
       <excludedLaunchers>
         <launcher id="175" />
       </excludedLaunchers>
