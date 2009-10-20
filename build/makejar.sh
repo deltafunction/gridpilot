@@ -1,7 +1,9 @@
 #!/bin/bash
 
+### NOTICE: this script should be executed ONLY in the build directory
+
 find . -type f | grep -v '\.jar' | grep -v '\.old' | grep -v '\.bk' | grep -v '\.orig' | grep -v bcprov | grep -v jarfiles | grep -v tmp | grep -v CVS | \
-grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.bat' | grep -v '\./aviateur' | \
+grep -v META-INF | grep -v '\.java' | grep -v '\.zip' | grep -v '\.bat' | grep -v '\./aviateur'| grep -v '\./mac_icon' | \
 grep -v suresh | grep -v install4j | grep -v 'gridpilot\.jar' | grep -r -v '/\.' | grep -r -v '^./[^/]*\.sh' > jarfiles
 
 echo Creating an unsigned applet
@@ -35,7 +37,7 @@ fi
 
 #rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP* *.properties axis* Jacksum* electric* diskCache* help jonelo LGPL* LICENSE* README.txt samples soaprmi sxt tests xpp
 #rm -f ~/.globus/tmp.p12
-rm -rf jarfiles gridpilot tmp* readme.txt
+rm -rf resources lib jarfiles gridpilot tmp* readme.txt README.txt gridpilot.conf gridpilot.log 
 
 exit
 
