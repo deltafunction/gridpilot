@@ -37,7 +37,7 @@ fi
 
 #rm -rf oracle javax com COM cryptix hsqlServlet.class LICENSE.txt log4j.properties META-INF netscape org xjava LDAP* *.properties axis* Jacksum* electric* diskCache* help jonelo LGPL* LICENSE* README.txt samples soaprmi sxt tests xpp
 #rm -f ~/.globus/tmp.p12
-rm -rf resources lib jarfiles gridpilot tmp* readme.txt README.txt gridpilot.conf gridpilot.log 
+rm -rf resources jarfiles gridpilot tmp* readme.txt gridpilot.log # lib README.txt gridpilot.conf
 
 exit
 
