@@ -21,8 +21,8 @@ public class LFCLookupPFN extends LookupPFN {
   String host;
   DataLocationInterface dli;
   URL dliUrl;
-  private int pathConvention = 1;
-  private int pathConventions = 5;
+  private static int pathConvention = 1;
+  private static final int PATH_CONVENTIONS = 5;
   private boolean tryDli;
   
   public LFCLookupPFN(ATLASDatabase db, LFCConfig lfcConfig, String catalogServer,
@@ -39,6 +39,17 @@ public class LFCLookupPFN extends LookupPFN {
     dliUrl = new URL("http://"+host+":8085");
   }
   
+  private void incrementPathConvention(){
+    ++pathConvention;
+    if(pathConvention>PATH_CONVENTIONS){
+      pathConvention = 1;
+    }
+  }
+  
+  private int getPathConvention() {
+    return pathConvention;
+  }
+
   public String [] lookup() throws Exception { 
     
     String path = catalogUrl.getPath()==null ? "" : catalogUrl.getPath();
@@ -55,10 +66,7 @@ public class LFCLookupPFN extends LookupPFN {
         e.printStackTrace();
       }
     }
-    for(int i=0; i<pathConventions; ++i){
-      if(pfns!=null && pfns.length>0 || db.getStop() || !db.findPFNs){
-        break;
-      }
+    for(int i=0; i<PATH_CONVENTIONS; ++i){
       String atlasLPN = basePath+makeAtlasPath(lfn, dsn);
       Debug.debug("LPN: "+atlasLPN, 2);
       try{
@@ -67,19 +75,21 @@ public class LFCLookupPFN extends LookupPFN {
       catch(Exception e){
         e.printStackTrace();
       }
-      // if nothing is found, try another path convention (and remember this)
-      if(pfns==null || pfns.length==0 ||
-          pfns.length==1 && (pfns[0]==null || pfns[0].equals(""))){
-        ++pathConvention;
-        if(pathConvention>pathConventions){
-          pathConvention = 1;
-        }
+      // if nothing is found, try another path convention
+      if(pfns==null || pfns.length==0){
+        incrementPathConvention();
+        Debug.debug("Nothing found, upped pathConvention to "+ getPathConvention(), 3);
       }
       else{
+        Debug.debug("Success, keeping pathConvention "+ getPathConvention(), 3);
         if(!findAll && pfns!=null && pfns.length>1){
           pfns = new String [] {pfns[0]};
         }
         Debug.debug("PFNs: "+MyUtil.arrayToString(pfns), 2);
+        break;
+      }
+      if(db.getStop() || !db.findPFNs){
+        Debug.debug("Stopping PFN lookup", 2);
         break;
       }
     }
@@ -110,9 +120,10 @@ public class LFCLookupPFN extends LookupPFN {
       for(int i=0; i<pfns.length; ++i){
         pfns[i] = replicas.get(i).getSfn();
       }
+      Debug.debug("Found "+MyUtil.arrayToString(pfns), 3);
     }
     catch(Exception e){
-      e.printStackTrace();
+      //e.printStackTrace();
       ee = e;
     }
     if(pfns!=null){
@@ -148,24 +159,21 @@ public class LFCLookupPFN extends LookupPFN {
     String [] baseMetaData = null;
     Debug.debug("lfnMetaData: "+ lfnMetaData.length+":"+MyUtil.arrayToString(lfnMetaData), 2);
     
-    switch(pathConvention){
+    int pc = getPathConvention();
+    switch(pc){
     
     case 1:
-      Debug.debug("Using dsn path convention", 2);
+      Debug.debug("Using dsn path convention "+pc, 2);
       // data08_1beammag.00087764.physics_BPTX.merge.AOD.o4_r653_r792_p47_tid084038/AOD.084038._000001.pool.root.4 -->
       // /grid/atlas/dq2/data08_1beammag/AOD/data08_1beammag.00087764.physics_BPTX.merge.AOD.o4_r653_r792_p47_tid084038/AOD.084038._000001.pool.root.4
       baseStr = dsnMetaData[0]+"/"+lfnMetaData[0];
       if(dsnMetaData.length==6){
         atlasLpn = "dq2/"+baseStr+"/"+dsn+"/"+lfn;
-        break;
       }
-      else{
-        // Fall through
-        ++pathConvention;
-      }
+      break;
       
     case 2:
-      Debug.debug("Using very very new path convention", 2);
+      Debug.debug("Using very very new path convention "+pc, 2);
       // trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421 -->
       // /grid/atlas/dq2/trig1_misal1_mc12/AOD/trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421/AOD.016421._00002.pool.root.12
       baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
@@ -177,15 +185,11 @@ public class LFCLookupPFN extends LookupPFN {
         //atlasLPN += "/"+lfnMetaData[3];
         atlasLpn += "/"+baseStr;
         atlasLpn += "/"+lfn;
-        break;
       }
-      else{
-        // Fall through
-        ++pathConvention;
-      }
+      break;
       
     case 3:
-      Debug.debug("Using very new path convention", 2);
+      Debug.debug("Using very new path convention "+pc, 2);
       // trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6 ->
       // /grid/atlas/dq2/trig1_misal1_mc11/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6
       baseStr = lfn.replaceFirst("^(.*)\\._[^\\.]+\\..*$", "$1");
@@ -197,51 +201,39 @@ public class LFCLookupPFN extends LookupPFN {
         //atlasLPN += "/"+lfnMetaData[3];
         atlasLpn += "/"+baseStr;
         atlasLpn += "/"+lfn;
-        break;
       }
-      else{
-        // Fall through
-        ++pathConvention;
+      break;
+     
+    case 4:
+      Debug.debug("Using old path convention "+pc, 2);
+      // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
+      // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
+      if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
+        atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0];
+        //atlasLPN += "/"+lfnMetaData[3];
+        atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
+           lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
+        atlasLpn += "/"+lfn;
       }
-      
-     case 4:
-       Debug.debug("Using old path convention", 2);
-       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
-       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
-       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
-         atlasLpn = /*datafiles*/"dq2/"+lfnMetaData[0];
-         //atlasLPN += "/"+lfnMetaData[3];
-         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
-            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
-         atlasLpn += "/"+lfn;
-         break;
-       }
-       else{
-         // Fall through
-         ++pathConvention;
-       }
+      break;
        
-     case 5:
-       Debug.debug("Using new path convention", 2);
-       // New (or old?) convention:
-       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
-       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/AOD/
-       if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
-         atlasLpn = /*"datafiles/"+*/"dq2/"+lfnMetaData[0];
-         atlasLpn += "/"+lfnMetaData[4];
-         atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
-            lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
-         atlasLpn += "/"+lfn;
-       }
-       else{
-         atlasLpn = lfn;
-       }
-       break;
+    case 5:
+      Debug.debug("Using new path convention "+pc, 2);
+      // New (or old?) convention:
+      // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
+      // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/AOD/
+      if(lfnMetaData.length==8 || lfnMetaData.length==9 || lfnMetaData.length==10){
+        atlasLpn = /*"datafiles/"+*/"dq2/"+lfnMetaData[0];
+        atlasLpn += "/"+lfnMetaData[4];
+        atlasLpn += "/"+lfnMetaData[0]+"."+lfnMetaData[1]+"."+lfnMetaData[2]+"."+
+           lfnMetaData[3]+"."+lfnMetaData[4]+"."+lfnMetaData[5];
+        atlasLpn += "/"+lfn;
+      }
+      break;
        
-     default:
-       Debug.debug("pathConvention not in range: "+pathConvention, 2);
-       throw new IndexOutOfBoundsException("pathConvention not in range: "+pathConvention);
-
+    default:
+      Debug.debug("pathConvention not in range: "+pc, 2);
+      throw new IndexOutOfBoundsException("pathConvention not in range: "+pc);
     }
     
     return atlasLpn;

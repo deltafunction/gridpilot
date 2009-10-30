@@ -60,11 +60,11 @@ public class MyTransferControl extends TransferControl {
   private Timer timer;
   private ImageIcon iconSubmitting;
   /** All transfers for which the submission is not made yet */
-  private Vector toSubmitTransfers = new Vector();
+  private Vector<TransferInfo> toSubmitTransfers = new Vector<TransferInfo>();
   /** All transfers for which the submission is in progress */
-  private Vector submittingTransfers = new Vector();
+  private Vector<TransferInfo> submittingTransfers = new Vector<TransferInfo>();
   /** All running transfers */
-  protected Vector runningTransfers = new Vector();
+  protected Vector<TransferInfo> runningTransfers = new Vector<TransferInfo>();
  /** Maximum number of simulaneous threads for submission. <br>
    * It is not the maximum number of running transfers on the storage system */
   private int maxSimultaneousTransfers = 5;
@@ -127,10 +127,10 @@ public class MyTransferControl extends TransferControl {
       synchronized(toSubmitTransfers){
         synchronized(submittingTransfers){
 
-          GlobusURL firstSrc = ((TransferInfo) toSubmitTransfers.get(0)).getSource();
-          GlobusURL firstDest = ((TransferInfo) toSubmitTransfers.get(0)).getDestination();
+          GlobusURL firstSrc = (toSubmitTransfers.get(0)).getSource();
+          GlobusURL firstDest = (toSubmitTransfers.get(0)).getDestination();
           
-          Debug.debug("First transfer: "+((TransferInfo) toSubmitTransfers.get(0)), 3);
+          Debug.debug("First transfer: "+(toSubmitTransfers.get(0)), 3);
           
           String pluginName = null;
           TransferInfo [] theseTransfers = null;
@@ -174,6 +174,11 @@ public class MyTransferControl extends TransferControl {
                     e.getMessage());
                 logFile.addMessage("ERROR: starting transfer(s) failed.", e);
                 e.printStackTrace();
+                for(int i=0; i<finalTransfers.length; ++i){
+                  toSubmitTransfers.remove(finalTransfers[i]);
+                  runningTransfers.remove(finalTransfers[i]);
+                  submittingTransfers.remove(finalTransfers[i]);
+                }
               }
             }
           }.start();
@@ -208,7 +213,7 @@ public class MyTransferControl extends TransferControl {
   
   private TransferInfo[] prepareTransfers(String pluginName){
 
-    Vector transferVector = null;
+    Vector<TransferInfo> transferVector = null;
     GlobusURL [] theseSources = null;
     GlobusURL [] theseDestinations = null;
     TransferInfo [] theseTransfers = null;
@@ -216,13 +221,13 @@ public class MyTransferControl extends TransferControl {
     boolean brokenOut = false;
     // Transfer jobs from toSubmitTransfers to submittingTransfers.
     // First construct uniform batch.
-    transferVector = new Vector();
+    transferVector = new Vector<TransferInfo>();
     if(runningTransfers.size()+submittingTransfers.size()>=maxSimultaneousTransfers ||
         toSubmitTransfers.isEmpty()){
       if(toSubmitTransfers.isEmpty()){
         Debug.debug("No transfers to submit...", 3);
       }
-      if(submittingTransfers.size()>=maxSimultaneousTransfers){
+      if(runningTransfers.size()+submittingTransfers.size()>=maxSimultaneousTransfers){
         Debug.debug("Waiting for transfers or free slots... "+runningTransfers.size()+":"+
             submittingTransfers.size()+":"+maxSimultaneousTransfers, 3);
       }
@@ -233,13 +238,13 @@ public class MyTransferControl extends TransferControl {
         !toSubmitTransfers.isEmpty()){
       
       // break if next transfer is not uniform with the previous ones (in this batch)
-      transferVector.add(((TransferInfo) toSubmitTransfers.get(0)));
+      transferVector.add((toSubmitTransfers.get(0)));
       theseSources = new GlobusURL[transferVector.size()];
       theseDestinations = new GlobusURL[transferVector.size()];
       theseTransfers = new TransferInfo[transferVector.size()];
       TransferInfo tmpTransfer = null;
       for(int i=0; i<theseDestinations.length; ++i){
-        tmpTransfer = (TransferInfo) transferVector.get(i);
+        tmpTransfer = transferVector.get(i);
         theseSources[i] = tmpTransfer.getSource();
         theseDestinations[i] = tmpTransfer.getDestination();
         theseTransfers[i] = tmpTransfer;
@@ -262,7 +267,7 @@ public class MyTransferControl extends TransferControl {
         break;
       }
       
-      TransferInfo transfer = (TransferInfo) toSubmitTransfers.remove(0);
+      TransferInfo transfer = toSubmitTransfers.remove(0);
       submittingTransfers.add(transfer);
       Debug.debug("Removed "+transfer.getSourceURL(), 3);
       Debug.debug("with id "+transfer.getTransferID(), 3);
@@ -540,8 +545,8 @@ public class MyTransferControl extends TransferControl {
         setStatusBarMouseListenerCancel(pbSubmission);
         Debug.debug("queueing "+transfers.size()+" transfers", 2);
         //toSubmitTransfers.addAll(transfers);
-        for(Iterator it=transfers.iterator(); it.hasNext();){
-          toSubmitTransfers.add((TransferInfo) it.next());
+        for(Iterator<TransferInfo> it=transfers.iterator(); it.hasNext();){
+          toSubmitTransfers.add(it.next());
         }
         if(!timer.isRunning()){
           timer.restart();
@@ -938,9 +943,9 @@ public class MyTransferControl extends TransferControl {
    */
   private void cancelQueueing(){
     timer.stop();
-    Enumeration e = toSubmitTransfers.elements();
+    Enumeration<TransferInfo> e = toSubmitTransfers.elements();
     while(e.hasMoreElements()){
-      TransferInfo transfer = (TransferInfo) e.nextElement();
+      TransferInfo transfer = e.nextElement();
       statusTable.setValueAt("Transfer not queued (cancelled)!",
           transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_TRANSFER_ID);
       statusTable.setValueAt(transfer.getSourceURL(), transfer.getTableRow(),
@@ -964,23 +969,23 @@ public class MyTransferControl extends TransferControl {
    * Cancels a Vector of transfers.
    * @param transfers Vector of TransferInfo's
    */
-  public void cancel(final Vector transfers){
+  public void cancel(final Vector<TransferInfo> transfers){
     ResThread t = new ResThread(){
       TransferInfo transfer = null;
       public void run(){
         animateStatus();
         setMonitorStatus("Cancelling...");
-        Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+        Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           for(int i=0; i<transfers.size(); ++i){
             try{             
-              transfer = (TransferInfo) transfers.get(i);
+              transfer = transfers.get(i);
               GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
               // skip if not running
               boolean isRunning = false;
               for(int j=0; j<submittedTransfers.size(); ++j){
                 try{
-                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
+                  String id = (submittedTransfers.get(j)).getTransferID();
                   if(transfer.getTransferID().equals(id)){
                     isRunning = true;
                     break;
@@ -1026,24 +1031,24 @@ public class MyTransferControl extends TransferControl {
     }
   }
   
-  public void resubmit(final Vector transfers){
+  public void resubmit(final Vector<TransferInfo> transfers){
     ResThread t = new ResThread(){
       TransferInfo transfer = null;
       public void run(){
         animateStatus();
         setMonitorStatus("Cancelling...");
-        Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+        Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           GlobusURL [] srcUrls = new GlobusURL [transfers.size()];
           GlobusURL [] destUrls = new GlobusURL [transfers.size()];
           for(int i=0; i<transfers.size(); ++i){
             try{             
-              transfer = (TransferInfo) transfers.get(i);
+              transfer = transfers.get(i);
               // abort if a job is running
               boolean isRunning = false;
               for(int j=0; j<submittedTransfers.size(); ++j){
                 try{
-                  String id = ((TransferInfo) submittedTransfers.get(j)).getTransferID();
+                  String id = (submittedTransfers.get(j)).getTransferID();
                   if(transfer.getTransferID().equals(id)){
                     if(isRunning(transfer)){
                       isRunning = true;
@@ -1133,8 +1138,8 @@ public class MyTransferControl extends TransferControl {
     TransferInfo transfer = null;
     String id = null;
     int internalStatus = -1;
-    for(Iterator it=transfers.iterator(); it.hasNext();){
-      transfer = (TransferInfo) it.next();
+    for(Iterator<TransferInfo> it=transfers.iterator(); it.hasNext();){
+      transfer = it.next();
       id = null;
       try{
         id = transfer.getTransferID();
@@ -1199,10 +1204,10 @@ public class MyTransferControl extends TransferControl {
    * transfers should be cancelled before exiting.
    */
   public void exit(){
-    Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     for(int i=0; i<submittedTransfers.size(); ++i){
       try{
-        String id = ((TransferInfo) submittedTransfers.get(i)).getTransferID();
+        String id = (submittedTransfers.get(i)).getTransferID();
         Debug.debug("Cancelling "+id, 3);
         findFTPlugin(id).cancel(id);
       }
@@ -1230,7 +1235,7 @@ public class MyTransferControl extends TransferControl {
     }
     // If transfer.getDBPluginMgr() is not null, it is the convention that this
     // DBPluginMgr is used for registering the file.
-    if(((TransferInfo) transfer).getDBName()!=null && transfer.getDestination()!=null){
+    if((transfer).getDBName()!=null && transfer.getDestination()!=null){
       String destination = transfer.getDestination().getURL();
       String lfn = null;
       try{
@@ -1265,7 +1270,7 @@ public class MyTransferControl extends TransferControl {
       }
       String datasetID = null;
       try{
-        datasetID = ((TransferInfo) transfer).getDatasetID();
+        datasetID = (transfer).getDatasetID();
       }
       catch(Exception e){
       }
@@ -1275,7 +1280,7 @@ public class MyTransferControl extends TransferControl {
       }
       String datasetName = null;
       try{
-        datasetName = ((TransferInfo) transfer).getDatasetName();
+        datasetName = (transfer).getDatasetName();
       }
       catch(Exception e){
       }
@@ -1316,7 +1321,7 @@ public class MyTransferControl extends TransferControl {
       }
       // Now register the file
       try{
-        GridPilot.getClassMgr().getDBPluginMgr(((TransferInfo) transfer).getDBName()).registerFileLocation(
+        GridPilot.getClassMgr().getDBPluginMgr((transfer).getDBName()).registerFileLocation(
             datasetID, datasetName, guid, lfn, destination, fileBytes, checksum, false);
       }
       catch(Exception e){

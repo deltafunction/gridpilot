@@ -7,6 +7,7 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
+import gridfactory.common.TransferInfo;
 import gridfactory.common.jobrun.RTEMgr;
 
 import java.io.IOException;
@@ -401,7 +402,7 @@ public class ClassMgr{
     setTransferStatusTable(transferStatusTable);
   }
 
-  public Vector getSubmittedTransfers(){
+  public Vector<TransferInfo> getSubmittedTransfers(){
     if(submittedTransfers==null){
       Debug.debug("submittedTransfers null", 3);
     }
