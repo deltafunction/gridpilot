@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="4.2.4" transformSequenceNumber="2">
   <directoryPresets config="." />
-  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" missingFilesStrategy="warn" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.1" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" installerName="" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
+  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" missingFilesStrategy="warn" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.2pre1" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" installerName="" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
     <languages skipLanguageSelection="false" languageSelectionInPrincipalLanguage="false">
       <principalLanguage id="en" customLocalizationFile="" />
       <additionalLanguages />
@@ -389,6 +389,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     <win32 name="Windows" id="176" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="32" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" runAsAdmin="false">
       <excludedLaunchers>
         <launcher id="174" />
+        <launcher id="224" />
       </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
@@ -399,6 +400,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     <unixInstaller name="Unix Installer" id="177" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="">
       <excludedLaunchers>
         <launcher id="175" />
+        <launcher id="224" />
       </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
@@ -427,6 +429,7 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     <linuxRPM name="Linux RPM" id="219" mediaFileName="" installDir="/opt/gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" os="linux" arch="i386">
       <excludedLaunchers>
         <launcher id="175" />
+        <launcher id="224" />
       </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
