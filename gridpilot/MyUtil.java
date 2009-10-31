@@ -534,7 +534,7 @@ private static String fixUrl(String _url){
 
     JPanel panel = new JPanel(new GridBagLayout());
     JSpinner sNum = new JSpinner();
-    sNum.setPreferredSize(new Dimension(50, 21));
+    sNum.setPreferredSize(new Dimension(56, 21));
     sNum.setModel(new SpinnerNumberModel(initialValue, 1, 9999, 1));
 
     panel.add(new JLabel(message),
