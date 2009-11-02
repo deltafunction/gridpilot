@@ -64,7 +64,7 @@ public class GridPilot extends JApplet{
   public static String DEFAULT_FILE_NAME_WINDOWS = "gridpilot.conf";
   public static String [] PREFERRED_FILE_SERVERS = null;
   public static int FILE_ROWS = 300;
-  public static String LOG_FILE_NAME = "gridpilot.log";
+  public static String LOG_FILE_NAME = "~/.gridpilot.log";
   public static String [] JOB_COLOR_MAPPING;
   public static String [] TRANSFER_COLOR_MAPPING;
   public static String[] JOB_STATUS_FIELDS;
@@ -118,7 +118,7 @@ public class GridPilot extends JApplet{
     //CheckThreadViolationRepaintManager.initMonitoring();
     
     try{
-      getClassMgr().setLogFile(new MyLogFile(LOG_FILE_NAME));
+      getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(MyUtil.onWindows()){
         userConfFileName = DEFAULT_FILE_NAME_WINDOWS;

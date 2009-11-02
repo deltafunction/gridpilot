@@ -94,8 +94,7 @@ public class GlobalFrame extends GPFrame{
     cbMonitor.setText("Show monitor \t\t \u2318 m");
     
     try{
-      app =
-        (com.apple.eawt.Application) MyUtil.loadClass("com.apple.eawt.Application", new Class[] {}, new String [] {});
+      app = MyUtil.loadClass("com.apple.eawt.Application", new Class[] {}, new String [] {});
       appc = Class.forName("com.apple.eawt.Application");
       lc = Class.forName("com.apple.eawt.ApplicationListener");
     }
