@@ -3,10 +3,14 @@ package gridpilot;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URL;
 
 import javax.swing.*;
 import javax.swing.event.*;
+import javax.swing.text.StyleConstants;
 
 import java.util.*;
 
@@ -33,6 +37,8 @@ public class GlobalFrame extends GPFrame{
   private static final long serialVersionUID = 1L;
 
   private static final int MAX_TAB_TITLE_LENGTH = 24;
+
+  private static final String GridPilotURL = "http://www.gridpilot.dk/";
   
   private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
@@ -47,7 +53,6 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
   private JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
   private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
-  private JMenuItem menuEditPrefs = new JMenuItem("Preferences");
   private ListPanel cutPanel = null;
   private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
   private JMenuItem miDbDeleteRecords = new JMenuItem("Delete record(s)");
@@ -56,6 +61,11 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miExport = new JMenuItem();
+  
+  private Object app;
+  private Class<?> appc;
+  private Class<?> lc;
+
 
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
@@ -65,14 +75,66 @@ public class GlobalFrame extends GPFrame{
    * Constructor
    */
   public GlobalFrame() throws Exception{
-    if(MyUtil.onMacOSX()){
-      menuEditCopy.setText("Copy (cmd c)");
-      menuEditCut.setText("Cut (cmd x)");
-      menuEditPaste.setText("Paste (cmd v)");
-      cbMonitor.setText("Show monitor (cmd m)");
-    }
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector<ListPanel>();
+    if(MyUtil.onMacOSX()){
+      setMacOSMenus();
+    }
+  }
+  
+  private void setMacOSMenus(){
+    
+    menuEditCopy.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+    menuEditCut.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+    menuEditPaste.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+    cbMonitor.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+    menuEditCopy.setText("Copy \t\t \u2318 c");
+    menuEditCut.setText("Cut \t\t \u2318 x");
+    menuEditPaste.setText("Paste \t\t \u2318 v");
+    cbMonitor.setText("Show monitor \t\t \u2318 m");
+    
+    try{
+      app =
+        (com.apple.eawt.Application) MyUtil.loadClass("com.apple.eawt.Application", new Class[] {}, new String [] {});
+      appc = Class.forName("com.apple.eawt.Application");
+      lc = Class.forName("com.apple.eawt.ApplicationListener");
+    }
+    catch(Throwable e2){
+      e2.printStackTrace();
+    }
+    
+    // Handle quit, about and preferences
+    try{
+      Object listener = Proxy.newProxyInstance(new MyClassLoader(), new Class[] {lc},
+          new InvocationHandler() {
+         public Object invoke(Object proxy, Method method, Object[] args){
+           if(method.getName().equals("handleQuit")){
+             GridPilot.exit(0);
+           }
+           else if(method.getName().equals("handleAbout")){
+             menuHelpAbout_actionPerformed();
+             Object event = args[0];
+             Method eventSetter;
+             try{
+               eventSetter = Class.forName("com.apple.eawt.ApplicationEvent").getDeclaredMethod("setHandled", Boolean.TYPE);
+               eventSetter.invoke(event, true);
+             }
+             catch(Exception e){
+               e.printStackTrace();
+             }
+           }
+           else if(method.getName().equals("handlePreferences")){
+             menuEditPrefs_actionPerformed();
+           }
+           return null;
+         }
+       });
+      appc.getMethod("addApplicationListener", lc).invoke(app, listener);
+      appc.getDeclaredMethod("setEnabledPreferencesMenu", Boolean.TYPE).invoke(app, new Object[] {true});
+    }
+    catch(Throwable e1){
+      e1.printStackTrace();
+    }
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -293,19 +355,19 @@ public class GlobalFrame extends GPFrame{
     tabbedPane.removeTabAt(tabbedPane.getSelectedIndex());
   }
 
-  // Edit-cut | About action performed
+  // Edit-cut action performed
   public void menuEditCut_actionPerformed(){
     Debug.debug("Cutting", 3);
     ListPanel panel = getActiveDBPanel();
     panel.cut();
   }
-  // Edit-copy | About action performed
+  // Edit-copy action performed
   public void menuEditCopy_actionPerformed(){
     Debug.debug("Copying", 3);
     ListPanel panel = getActiveDBPanel();
     panel.copy();
   }
-  // Edit-paste | About action performed
+  // Edit-paste action performed
   public void menuEditPaste_actionPerformed(){
     Debug.debug("Pasting", 3);
     ListPanel panel = getActiveDBPanel();
@@ -346,6 +408,20 @@ public class GlobalFrame extends GPFrame{
       e.printStackTrace();
     }
   }
+
+  // Help -> GridPilot website action performed
+  private void menuWebsite_actionPerformed(){
+    try{
+      BrowserPanel wb = new BrowserPanel(this, "About",
+          GridPilotURL, "", false, false, false, null, null, true);
+      wb.setCancelButtonEnabled(false);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not create BrowserPanel", 1);
+      e.printStackTrace();
+    }
+  }
+
 
   // Help -> Show my distinguished name
   private void menuHelpShowDN_actionPerformed(){
@@ -458,11 +534,6 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuEdit.add(menuEditPaste);
-    menuEditPrefs.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        menuEditPrefs_actionPerformed();
-      }
-    });
     menuEdit.addMenuListener(new MenuListener(){
       public void menuCanceled(MenuEvent e) {
       }
@@ -475,6 +546,8 @@ public class GlobalFrame extends GPFrame{
         getActiveDBPanel().dbMenuSelected();
       }
     });
+    
+    menuEdit.validate();
 
     miDbDefineRecords.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -518,8 +591,16 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuEdit.add(miDbDeleteRecords);
-    menuEdit.addSeparator();
-    menuEdit.add(menuEditPrefs);
+    if(!MyUtil.onMacOSX()){
+      menuEdit.addSeparator();
+      JMenuItem menuEditPrefs = new JMenuItem("Preferences");
+      menuEditPrefs.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          menuEditPrefs_actionPerformed();
+        }
+      });
+      menuEdit.add(menuEditPrefs);
+    }
 
     JMenuItem miDbClearCaches = new JMenuItem("Clear database cache");
     miDbClearCaches.addActionListener(new ActionListener(){
@@ -581,20 +662,36 @@ public class GlobalFrame extends GPFrame{
     menuFile.add(miDbReconnect);
    
     if(!GridPilot.isApplet()){
-      menuFile.addSeparator();
-      JMenuItem miExit;
-      if(MyUtil.onMacOSX()){
-        miExit = new JMenuItem("Quit (cmd q)");
+      if(!MyUtil.onMacOSX()){
+        menuFile.addSeparator();
+        JMenuItem miExit;
+        miExit = new JMenuItem("Quit (ctrl q)");
+        miExit.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            GridPilot.exit(0);
+          }
+        });
+        menuFile.add(miExit);
       }
       else{
-        miExit = new JMenuItem("Quit (ctrl q)");
-      }
-      miExit.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          GridPilot.exit(0);
+        try{
+          
+          /*com.apple.eawt.Application app = new
+          com.apple.eawt.Application();
+
+          app.addApplicationListener(new
+          com.apple.eawt.ApplicationAdapter() {
+          public void handleQuit(com.apple.eawt.ApplicationEvent
+          e)
+          {
+            GridPilot.exit(0);
+          }
+          });*/
         }
-      });
-      menuFile.add(miExit);
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
     }
 
     menuView.add(cbMonitor);
@@ -603,7 +700,8 @@ public class GlobalFrame extends GPFrame{
 
     JMenuItem miBrowser;
     if(MyUtil.onMacOSX()){
-      miBrowser = new JMenuItem("New browser (cmd o)");
+      miBrowser = new JMenuItem("New browser \t\t \u2318 o");
+      miBrowser.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     }
     else{
       miBrowser = new JMenuItem("New browser (ctrl o)");
@@ -627,6 +725,7 @@ public class GlobalFrame extends GPFrame{
       }
     });
     menuView.add(miBrowser);
+    menuView.validate();
     
     menuView.addSeparator();
     
@@ -756,13 +855,23 @@ public class GlobalFrame extends GPFrame{
 
     // Help
     JMenu menuHelp = new JMenu("Help");
-    JMenuItem menuHelpAbout = new JMenuItem("About GridPilot");
-    menuHelpAbout.addActionListener(new ActionListener(){
+    if(!MyUtil.onMacOSX()){
+      JMenuItem menuHelpAbout = new JMenuItem("About GridPilot");
+      menuHelpAbout.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          menuHelpAbout_actionPerformed();
+        }
+      });
+      menuHelp.add(menuHelpAbout);
+      menuHelp.addSeparator();
+    }
+    JMenuItem menuHelpWebsite = new JMenuItem("Go to GridPilot website");
+    menuHelpWebsite.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        menuHelpAbout_actionPerformed();
+        menuWebsite_actionPerformed();
       }
     });
-    menuHelp.add(menuHelpAbout);
+    menuHelp.add(menuHelpWebsite);
     menuHelp.addSeparator();
     JMenuItem menuHelpShowDN = new JMenuItem("Show my distinguished name");
     menuHelpShowDN.addActionListener(new ActionListener(){
