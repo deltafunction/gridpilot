@@ -22,7 +22,7 @@ public class LFCLookupPFN extends LookupPFN {
   DataLocationInterface dli;
   URL dliUrl;
   private static int pathConvention = 1;
-  private static final int PATH_CONVENTIONS = 5;
+  private static final int PATH_CONVENTIONS = 6;
   private boolean tryDli;
   
   public LFCLookupPFN(ATLASDatabase db, LFCConfig lfcConfig, String catalogServer,
@@ -163,6 +163,16 @@ public class LFCLookupPFN extends LookupPFN {
     switch(pc){
     
     case 1:
+      Debug.debug("Using non-CERN dsn path convention "+pc, 2);
+      // data09_cos.00137158.physics_CosmicMuons.merge.AOD.f162_m223/data09_cos.00137158.physics_CosmicMuons.merge.AOD.f162_m223._0045.1 -->
+      // /grid/atlas/dq2/data09_cos/AOD/f162_m223/data09_cos.00137158.physics_CosmicMuons.merge.AOD.f162_m223/data09_cos.00137158.physics_CosmicMuons.merge.AOD.f162_m223._0045.1
+      baseStr = dsnMetaData[0]+"/"+dsnMetaData[4]+"/"+dsnMetaData[5];
+      if(dsnMetaData.length==6){
+        atlasLpn = "dq2/"+baseStr+"/"+dsn+"/"+lfn;
+      }
+      break;
+      
+    case 2:
       Debug.debug("Using dsn path convention "+pc, 2);
       // data08_1beammag.00087764.physics_BPTX.merge.AOD.o4_r653_r792_p47_tid084038/AOD.084038._000001.pool.root.4 -->
       // /grid/atlas/dq2/data08_1beammag/AOD/data08_1beammag.00087764.physics_BPTX.merge.AOD.o4_r653_r792_p47_tid084038/AOD.084038._000001.pool.root.4
@@ -172,7 +182,7 @@ public class LFCLookupPFN extends LookupPFN {
       }
       break;
       
-    case 2:
+    case 3:
       Debug.debug("Using very very new path convention "+pc, 2);
       // trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421 -->
       // /grid/atlas/dq2/trig1_misal1_mc12/AOD/trig1_misal1_mc12.006384.PythiaH120gamgam.recon.AOD.v13003002_tid016421/AOD.016421._00002.pool.root.12
@@ -188,7 +198,7 @@ public class LFCLookupPFN extends LookupPFN {
       }
       break;
       
-    case 3:
+    case 4:
       Debug.debug("Using very new path convention "+pc, 2);
       // trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6 ->
       // /grid/atlas/dq2/trig1_misal1_mc11/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805/trig1_misal1_mc11.007406.singlepart_singlepi7.recon.log.v12003103_tid003805._00003.job.log.tgz.6
@@ -204,7 +214,7 @@ public class LFCLookupPFN extends LookupPFN {
       }
       break;
      
-    case 4:
+    case 5:
       Debug.debug("Using old path convention "+pc, 2);
       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->
       // /grid/atlas/dq2/csc11/csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103/
@@ -217,7 +227,7 @@ public class LFCLookupPFN extends LookupPFN {
       }
       break;
        
-    case 5:
+    case 6:
       Debug.debug("Using new path convention "+pc, 2);
       // New (or old?) convention:
       // csc11.007062.singlepart_gamma_E50.recon.AOD.v11004103._00001.pool.root ->

@@ -970,7 +970,7 @@ public class NGComputingSystem implements MyComputingSystem{
   
   public ARCResource [] findAuthorizedResourcesFromIS(){
     long start = System.currentTimeMillis();
-    long limit = 30000;//10000;
+    long limit = 300000;//10000;
     long offset = 2000; // some +- coefficient
     Collection foundResources = null;
     ARCResource [] resourcesArray = null;
@@ -978,7 +978,7 @@ public class NGComputingSystem implements MyComputingSystem{
       logFile.addInfo("Finding resources, please wait...");
       // a Collection of HashSets
       foundResources = arcDiscovery.findAuthorizedResources(
-          getUserInfo(csName), 20, limit);
+          getUserInfo(csName), 3, limit);
       Object itObj = null;
       HashSet tmpRes = null;
       HashSet resourcesSet = new HashSet();

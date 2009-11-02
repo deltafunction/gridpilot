@@ -62,7 +62,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
    * when it is in this transfer vector) and should belong to submittedTransfers. <br>
    * Each transfer in toCheckTransfers is going to be put in {@link #checkingTransfers}
    */
-  private Vector toCheckTransfers = new Vector();
+  private Vector<TransferInfo> toCheckTransfers = new Vector<TransferInfo>();
 
   /**
    * Contains all transfers for which update is processing. <p>
@@ -227,8 +227,16 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
   public void exit(){
   }
+  
+  public void cancelUpdate(TransferInfo transfer){
+    toCheckTransfers.remove(transfer);
+  }
 
-  /**
+
+  public void cancelAllUpdates(){
+    toCheckTransfers.removeAllElements();
+  }
+/**
    * Updates the status for all selected transfers. <p>
    * Add each transfer from <code>transfers</code> in <code>toCheckTransfers</code> if it needs
    * to be refreshed, and is not in <code>toCheckTransfers</code> or <code>checkingTransfers</code>. <p>

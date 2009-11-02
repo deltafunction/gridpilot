@@ -77,6 +77,7 @@ public class MyTransferControl extends TransferControl {
   private static int TRANSFER_CANCEL_TIMEOUT = 60*1000;
   private Object [][] tableValues = new Object[0][GridPilot.TRANSFER_STATUS_FIELDS.length];
   private JProgressBar pbSubmission;
+  private int batchSize = 1;
   
   final private static String SRM2_PLUGIN_NAME = "srm2";
   
@@ -175,6 +176,7 @@ public class MyTransferControl extends TransferControl {
                 logFile.addMessage("ERROR: starting transfer(s) failed.", e);
                 e.printStackTrace();
                 for(int i=0; i<finalTransfers.length; ++i){
+                  GridPilot.getClassMgr().getTransferStatusUpdateControl().cancelUpdate(finalTransfers[i]);
                   toSubmitTransfers.remove(finalTransfers[i]);
                   runningTransfers.remove(finalTransfers[i]);
                   submittingTransfers.remove(finalTransfers[i]);
@@ -234,8 +236,12 @@ public class MyTransferControl extends TransferControl {
       return null;
     }
     
-    while(runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
+    int transferNr = 0;
+    while(transferNr<batchSize &&
+        runningTransfers.size()+submittingTransfers.size()<maxSimultaneousTransfers &&
         !toSubmitTransfers.isEmpty()){
+      
+      ++transferNr;
       
       // break if next transfer is not uniform with the previous ones (in this batch)
       transferVector.add((toSubmitTransfers.get(0)));
@@ -366,20 +372,25 @@ public class MyTransferControl extends TransferControl {
   }
   
   private void setProgressBar1(final int max, final int val) {
-    // use status bar on monitoring frame
-    StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
-    try{
-      if(!isProgressBarSet){
-        pbSubmission = myStatusBar.createJProgressBar(0, max);
-        myStatusBar.setProgressBar(pbSubmission);
-        myStatusBar.setProgressBarValue(pbSubmission, val);
-        isProgressBarSet = true;
+    ResThread t = new ResThread(){
+      public void run(){
+        // use status bar on monitoring frame
+        StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
+        try{
+          if(!isProgressBarSet){
+            pbSubmission = myStatusBar.createJProgressBar(0, max);
+            myStatusBar.setProgressBar(pbSubmission);
+            myStatusBar.setProgressBarValue(pbSubmission, val);
+            isProgressBarSet = true;
+          }
+          Debug.debug("Done setting new progress bar.", 3);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
       }
-      Debug.debug("Done setting new progress bar.", 3);
-    }
-    catch(Exception e){
-      e.printStackTrace();
-    }
+    };
+    t.start();
   }
   
   private void incrementProgressBarValue(JProgressBar pb, int val){
@@ -408,8 +419,22 @@ public class MyTransferControl extends TransferControl {
    * Reloads some values from configuration file. <p>
    */
   public void loadValues(){
-    String tmp = configFile.getValue("File transfer systems", "Max simultaneous running");
-    if(tmp != null){
+    String tmp = configFile.getValue("File transfer systems", "Max batch size");
+    if(tmp!=null){
+      try{
+        batchSize = Integer.parseInt(tmp);
+      }
+      catch(NumberFormatException nfe){
+        logFile.addMessage("Value of \"max batch size\" "+
+                                    "is not an integer in configuration file", nfe);
+      }
+    }
+    else{
+      logFile.addMessage(configFile.getMissingMessage("File transfer systems", "Max batch size") + "\n" +
+                              "Default value = " + batchSize);
+    }
+    tmp = configFile.getValue("File transfer systems", "Max simultaneous running");
+    if(tmp!=null){
       try{
         maxSimultaneousTransfers = Integer.parseInt(tmp);
       }
