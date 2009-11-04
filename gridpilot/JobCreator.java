@@ -499,7 +499,10 @@ public class JobCreator{
       if(pos4>=0){
         String [] names = new String[inputFileNames.length];
         for(int i=0; i<inputFileNames.length; ++i){
-          names[i] = getBaseAndExtension(inputFileNames[i])[0];
+          //names[i] = getBaseAndExtension(inputFileNames[i])[0];
+          //String [] bn = getBaseAndExtension(inputFileNames[i]);
+          //names[i] = bn[0] + bn[1];
+          names[i] = inputFileNames[i];
         }
         sss.replace(pos4, pos4+2, MyUtil.arrayToString(names));
       }
