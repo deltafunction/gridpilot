@@ -308,6 +308,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("initLines")){             
               rtVals[i] = mapRteNameToScriptPaths(name);
             }
+            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("provides")){             
+              rtVals[i] = name;
+            }
             else{
               rtVals[i] = "";
             }
@@ -359,6 +362,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
           ret = ret.replaceFirst(patternAndReplacements[0], patternAndReplacements[i]);
         }
       }
+    }
+    if(ret.equals("")){
+      ret = name;
     }
     Debug.debug("Mapping gLite RTE "+name+" to "+ret, 2);
     reverseRteTranslationMap.put(ret, name);

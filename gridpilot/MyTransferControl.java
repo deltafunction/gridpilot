@@ -69,7 +69,7 @@ public class MyTransferControl extends TransferControl {
    * It is not the maximum number of running transfers on the storage system */
   private int maxSimultaneousTransfers = 5;
   /** Delay between the begin of two submission threads */
-  private int timeBetweenTransfers = 1000;
+  private int timeBetweenTransfers = 10000;
   private HashMap<String, String> serverPluginMap;
   private String isRand = null;
 
@@ -1000,11 +1000,13 @@ public class MyTransferControl extends TransferControl {
       public void run(){
         animateStatus();
         setMonitorStatus("Cancelling...");
+        Debug.debug("Cancelling "+transfers.size()+" transfers", 2);
         Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
         try{
           for(int i=0; i<transfers.size(); ++i){
             try{             
               transfer = transfers.get(i);
+              Debug.debug("Freeing up slot from transfer "+transfer, 3);
               GridPilot.getClassMgr().getTransferControl().runningTransfers.remove(transfer);
               // skip if not running
               boolean isRunning = false;
@@ -1026,15 +1028,19 @@ public class MyTransferControl extends TransferControl {
               FileTransfer ft = findFTPlugin(transfer.getTransferID());
               ft.cancel(transfer.getTransferID());
               String status = "Cancelled";
-              GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
+              try{
+                GridPilot.getClassMgr().getTransferStatusTable().setValueAt(
                   status, transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_STATUS);
+              }
+              catch(Exception e){
+              }
               transfer.setStatus(status);
               transfer.setInternalStatus(FileTransfer.STATUS_ERROR);
               transfer.setNeedsUpdate(false);
             }
             catch(Exception ee){
-              Debug.debug("WARNING: Could not cancel transfer "+transfer.getTransferID(), 2);
               ee.printStackTrace();
+              Debug.debug("WARNING: Could not cancel transfer "+transfer, 2);
             }
           }        
         }

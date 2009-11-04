@@ -1,2 +1,5 @@
-System
+#System
 #com.sun.java.swing.plaf.gtk.GTKLookAndFeel
+Metal
+##DefaultMetal
+##Ocean

@@ -245,7 +245,7 @@ public class GridPilot extends JApplet{
     catch(Throwable e){
     }
     if(SKIN_NAME==null){
-      SKIN_NAME = "clear";
+      SKIN_NAME = "blue";
     }
     ICONS_PATH = RESOURCES_PATH + "skins/" + SKIN_NAME + "/";
 

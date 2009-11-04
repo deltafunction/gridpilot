@@ -478,34 +478,56 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
     statusTable.updateUI();
   }
-
+  
   /**
    * Removes selected transfers from this status table.
    */
-  private void clear(int [] selectedRows){
+  private void clear(final int [] selectedRows){
+    if(SwingUtilities.isEventDispatchThread()){
+      doClear(selectedRows);
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doClear(selectedRows);
+            }
+            catch(Exception ex){
+              Debug.debug("Could not clear...", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+  
+  private void doClear(int [] selectedRows){
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    if(transferControl.isSubmitting()){
+    /*if(transferControl.isSubmitting()){
       Debug.debug("cannot clear table during submission", 3);
       return;
-    }
-    Vector runningRowsVector = new Vector();
-    Vector transferVector = getTransfersAtRows(selectedRows);
+    }*/
+    Vector<Integer> notRunningRowsVector = new Vector<Integer>();
+    Vector<TransferInfo> transferVector = getTransfersAtRows(selectedRows);
+    transferControl.cancel(transferVector);
     TransferInfo transfer = null;
     for(int i=0; i<transferVector.toArray().length;++i){
-      transfer = (TransferInfo) transferVector.get(i);
+      transfer = transferVector.get(i);
       if(!MyTransferControl.isRunning(transfer)){
         statusTable.removeRow(i);
         statusTable.repaint();
-        runningRowsVector.add(new Integer(i));
+        notRunningRowsVector.add(new Integer(i));
       }
       else{
         Debug.debug("Cannot clear running transfer", 2);
       }
     }
 
-    int [] runningRows = new int [runningRowsVector.size()];
+    int [] runningRows = new int [notRunningRowsVector.size()];
     for(int i=0; i<runningRows.length; ++i){
-      runningRows[i] = ((Integer) runningRowsVector.get(i)).intValue();
+      runningRows[i] = ((Integer) notRunningRowsVector.get(i)).intValue();
     }
     GridPilot.getClassMgr().getTransferControl().clearTableRows(runningRows);
 
@@ -534,28 +556,53 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Removes all transfers from this status table.
    */
   private void clearTable(){
+    if(SwingUtilities.isEventDispatchThread()){
+      doClearTable();
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doClearTable();
+            }
+            catch(Exception ex){
+              Debug.debug("Could not clear...", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+  
+
+  private void doClearTable(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    if(transferControl.isSubmitting()){
+    /*if(transferControl.isSubmitting()){
       String error = "Cannot clear table during submission";
       statusBar.setLabel(error);
       Debug.debug(error, 2);
       return;
-    }
+    }*/
     
-    Vector runningRowsVector = new Vector();
+    Vector<TransferInfo> notRunningVector = new Vector<TransferInfo>();
+    Vector<Integer> notRunningRowsVector = new Vector<Integer>();
     for(int i=0; i<statusTable.getRowCount(); ++i){
       TransferInfo transfer = getTransferAtRow(i);
       if(!MyTransferControl.isRunning(transfer)){
         Debug.debug("Removing row "+i, 3);
-        runningRowsVector.add(new Integer(i));
+        notRunningVector.add(transfer);
+        notRunningRowsVector.add(new Integer(i));
       }
     }
+    transferControl.cancel(notRunningVector);
     
-    int [] runningRows = new int [runningRowsVector.size()];
-    for(int i=0; i<runningRows.length; ++i){
-      runningRows[i] = ((Integer) runningRowsVector.get(i)).intValue();
+    int [] notRunningRows = new int [notRunningRowsVector.size()];
+    for(int i=0; i<notRunningRows.length; ++i){
+      notRunningRows[i] = ((Integer) notRunningRowsVector.get(i)).intValue();
     }
-    GridPilot.getClassMgr().getTransferControl().clearTableRows(runningRows);
+    GridPilot.getClassMgr().getTransferControl().clearTableRows(notRunningRows);
     
     statusUpdateControl.updateStatus(null);
     statusUpdateControl.updateTransfersByStatus();
@@ -578,7 +625,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Returns the transfers at the specified rows in statusTable
    * @see #getTransferAtRow(int)
    */
-  public static Vector getTransfersAtRows(int[] rows){
+  public static Vector<TransferInfo> getTransfersAtRows(int[] rows){
     Vector transfers = new Vector(rows.length);
     for(int i=0; i<rows.length; ++i){
       transfers.add(getTransferAtRow(rows[i]));
@@ -592,7 +639,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
       TransferInfo transfer = (TransferInfo) it.next();
       int internalStatus = transfer.getInternalStatus();
       if(internalStatus==FileTransfer.STATUS_DONE ||
-          internalStatus==FileTransfer.STATUS_ERROR ||
+          //internalStatus==FileTransfer.STATUS_ERROR ||
           internalStatus==FileTransfer.STATUS_FAILED){
         return false;
       }

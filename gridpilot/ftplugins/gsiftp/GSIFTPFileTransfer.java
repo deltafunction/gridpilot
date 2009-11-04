@@ -137,7 +137,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     
     try{
       GridPilot.getClassMgr().getSSL().activateProxySSL();
-      GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
+      //GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
       gridFtpClient = new GridFTPClient(host, port);
       // For some reason this no longer works
       //gridFtpClient.authenticate(credential);
@@ -798,11 +798,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
   
   public String[] startCopyFiles(GlobusURL[] srcUrls, GlobusURL[] destUrls)
      throws UrlCopyException {
-    Debug.debug("", 2);
     MyUrlCopyTransferListener urlCopyTransferListener = null;
     String [] ret = new String[srcUrls.length];
-    GridFTPClient srcClient = null;
-    Debug.debug("Copying "+srcUrls.length+" files", 2);
+    GridFTPClient dstClient = null;
+    Debug.debug("Copying "+srcUrls.length+" file(s)", 2);
     for(int i=0; i<srcUrls.length; ++i){
       try{
         urlCopyTransferListener = new MyUrlCopyTransferListener();
@@ -812,15 +811,20 @@ public class GSIFTPFileTransfer implements FileTransfer {
         if(srcUrls[i].getProtocol().equalsIgnoreCase("gsiftp") &&
             destUrls[i].getProtocol().equalsIgnoreCase("gsiftp")){
           urlCopy.setUseThirdPartyCopy(true);
-          srcClient = connect(srcUrls[i].getHost(), srcUrls[i].getPort());
-          GridFTPClient dstClient = connect(destUrls[i].getHost(), destUrls[i].getPort());
+          GridFTPClient srcClient = connect(srcUrls[i].getHost(), srcUrls[i].getPort());
+          dstClient = connect(destUrls[i].getHost(), destUrls[i].getPort());
           Authorization srcAuth = srcClient.getAuthorization();
           Authorization dstAuth = dstClient.getAuthorization();
           //urlCopy.setDCAU(true);
+          Debug.debug("Setting srcAuth: "+srcAuth, 2);
+          Debug.debug("Setting dstAuth: "+dstAuth, 2);
           urlCopy.setSourceAuthorization(srcAuth);
           urlCopy.setDestinationAuthorization(dstAuth);
+          GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
+          urlCopy.setDestinationCredentials(credential);
+          urlCopy.setSourceCredentials(credential);
           srcClient.close();
-          dstClient.close();
+          //dstClient.close();
         }
         urlCopy.addUrlCopyListener(urlCopyTransferListener);
         // The transfer id is chosen to be "gsiftp-{get|put|copy}::'srcUrl' 'destUrl'"
@@ -829,13 +833,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
         jobs.put(id, urlCopy);
         urlCopyTransferListeners.put(id, urlCopyTransferListener);
         ret[i] = id;
-        final GridFTPClient checkClient = srcClient;
+        final GridFTPClient checkClient = dstClient;
         Thread t = new Thread(){
           public void run(){
             try{
               // Check if file is cached and the cache is up to date
               if(urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("gsiftp") &&
-                  urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("file")){
+                  (urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("file") ||
+                   urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("gsiftp"))){
                 Debug.debug("Checking cache...", 2);
                 boolean cacheOk = false;
                 try{
@@ -854,12 +859,23 @@ public class GSIFTPFileTransfer implements FileTransfer {
                 else{
                   // Start the transfer.
                   Debug.debug("Starting the actual transfer...", 2);
-                  urlCopy.copy();
+                  // It seems some servers just cut the connection when done, causing
+                  // urlCopy.copy() to throw an exception.
+                  try{
+                    urlCopy.copy();
+                  }
+                  catch(Exception e){
+                    e.printStackTrace();
+                  }
                   ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
                 }
               }
+              else{
+                throw new UrlCopyException("This kind of transfer is not supported by gsiftp plugin.");
+              }
+              checkClient.close();
             }
-            catch(UrlCopyException ue){
+            catch(Exception ue){
               try{
                 ue.printStackTrace();
                 GridPilot.getClassMgr().getLogFile().addMessage((ue instanceof Exception ? "Exception" : "Error") +
@@ -867,6 +883,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
                     " while starting download", ue);
                 ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferError(ue);
                 //this.finalize();
+                checkClient.close();
               }
               catch(Throwable ee){
               }

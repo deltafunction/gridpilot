@@ -1807,7 +1807,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String checksum = "";
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
       catalogs = MyUtil.arrayToString(findPFNs(vuid, dsn, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
-      for(int j=2; j<pfnVector.size(); ++j){
+      for(int j=0; j<pfnVector.size(); ++j){
         resultVector.add(pfnVector.get(j));
       }
       Debug.debug("pfnVector --> "+pfnVector, 3);

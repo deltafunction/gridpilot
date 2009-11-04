@@ -144,8 +144,8 @@ public class JobCreationPanel extends CreateEditPanel{
       instructionLabelString += ", output destination: $o";
     }
     if(datasetFields.contains("inputdataset")){
-      instructionLabelString += ", input base-name(s): $f";
-      //instructionLabelString += ", input file URL(s): $u";
+      instructionLabelString += ",input base-name(s): $f";
+      instructionLabelString += ", input file URL(s): $u";
       instructionLabelString += ", input path: $p";
     }
     instructionLabelString += ", iterator: $i";

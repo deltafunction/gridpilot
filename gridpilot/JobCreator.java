@@ -735,9 +735,12 @@ public class JobCreator{
           ":"+inputJobDefRecords.getValue(0, EVENT_MIN)+inputJobDefRecords.getValue(0, EVENT_MAX), 2);
     }
     String [] inputFileURLs = new String[]{};
-    if(inputJobDefIds!=null && inputJobDefIds.length>0){
+    try{
       inputFileURLs = findInputFiles(evtMin, evtMax, currentPartition,
-          fileCatalogInput, eventsPresent);
+         fileCatalogInput, eventsPresent, inputJobDefIds!=null && inputJobDefIds.length>0);
+    }
+    catch(Exception e){
+      e.printStackTrace();
     }
     // construct the (short) file names for the job script arguments
     Vector<String> inputFileNamesVec = new Vector<String>();
@@ -908,14 +911,14 @@ public class JobCreator{
   }
 
   private String [] findInputFiles(int evtMin, int evtMax, int currentPartition,
-      boolean fileCatalogInput, boolean eventsPresent) {
-    Debug.debug("findInputFiles "+evtMin+":"+evtMax+":"+currentPartition+":"+fileCatalogInput+":"+eventsPresent, 3);
+      boolean fileCatalogInput, boolean eventsPresent, boolean inputJobDefsPresent) {
+    Debug.debug("findInputFiles "+evtMin+":"+evtMax+":"+currentPartition+":"+fileCatalogInput+":"+eventsPresent+":"+inputJobDefsPresent, 3);
     Vector<String> inputFiles = new Vector<String>();
     String inputFileName = null;
     String pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
     int readEvtMin = -1;
     int readEvtMax = -1;
-    if(eventsPresent){
+    if(eventsPresent && inputJobDefsPresent){
       boolean inputFileFound = false;
       for(int j=0; j<inputJobDefIds.length; ++j){
         Debug.debug("checking input record "+inputJobDefRecords.get(j), 3);
@@ -990,6 +993,7 @@ public class JobCreator{
         // So, it should NOT be checked.
         
         DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1], DBPluginMgr.LOOKUP_PFNS_ONE);
+        Debug.debug("Looked up input file "+inputFile, 2);
         String inputFils = (String) inputFile.getValue(pfnsField);
         inputFiles.add(inputFils);
         /*String [] inputFilArr = null;
@@ -1227,7 +1231,7 @@ public class JobCreator{
   }
 
   /**
-   * Creates a String which contains the String s, in which each constant ($A, $B, etc)
+   * Creates a string which contains the string 's', in which each constant ($A, $B, etc)
    * has been replaced by the value of this constant.
    * @throws SyntaxException if a constant has been found but is not defined.
    */
@@ -1251,7 +1255,8 @@ public class JobCreator{
       if(end +1 < s.length() && s.charAt(end + 1) != '{' &&
           s.charAt(end + 1) != 'n' && s.charAt(end + 1) != 'r' &&
           s.charAt(end + 1) != 'e' && s.charAt(end + 1) != 'p' &&
-          s.charAt(end + 1) != 'o' &&
+          s.charAt(end + 1) != 'o' && s.charAt(end + 1) != 'f' &&
+          s.charAt(end + 1) != 'i' && s.charAt(end + 1) != 'u' &&
           s.charAt(end + 1) != '1' && s.charAt(end + 1) != '2' &&
           s.charAt(end + 1) != '3' && s.charAt(end + 1) != '4' &&
           s.charAt(end + 1) != '5' && s.charAt(end + 1) != '6' &&
