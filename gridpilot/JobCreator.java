@@ -474,25 +474,31 @@ public class JobCreator{
       // Fill in outputDestination
       pos3 = sss.indexOf("$o");
       if(pos3>=0){
-      	if(sss.substring(pos3+2, pos3+3).equals("/") && outputDest.length()>0){
-          if(outputDest.substring(outputDest.length()-1,
-              outputDest.length()).equals("/")){
-            sss.replace(pos3, pos3+2,outputDest.substring(0,
-                outputDest.length()-1));    
+        Debug.debug("Replacing "+sss+":"+ss+":"+pos3+":"+ss.length(), 3);
+        if(pos3==0 && ss.length()==2){
+          sss.replace(0, 2, outputDest);
+        }
+        else{
+          if(sss.substring(pos3+2, pos3+3).equals("/") && outputDest.length()>0){
+            if(outputDest.substring(outputDest.length()-1,
+                outputDest.length()).equals("/")){
+              sss.replace(pos3, pos3+2,outputDest.substring(0,
+                  outputDest.length()-1));    
+            }
+            else{
+              sss.replace(pos3, pos3+2, outputDest);
+            }
           }
           else{
-            sss.replace(pos3, pos3+2, outputDest);
+            if(outputDest.length()>0 && outputDest.substring(outputDest.length()-1,
+                outputDest.length()).equals("/")){       
+              sss.replace(pos3, pos3+2, outputDest);
+            }
+            else{
+              sss.replace(pos3, pos3+2, outputDest+"/");
+            }
           }
-      	}
-      	else{
-          if(outputDest.length()>0 && outputDest.substring(outputDest.length()-1,
-              outputDest.length()).equals("/")){       
-            sss.replace(pos3, pos3+2, outputDest);
-          }
-          else{
-            sss.replace(pos3, pos3+2, outputDest+"/");
-          }
-      	}
+        }
       }
       // Fill in inputFileNames
       pos4 = sss.indexOf("$f");
@@ -903,7 +909,7 @@ public class JobCreator{
         //return;
       }
     }
-    else{
+    if(inputJobDefIds==null || inputJobDefIds.length==0 || inputMgr==null || !inputMgr.isJobRepository()){
       fileCatalogInput = true;
     }
     if((inputFileRecords==null || inputFileRecords.values.length==0) &&
