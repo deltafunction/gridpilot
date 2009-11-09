@@ -970,7 +970,7 @@ public class NGComputingSystem implements MyComputingSystem{
   
   public ARCResource [] findAuthorizedResourcesFromIS(){
     long start = System.currentTimeMillis();
-    long limit = 300000;//10000;
+    long limit = 30000;//10000;
     long offset = 2000; // some +- coefficient
     Collection foundResources = null;
     ARCResource [] resourcesArray = null;
@@ -1012,6 +1012,9 @@ public class NGComputingSystem implements MyComputingSystem{
               }
             }
           }
+        }
+        else{
+          logFile.addMessage("WARNING: bogus result returned resource. "+itObj);
         }
       }
       resourcesArray = new ARCResource[resourcesSet.size()];
