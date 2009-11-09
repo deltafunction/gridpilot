@@ -358,8 +358,8 @@ public class MyTransferControl extends TransferControl {
     // use status bar on monitoring frame
     StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     try{
-      if(!isProgressBarSet){
-        Debug.debug("Already in event thread - creating new progress bar.", 3);
+      if(pbSubmission==null || !isProgressBarSet){
+        Debug.debug("Creating new progress bar.", 3);
         pbSubmission = new JProgressBar(0, max);
         myStatusBar.add(pbSubmission, BorderLayout.EAST);
         isProgressBarSet = true;
