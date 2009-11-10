@@ -19,8 +19,8 @@ public class TiersOfAtlas {
   private File toaFile;
   private String toaLocation;
   // Hash of catalog server mappings found in TiersOfAtlas
-  private HashMap fileCatalogs = new HashMap();
-  private HashMap httpFileCatalogs = new HashMap();
+  private HashMap<String, String> fileCatalogs = new HashMap<String, String>();
+  private HashMap<String, String> httpFileCatalogs = new HashMap<String, String>();
 
   public TiersOfAtlas(String _toaLocation) {
     try{
@@ -40,15 +40,14 @@ public class TiersOfAtlas {
         toaURL = new URL(toaLocation);
       }
       BufferedReader in = new BufferedReader(new InputStreamReader(toaURL.openStream()));
-      PrintWriter out = new PrintWriter(
-          new FileWriter(toaFile)); 
+      PrintWriter out = new PrintWriter(new FileWriter(toaFile)); 
       String line = null;
       while((line = in.readLine())!=null){
         out.println(line);
       }
       in.close();
       out.close();
-      // have the diretory deleted on exit
+      // have the file deleted on exit
       GridPilot.addTmpFile(toaFile.getName(), toaFile);
     }
     catch(Exception e){
@@ -72,10 +71,10 @@ public class TiersOfAtlas {
   protected String getFileCatalogServer(String siteAcronym, boolean preferHttp) throws MalformedURLException, IOException {
     
     if(!preferHttp && fileCatalogs.containsKey(siteAcronym)){
-      return (String) fileCatalogs.get(siteAcronym);
+      return fileCatalogs.get(siteAcronym);
     }
     if(preferHttp && httpFileCatalogs.containsKey(siteAcronym)){
-      return (String) httpFileCatalogs.get(siteAcronym);
+      return httpFileCatalogs.get(siteAcronym);
     }
     
     Debug.debug(siteAcronym+" NOT in cache "+MyUtil.arrayToString(fileCatalogs.keySet().toArray())+
