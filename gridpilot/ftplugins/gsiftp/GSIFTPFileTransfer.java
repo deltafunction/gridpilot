@@ -859,21 +859,18 @@ public class GSIFTPFileTransfer implements FileTransfer {
                 else{
                   // Start the transfer.
                   Debug.debug("Starting the actual transfer...", 2);
-                  // It seems some servers just cut the connection when done, causing
-                  // urlCopy.copy() to throw an exception.
-                  try{
-                    urlCopy.copy();
-                  }
-                  catch(Exception e){
-                    e.printStackTrace();
-                  }
+                  urlCopy.copy();
                   ((MyUrlCopyTransferListener) urlCopyTransferListeners.get(id)).transferCompleted();
                 }
               }
               else{
                 throw new UrlCopyException("This kind of transfer is not supported by gsiftp plugin.");
               }
-              checkClient.close();
+              try{
+                checkClient.close();
+              }
+              catch(Exception ce){
+              }
             }
             catch(Exception ue){
               try{

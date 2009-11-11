@@ -47,6 +47,7 @@ public class TiersOfAtlas {
       }
       in.close();
       out.close();
+      Debug.debug("Wrote cache of TiersOfATLAS in "+toaFile.getAbsolutePath(), 2);
       // have the file deleted on exit
       GridPilot.addTmpFile(toaFile.getName(), toaFile);
     }

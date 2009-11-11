@@ -244,8 +244,14 @@ public class MySSL extends SSL{
       // otherwise, just use the directory
       else{
         URL dirUrl = super.getClass().getResource("/resources/vomsdir");
-        Debug.debug("Using default VOMS dir "+dirUrl.getPath(), 3);
-        return dirUrl.getPath();
+        // Strip "C:" from beginning of the string - VOMS seems to add this...
+        String vomsDirPath = dirUrl.getPath();
+        if(MyUtil.onWindows()){
+          vomsDirPath = vomsDirPath.replaceFirst("^/+", "");
+        }
+        vomsDirPath = MyUtil.urlDecode(vomsDirPath);
+        Debug.debug("Using default VOMS dir "+vomsDirPath, 3);
+        return vomsDirPath;
       }
     }
     catch(IOException e){
@@ -462,6 +468,7 @@ public class MySSL extends SSL{
           String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
           
           // This works with gLite and ARC
+          Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile, 2);
           VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
               GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
               certFile, keyFile, caCertsDirStr, vomsDir,

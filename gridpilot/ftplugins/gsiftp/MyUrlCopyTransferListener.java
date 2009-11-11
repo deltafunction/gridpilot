@@ -39,7 +39,7 @@ public class MyUrlCopyTransferListener implements UrlCopyListener {
     if(total==-1){
       if(current==-1){
         //JOptionPane.showMessageDialog(null, "The server does not support third party");
-        Debug.debug("Transfer not started: "+current, 3);
+        Debug.debug("Transfer not reported started: "+current+". Perhaps third-party transfer.", 3);
         status = GSIFTPFileTransfer.STATUS_WAIT;
       }
       else{

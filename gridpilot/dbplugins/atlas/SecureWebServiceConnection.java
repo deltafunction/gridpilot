@@ -177,7 +177,9 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	{
 		HostnameVerifier hv = new HostnameVerifier() {
 			public boolean verify(String urlHostName, SSLSession session) {
-        Debug.debug("WARNING: URL Host: "+urlHostName+" vs. "+session.getPeerHost(), 1);
+			  if(!urlHostName.trim().equalsIgnoreCase(session.getPeerHost())){
+	        Debug.debug("WARNING: URL Host: "+urlHostName+" vs. "+session.getPeerHost(), 2);
+			  }
 				return true;
 			}
 		};

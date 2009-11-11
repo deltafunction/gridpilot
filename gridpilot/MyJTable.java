@@ -345,7 +345,7 @@ public class MyJTable extends JTable implements Table {
               doSetValueAt(value, row, col);
             }
             catch(Exception ex){
-              Debug.debug("Could not create panel ", 1);
+              Debug.debug("Could not set value.", 1);
               ex.printStackTrace();
             }
           }

@@ -84,6 +84,7 @@ public class ATLASDatabase extends DBCache implements Database{
 
  
   private boolean sslActivated = false;
+  private boolean proxySslActivated = false;
 
   // when creating user datasets, this will be prepended with /grid/atlas
   public String lfcUserBasePath = null;
@@ -202,6 +203,16 @@ public class ATLASDatabase extends DBCache implements Database{
     sslActivated = true;
   }
   
+  protected void activateProxySsl() throws Exception{
+    if(proxySslActivated){
+      return;
+    }
+    GridPilot.getClassMgr().getSSL().activateProxySSL();
+    GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
+    lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    Debug.debug("Created new LFCConfig from ID "+lfcConfig.globusCredential.getIdentity(), 1);
+    proxySslActivated = true;
+  }
 
   public void requestStop(){
     setFindPFNs(false);
@@ -1113,17 +1124,19 @@ public class ATLASDatabase extends DBCache implements Database{
    */
   private String [] doLookupPFNs(String _catalogServer, String dsn, String lfn, boolean findAll)
      throws Exception {
-    activateSsl();
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("lfc")){
+      activateProxySsl();
       return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, findAll, false)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
+      activateSsl();
       return (new MySQLLookupPFN(this, catalogServer, lfn, findAll)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("http")){
+      activateSsl();
       return (new LRCLookupPFN(this, catalogServer, lfn, findAll)).lookup();
     }
     else{
