@@ -55,7 +55,7 @@ import org.safehaus.uuid.UUIDGenerator;
  */
 public class MyTransferControl extends TransferControl {
   
-  private boolean isProgressBarSet = false;
+  private Boolean isProgressBarSet = false;
   private ConfigFile configFile;
   private Timer timer;
   private ImageIcon iconSubmitting;
@@ -358,7 +358,7 @@ public class MyTransferControl extends TransferControl {
     // use status bar on monitoring frame
     StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     try{
-      if(pbSubmission==null || !isProgressBarSet){
+      if(!isProgressBarSet){
         Debug.debug("Creating new progress bar.", 3);
         pbSubmission = new JProgressBar(0, max);
         myStatusBar.add(pbSubmission, BorderLayout.EAST);
@@ -372,25 +372,20 @@ public class MyTransferControl extends TransferControl {
   }
   
   private void setProgressBar1(final int max, final int val) {
-    ResThread t = new ResThread(){
-      public void run(){
+    try{
+      if(!isProgressBarSet){
         // use status bar on monitoring frame
         StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
-        try{
-          if(!isProgressBarSet){
-            pbSubmission = myStatusBar.createJProgressBar(0, max);
-            myStatusBar.setProgressBar(pbSubmission);
-            myStatusBar.setProgressBarValue(pbSubmission, val);
-            isProgressBarSet = true;
-          }
-          Debug.debug("Done setting new progress bar.", 3);
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
+        pbSubmission = myStatusBar.createJProgressBar(0, max);
+        myStatusBar.setProgressBar(pbSubmission);
+        myStatusBar.setProgressBarValue(pbSubmission, val);
+        isProgressBarSet = true;
+        Debug.debug("Done setting new progress bar.", 3);
       }
-    };
-    t.start();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
   }
   
   private void incrementProgressBarValue(JProgressBar pb, int val){
@@ -398,10 +393,10 @@ public class MyTransferControl extends TransferControl {
     myStatusBar.incrementProgressBarValue(pb, val);
   }
   
-  private void reduceProgressBarMax(JProgressBar pb, int val){
+  private void increaseProgressBarMax(JProgressBar pb, int val){
     StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     int max = myStatusBar.getProgressBarMax(pb);
-    myStatusBar.setProgressBarMax(pb, max-val);
+    myStatusBar.setProgressBarMax(pb, max+val);
   }
   
   private void setStatusBarMouseListenerCancel(JProgressBar pbSubmission) {
@@ -553,20 +548,23 @@ public class MyTransferControl extends TransferControl {
    * Adds transfers to toSubmitTransfers.
    * @param   transfers     Vector of TransferInfo's.
    */
-  public void queue(final Vector _transfers) throws Exception {
+  public synchronized void queue(final Vector _transfers) throws Exception {
+
+    Debug.debug("setting progress bar", 2);
+    setProgressBar1(0, 0);
 
     ResThread t = new ResThread(){
       Vector transfers;
       public void run(){
+        increaseProgressBarMax(pbSubmission,
+            (pbSubmission==null?0:pbSubmission.getMaximum()) + _transfers.size());
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
           transfers = MyUtil.shuffle(_transfers);
         }
         else{
           transfers = _transfers;
         }
-        Debug.debug("setting progress bar", 2);
-        setProgressBar1((pbSubmission==null?0:pbSubmission.getMaximum()) + transfers.size(), 0);
-        Debug.debug("setting mouse listener", 2);
+        Debug.debug("setting mouse listener on "+pbSubmission, 2);
         setStatusBarMouseListenerCancel(pbSubmission);
         Debug.debug("queueing "+transfers.size()+" transfers", 2);
         //toSubmitTransfers.addAll(transfers);
@@ -709,7 +707,7 @@ public class MyTransferControl extends TransferControl {
         incrementProgressBarValue(pbSubmission, 1);
         Debug.debug("Transfer submitted", 2);
       }
-      reduceProgressBarMax(pbSubmission, transfers.length);
+      //increaseProgressBarMax(pbSubmission, -transfers.length);
       statusTable.updateSelection();
     }
     catch(Exception e){
@@ -744,7 +742,7 @@ public class MyTransferControl extends TransferControl {
       if(!timer.isRunning()){
         timer.restart();
       }
-      if(pbSubmission.getPercentComplete()==1.0){
+      if(pbSubmission.getPercentComplete()==1.0 && toSubmitTransfers.isEmpty()){
         removeProgressBar();
         setStatusBarText("");
       }
@@ -971,13 +969,16 @@ public class MyTransferControl extends TransferControl {
     Enumeration<TransferInfo> e = toSubmitTransfers.elements();
     while(e.hasMoreElements()){
       TransferInfo transfer = e.nextElement();
+      transfer.setNeedsUpdate(false);
+      if(transfer.getTableRow()<0){
+        continue;
+      }
       statusTable.setValueAt("Transfer not queued (cancelled)!",
           transfer.getTableRow(), MyTransferStatusUpdateControl.FIELD_TRANSFER_ID);
       statusTable.setValueAt(transfer.getSourceURL(), transfer.getTableRow(),
           MyTransferStatusUpdateControl.FIELD_SOURCE);
       statusTable.setValueAt(transfer.getDestination().getURL(), transfer.getTableRow(),
           MyTransferStatusUpdateControl.FIELD_DESTINATION);
-      transfer.setNeedsUpdate(false);
     }
     toSubmitTransfers.removeAllElements();
     removeProgressBar();

@@ -125,6 +125,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private Boolean cleanupJobDefs = null;
   private Boolean deleteFiles = null;
   private Boolean cleanupFiles = null;
+  // Replicating semaphore
+  private boolean replicating = false;
+  private int fileCatalogTimeout;
 
   /**
    * Create a new DBPanel from scratch.
@@ -238,6 +241,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
      for(int i=0; i<fieldSet.size(); ++i){
        fieldNames[i] = fieldSet.get(i).toString();
      }
+     
+     // Set the timeout for querying file catalogs
+     String timeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "File catalog timeout");
+     if(timeout!=null){
+       try{
+         fileCatalogTimeout = Integer.parseInt(timeout);
+       }
+       catch(Exception e){
+         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not parse file catalog timeout", e);
+       }
+     }
+
    }
    
    public MyJTable getTable(){
@@ -804,7 +819,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         public void actionPerformed(ActionEvent e){
           new Thread(){
             public void run(){
-              viewFiles(false);
+              viewFiles(false, getSelectedIdentifier(), tableResults.getSelectedRow());
             }
           }.start();
         }
@@ -1551,7 +1566,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void actionPerformed(ActionEvent e){
         new Thread(){
           public void run(){
-            viewFiles(false);
+            viewFiles(false, getSelectedIdentifier(), tableResults.getSelectedRow());
           }
         }.start();
       }
@@ -1559,18 +1574,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miReplicateDataset = new JMenuItem("Replicate file(s)");
     miReplicateDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        final int origFileRows = GridPilot.FILE_ROWS;
-        new Thread(){
-          public void run(){
-            try{
-              replicate(origFileRows);
-            }
-            catch(IOException e){
-              GridPilot.FILE_ROWS = origFileRows;
-              e.printStackTrace();
-            }
-          }
-        }.start();
+        if(replicating){
+          GridPilot.getClassMgr().getStatusBar().setLabel("Already replicating.");
+          return;
+        }
+        replicate();
       }
     });
     miExportDataset.addActionListener(new ActionListener(){
@@ -2430,57 +2438,55 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Open new pane with list of files.
    */
-  private DBPanel viewFiles(boolean waitForThread){
-    if(!getSelectedIdentifier().equals("-1")){
-      try{
-        String id = getSelectedIdentifier();
-       // We assume that the dataset name is used as reference...
-        // TODO: improve this
-        String datasetColumn = "dsn";
-        String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-        if(fileDatasetReference!=null){
-          datasetColumn = fileDatasetReference[1];
-        }
-        // Try to save a database lookup (which DQ2 cannot handle anyway):
-        // use the dataset name if it is displayed. Otherwise look it up from the id.
-        String datasetName = null;
-        int datasetNameIndex = -1;
-        try{
-          for(int i=0; i<tableResults.getColumnNames().length; ++i){
-            if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetColumn)){
-              datasetNameIndex = i;
-              break;
-            }
-          }
-          datasetName = (String) tableResults.getUnsortedValueAt(tableResults.getSelectedRow(), datasetNameIndex);
-        }
-        catch(Exception e){
-        }
-        if(datasetName==null || datasetName.equals("")){
-          datasetName = dbPluginMgr.getDataset(id).getValue(
-              fileDatasetReference[0]).toString();
-        }
-        // Create and return new panel with files.
-        return createViewFilesPanel(id, datasetColumn, datasetName, waitForThread);
-      }
-      catch(Exception e){
-        Debug.debug("Couldn't create panel for dataset " + "\n" +
-                           "\tException\t : " + e.getMessage(), 2);
-        e.printStackTrace();
-        return null;
-      }
-    }
-    else{
+  private DBPanel viewFiles(boolean waitForThread, String id, int row){
+    if(id.equals("-1")){
       return null;
     }
+    try{
+      // We assume that the dataset name is used as reference...
+       // TODO: improve this
+       String datasetColumn = "dsn";
+       String [] fileDatasetReference = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+       if(fileDatasetReference!=null){
+         datasetColumn = fileDatasetReference[1];
+       }
+       // Try to save a database lookup (which DQ2 cannot handle anyway):
+       // use the dataset name if it is displayed. Otherwise look it up from the id.
+       String datasetName = null;
+       int datasetNameIndex = -1;
+       try{
+         for(int i=0; i<tableResults.getColumnNames().length; ++i){
+           if(tableResults.getColumnNames()[i].equalsIgnoreCase(datasetColumn)){
+             datasetNameIndex = i;
+             break;
+           }
+         }
+         datasetName = (String) tableResults.getUnsortedValueAt(row, datasetNameIndex);
+       }
+       catch(Exception e){
+       }
+       if(datasetName==null || datasetName.equals("")){
+         datasetName = dbPluginMgr.getDataset(id).getValue(
+             fileDatasetReference[0]).toString();
+       }
+       // Create and return new panel with files.
+       DBPanel ret = createViewFilesPanel(id, datasetColumn, datasetName, waitForThread);
+       Debug.debug("Created new panel "+ret, 2);
+       return ret;
+     }
+     catch(Exception e){
+       Debug.debug("Couldn't create panel for dataset " + "\n" +
+                          "\tException\t : " + e.getMessage(), 2);
+       e.printStackTrace();
+       return null;
+     }
   }
   
   private DBPanel createViewFilesPanel(final String id, final String datasetColumn,
-      final String datasetName, final boolean waitForThread) throws InterruptedException, InvocationTargetException{
+      final String datasetName, final boolean waitForThread) throws Exception{
     MyResThread rt = new MyResThread(){
-      private DBPanel dbPanel;
+      private DBPanel dbPanel = null;
       public void run(){
-        DBPanel dbPanel;
         try{
           dbPanel = new DBPanel(id);
           dbPanel.initDB(dbName, "file");
@@ -2488,7 +2494,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           dbPanel.selectPanel.setConstraint(datasetColumn, datasetName, 0);
           dbPanel.searchRequest(false, waitForThread);
           dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);                
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
+          Debug.debug("Created new files panel "+dbPanel, 2);
+          return;
         }
         catch(Exception e){
           setException(e);
@@ -2500,7 +2508,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     };
     if(waitForThread){
-      SwingUtilities.invokeAndWait(rt);
+      //SwingUtilities.invokeAndWait(rt);
+      rt.start();
+      if(!MyUtil.waitForThread(rt, "", fileCatalogTimeout, "", GridPilot.getClassMgr().getLogFile())){
+        throw new Exception("Timed out creating files panel.");
+      }
+      long startMillis = MyUtil.getDateInMilliSeconds();
+      while(rt.getDBPanelRes()==null){
+        Thread.sleep(10000);
+        if(rt.getDBPanelRes()==null && MyUtil.getDateInMilliSeconds()-startMillis>fileCatalogTimeout){
+          throw new Exception("Timed out creating files panel. "+rt.getDBPanelRes());
+        }
+      }
       return rt.getDBPanelRes();
     }
     else{
@@ -3171,27 +3190,61 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Called from the right-click menu
    */
-  private void replicate(int origFileRows) throws IOException{
-    TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
-    JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
-    String dlUrl = MyUtil.getURL(defaultURL, pTargetDBs, true, "Choose destination directory");
-    if(dlUrl.startsWith("file:")){
-      defaultURL = dlUrl;
-    }
-    GridPilot.FILE_ROWS = 0;
-    Debug.debug("Creating new files panel", 2);
+  private void replicate() {
+    Debug.debug("Replicating dataset", 2);
+    new Thread(){
+      public void run(){
+        replicating = true;
+        int origFileRows = GridPilot.FILE_ROWS;
+        try{
+          String [] ids = getSelectedIdentifiers();
+          if(ids==null || ids.length==0){
+            return;
+          }
+          TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
+          JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
+          String dlUrl = MyUtil.getURL(defaultURL, pTargetDBs, true, "Choose destination directory");
+          if(dlUrl==null){
+            return;
+          }
+          if(dlUrl.startsWith("file:")){
+            defaultURL = dlUrl;
+          }
+          GridPilot.FILE_ROWS = 0;
+          for(int i=0; i<ids.length; ++i){
+            Debug.debug("Replicating dataset "+ids[i], 1);
+            replicateDataset(ids[i], i, dlUrl, targetDBsPanel);
+          }
+          GridPilot.FILE_ROWS = origFileRows;
+          replicating = false;
+        }
+        catch(Exception e){
+          GridPilot.FILE_ROWS = origFileRows;
+          replicating = false;
+          e.printStackTrace();
+        }
+      }
+    }.start();
+  }
+  
+  private void replicateDataset(String id, int row, String dlUrl, TargetDBsPanel targetDBsPanel) {
+    Debug.debug("Creating new files panel from "+id, 2);
     dbPluginMgr.requestStopLookup();
-    DBPanel filesPanel = viewFiles(true);
+    DBPanel filesPanel = viewFiles(true, id, row);
     dbPluginMgr.clearRequestStopLookup();
-    //Debug.debug("Waiting 3 seconds...", 2);
-    //Thread.sleep(3000);
+    Debug.debug("Waiting 3 seconds for "+filesPanel, 2);
+    try{
+      Thread.sleep(3000);
+    }
+    catch(InterruptedException e){
+       e.printStackTrace();
+    }
     // TODO: consider selecting only rows with non-empty pfns column
     Debug.debug("Selecting all", 2);
     filesPanel.tableResults.selectAll();
     Debug.debug("Starting download of "+filesPanel.tableResults.getSelectedRowCount()+
         " files.", 2);
     filesPanel.download(dlUrl, targetDBsPanel);
-    GridPilot.FILE_ROWS = origFileRows;
   }
   
   /**
@@ -3575,6 +3628,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     JProgressBar pb = MyUtil.setProgressBar(selectedFileIdentifiers.length, dbName);
     TransferInfo transfer;
+    String pfnsColumn = MyUtil.getPFNsField(dbName);
     for(int i=0; i<selectedFileIdentifiers.length; ++i){
       pb.setValue(i+1);
       String [] urls = null;
@@ -3593,14 +3647,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception e){
       }
       try{
-        String pfnsColumn = MyUtil.getPFNsField(dbName);
         String urlsString = values.get(pfnsColumn).toString();
         // If the PFNs have not been looked up, do it.
         Debug.debug("urlsString: "+urlsString, 2);
         if(urlsString==null || urlsString.equals("")){
           lookupPFNs(new int [] {selectedRows[i]}, new String [] {selectedFileIdentifiers[i]});
-          urlsString = values.get(pfnsColumn).toString();
-          Debug.debug("new urlsString: "+urlsString, 2);
+          Thread.sleep(2000L);
+          values = getValues(selectedRows[i]);
+          urlsString = (String) values.get(pfnsColumn);
+          Debug.debug("new urlsString: "+pfnsColumn+"-->"+urlsString, 2);
           // This may also cause some missing bytes and checksums to be filled in
           if(bytes==null || bytes.equals("")){
             bytes = (String) values.get(MyUtil.getFileSizeField(dbName));
