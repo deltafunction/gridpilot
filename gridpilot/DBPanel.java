@@ -2462,6 +2462,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            }
          }
          datasetName = (String) tableResults.getUnsortedValueAt(row, datasetNameIndex);
+         Debug.debug("Found dataset name "+datasetName+" from row "+row, 2);
        }
        catch(Exception e){
        }
@@ -2495,7 +2496,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           dbPanel.searchRequest(false, waitForThread);
           dbPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);
-          Debug.debug("Created new files panel "+dbPanel, 2);
+          Debug.debug("Created new files panel "+id+":"+datasetName+":"+dbPanel, 2);
           return;
         }
         catch(Exception e){
@@ -2678,13 +2679,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           (error!=null||error.equals("")?"See the log for details.":error));
       return ok;
     }
-    setRefresh();
+    setJobsRefresh();
     return ok;
   }
   
-  private void setRefresh() {
+  private void setJobsRefresh() {
     GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
         ).getJobMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
+  }
+
+  private void setTransfersRefresh() {
+    GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+        ).getTransferMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
   }
 
   private void waitForSubmitted(String csName, String firstJobDefId) throws Exception {
@@ -3191,7 +3197,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called from the right-click menu
    */
   private void replicate() {
-    Debug.debug("Replicating dataset", 2);
+    Debug.debug("Replicating dataset(s)", 2);
     new Thread(){
       public void run(){
         replicating = true;
@@ -3201,6 +3207,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(ids==null || ids.length==0){
             return;
           }
+          int [] rows = tableResults.getSelectedRows();
           TargetDBsPanel targetDBsPanel = makeTargetDBsPanel();
           JPanel pTargetDBs = targetDBsPanel.pTargetDBs;
           String dlUrl = MyUtil.getURL(defaultURL, pTargetDBs, true, "Choose destination directory");
@@ -3211,9 +3218,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             defaultURL = dlUrl;
           }
           GridPilot.FILE_ROWS = 0;
+          setTransfersRefresh();
           for(int i=0; i<ids.length; ++i){
             Debug.debug("Replicating dataset "+ids[i], 1);
-            replicateDataset(ids[i], i, dlUrl, targetDBsPanel);
+            replicateDataset(ids[i], rows[i], dlUrl, targetDBsPanel);
           }
           GridPilot.FILE_ROWS = origFileRows;
           replicating = false;
@@ -3254,17 +3262,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!getSelectedIdentifier().equals("-1") && !exportingDataset){
       new Thread(){
         public void run(){
+          JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
           exportingDataset = true;
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
           try{
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             exportDataset(datasetID);
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           }
           catch(Exception e){
             String error = "ERROR: could not export dataset";
             Debug.debug(error, 1);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             exportingDataset = false;
             return;
           }         
@@ -3275,12 +3287,15 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   protected void exportDataset(String datasetID) {
+    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
     try{
       //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         Debug.debug("Exporting to "+url, 2);
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
@@ -3289,6 +3304,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     catch(Exception ex){
       String error = "ERROR: could not export DB(s). "+ex.getMessage();
       MyUtil.showError(error);
+      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
       ex.printStackTrace();
     }

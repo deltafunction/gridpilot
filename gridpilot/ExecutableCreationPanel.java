@@ -9,6 +9,7 @@ import javax.swing.border.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
@@ -42,7 +43,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
 
-  public JTextComponent [] tcCstAttributes;
+  public JComponent [] tcCstAttributes;
 
   /**
    * Constructor
@@ -324,7 +325,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length!=cstAttributesNames.length){
-      tcCstAttributes = new JTextComponent[cstAttributesNames.length];
+      tcCstAttributes = new JComponent[cstAttributesNames.length];
     }
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
@@ -332,6 +333,12 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           cstAttributesNames[i].equalsIgnoreCase("comment")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("arguments")){
+        if(!reuseTextFields || tcCstAttributes[i]==null){
+          JExtendedComboBox argsComboBox = createArgsComboBox();
+          tcCstAttributes[i] = argsComboBox;
         }
       }
       else{
@@ -345,7 +352,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
         pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], tcCstAttributes[i], true, true, false, false),
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], true, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));
@@ -353,12 +360,12 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
         pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], tcCstAttributes[i], false, true, false, false),
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));
       }
-      else{
+     else{
         pAttributes.add(new JLabel(cstAttributesNames[i]),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
@@ -384,6 +391,27 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
   }
 
+  private JExtendedComboBox createArgsComboBox() {
+    final JExtendedComboBox argsComboBox = new JExtendedComboBox();
+    argsComboBox.addItem("");
+    for(int ii=0; ii<JobCreator.AUTO_FILL_ARGS.length; ++ii){
+      argsComboBox.addItem(JobCreator.AUTO_FILL_ARGS[ii]);
+    }
+    argsComboBox.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        String orig = (String) argsComboBox.getItemAt(0);
+        String newItem = (String) argsComboBox.getSelectedItem();
+        System.out.println("Appending item " + newItem+" to "+orig);
+        argsComboBox.removeItemAt(0);
+        argsComboBox.insertItemAt(orig+(orig.equals("")?"":" ")+newItem, 0);
+        argsComboBox.setSelectedIndex(0);
+      }
+    });
+    argsComboBox.setEditable(true);
+    argsComboBox.updateUI();
+    return argsComboBox;
+  }
+
   /**
    *  Edit a executable
    */
@@ -395,7 +423,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
             cstAttributesNames[i].toString()) &&
             !executableFields[j].toString().equals("")){
           if(tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled() &&
-             tcCstAttributes[i].getText().length()==0){            
+              MyUtil.getJTextOrEmptyString(tcCstAttributes[i]).length()==0){            
             if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
                 cstAttributesNames[i].equalsIgnoreCase("comment")){
               tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
@@ -414,7 +442,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
             try{
               MyUtil.setJText(tcCstAttributes[i], executable.values[j].toString());
                 Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
-                    executableFields[j]+". Setting to "+tcCstAttributes[i].getText(),3);
+                    executableFields[j]+". Setting to "+MyUtil.getJTextOrEmptyString(tcCstAttributes[i]),3);
             }
             catch(java.lang.Exception e){
               Debug.debug("Attribute not found, "+e.getMessage(),1);
@@ -461,7 +489,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     final String [] cstAttr = new String[tcCstAttributes.length];
 
     for(int i=0; i<cstAttr.length; ++i){
-      cstAttr[i] = tcCstAttributes[i].getText();
+      cstAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
     }
 
   Debug.debug("create executable",  1);

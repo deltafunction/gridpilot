@@ -318,11 +318,11 @@ public class JobCreationPanel extends CreateEditPanel{
       // Other fields that match dataset fields will be set to
       // $0, $1, ... according to their place in the schema
       // and these variables will be parsed accordingly by JobCreator.
-      if(jobParamNames[i].equalsIgnoreCase("nEvents") ||
-          jobParamNames[i].equalsIgnoreCase("eventMin") ||
-          jobParamNames[i].equalsIgnoreCase("eventMax") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileURLs") ||
-          jobParamNames[i].equalsIgnoreCase("inputFileNames")){
+      if(jobParamNames[i].equalsIgnoreCase(JobCreator.N_EVENTS) ||
+          jobParamNames[i].equalsIgnoreCase(JobCreator.EVENT_MIN) ||
+          jobParamNames[i].equalsIgnoreCase(JobCreator.EVENT_MAX) ||
+          jobParamNames[i].equalsIgnoreCase(JobCreator.INPUT_FILE_NAMES) ||
+          jobParamNames[i].equalsIgnoreCase(JobCreator.INPUT_FILE_URLS)){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("");

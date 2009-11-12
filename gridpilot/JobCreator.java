@@ -62,9 +62,14 @@ public class JobCreator{
   private String inputDatasetID;
 
 
-  public static String EVENT_MIN = "eventMin";
-  public static String EVENT_MAX = "eventMax";
-  public static String N_EVENTS = "nEvents";
+  public final static String EVENT_MIN = "eventMin";
+  public final static String EVENT_MAX = "eventMax";
+  public final static String N_EVENTS = "nEvents";
+  public final static String INPUT_FILE_NAMES = "inputFileNames";
+  public final static String INPUT_FILE_URLS = "inputFileURLs";
+  
+  public final static String [] AUTO_FILL_ARGS = new String [] {EVENT_MIN, EVENT_MAX, N_EVENTS,
+     INPUT_FILE_NAMES, INPUT_FILE_URLS};
 
   public JobCreator(StatusBar _statusBar,
                     String _dbName,
@@ -1050,11 +1055,11 @@ public class JobCreator{
         resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase("inputFileNames"))){
+          (jobParamNames[i].equalsIgnoreCase(INPUT_FILE_NAMES))){
         resJobParam[i] = MyUtil.removeQuotes(MyUtil.arrayToString(inputFileNames));
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase("inputFileURLs"))){
+          (jobParamNames[i].equalsIgnoreCase(INPUT_FILE_URLS))){
         resJobParam[i] = MyUtil.arrayToString(inputFileURLs);
       }
       // Fill in if it matches one of the jobDefinition fields
@@ -1116,14 +1121,14 @@ public class JobCreator{
       jobAttributeNames.add(N_EVENTS);
       jobAttributes.add("0");
     }
-    if(!jobattributenames.contains("inputfileurls") &&
-        jobdefinitionfields.contains("inputfileurls")){
-      jobAttributeNames.add("inputFileURLs");
+    if(!jobattributenames.contains(INPUT_FILE_URLS) &&
+        jobdefinitionfields.contains(INPUT_FILE_URLS)){
+      jobAttributeNames.add(INPUT_FILE_URLS);
       jobAttributes.add("");
     }
-    if(!jobattributenames.contains("inputfilenames") &&
-        jobdefinitionfields.contains("inputfilenames")){
-      jobAttributeNames.add("inputFileNames");
+    if(!jobattributenames.contains(INPUT_FILE_NAMES) &&
+        jobdefinitionfields.contains(INPUT_FILE_NAMES)){
+      jobAttributeNames.add(INPUT_FILE_NAMES);
       jobAttributes.add("");
     }
     if(!jobattributenames.contains("depjobs") &&
@@ -1158,7 +1163,7 @@ public class JobCreator{
         Debug.debug("setting event number", 3);
         resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
       }
-      else if(cstAttrNames[i].equalsIgnoreCase("inputFileURLs")){
+      else if(cstAttrNames[i].equalsIgnoreCase(INPUT_FILE_URLS)){
         resCstAttr[i] = MyUtil.arrayToString(inputFileURLs);
         // all files from input dataset containing the needed events
         Debug.debug("setting input files "+MyUtil.arrayToString(inputFileURLs), 3);

@@ -556,8 +556,7 @@ public class MyTransferControl extends TransferControl {
     ResThread t = new ResThread(){
       Vector transfers;
       public void run(){
-        increaseProgressBarMax(pbSubmission,
-            (pbSubmission==null?0:pbSubmission.getMaximum()) + _transfers.size());
+        increaseProgressBarMax(pbSubmission, _transfers.size());
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
           transfers = MyUtil.shuffle(_transfers);
         }

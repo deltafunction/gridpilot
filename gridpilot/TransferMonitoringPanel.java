@@ -306,6 +306,13 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
   }
 
+  public void setAutoRefreshSeconds(int secs){
+    cbRefreshUnits.setSelectedIndex(SEC);
+    sAutoRefresh.setValue(secs);
+    cbAutoRefresh.setSelected(true);
+    cbAutoRefresh_clicked();
+  }
+
   /**
    * Called when either the spinner valuer is changed or combo box "sec/min" is changed
    */

@@ -39,6 +39,10 @@ public class MonitoringPanel extends CreateEditPanel {
     return jobMonitor;
   }
 
+  public TransferMonitoringPanel getTransferMonitoringPanel() {
+    return transferMonitor;
+  }
+
   public StatusBar getStatusBar() {
     if(statusBar==null){
       // use status bar on main window until a monitoring panel is actually created
