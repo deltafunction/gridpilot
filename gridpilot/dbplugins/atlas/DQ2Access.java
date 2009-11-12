@@ -130,7 +130,20 @@ public class DQ2Access {
     String keys[]={"vuids"};
     String values[]={vuidsString};
     Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
-    String response = wsSecure.post(getLocationsURL, keys, values);
+    // Try 3 times.
+    String response = null;
+    for(int i=0; i<3; ++i){
+      try{
+        response = wsSecure.post(getLocationsURL, keys, values);
+        if(response!=null){
+          break;
+        }
+        Thread.sleep(3000);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
     return response;
   }
 

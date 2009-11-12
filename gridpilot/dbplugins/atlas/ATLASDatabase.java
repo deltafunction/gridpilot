@@ -63,12 +63,6 @@ public class ATLASDatabase extends DBCache implements Database{
   private String [] preferredSites;
   private String [] skipSites;
   private LogFile logFile;
-  // This same object is used for each PFN lookup.
-  // Although the lookups are running in threads, they are not
-  // running in parallel. Running them in parallel would
-  // require a reengineering of the select method, which does
-  // everything serially.
-  private Vector<String> pfnVector = null;
   // The same goes for fileBytes and fileChecksum
   private String fileBytes = null;
   private String fileChecksum = null;
@@ -148,8 +142,6 @@ public class ATLASDatabase extends DBCache implements Database{
       logFile.addMessage(error, e);
     }
     
-    pfnVector = new Vector<String>();
-
     // Set preferred download sites
     preferredSites = configFile.getValues(dbName, "preferred sites");
     // Set download sites to be ignored
@@ -786,15 +778,17 @@ public class ATLASDatabase extends DBCache implements Database{
         String catalogs = "";
         Debug.debug("Finding PFNs "+findPFNs, 2);
         if(findPFNs){
+          PFNResult pfnRes = null;
           try{
-            catalogs = MyUtil.arrayToString(findPFNs(vuid, dsn, lfn, findAll).toArray());
+            pfnRes = findPFNs(vuid, dsn, lfn, findAll);
+            catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
             bytes = (bytes.equals("")&&fileBytes!=null?fileBytes:bytes);
             checksum = (checksum.equals("")&&fileChecksum!=null?fileChecksum:checksum);
           }
           catch(Exception e){
             e.printStackTrace();
           }
-          pfns = MyUtil.arrayToString(pfnVector.toArray(new String[pfnVector.size()]));
+          pfns = MyUtil.arrayToString(pfnRes.getPfns().toArray(new String[pfnRes.getPfns().size()]));
         }
         else{
           pfns = "";
@@ -1592,22 +1586,42 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     return locations;
   }
   
+  private class PFNResult{
+    PFNResult(){
+      setPfns(new Vector<String>());
+      setCatalogs(new Vector<String>());
+    }
+    private Vector<String> pfns;
+    private Vector<String> catalogs;
+    protected void setPfns(Vector<String> _pfns){
+      pfns = _pfns;
+    }
+    protected void setCatalogs(Vector<String> _catalogs){
+      catalogs = _catalogs;
+    }
+    protected Vector<String> getPfns(){
+      return pfns;
+    }
+    protected Vector<String> getCatalogs(){
+      return catalogs;
+    }
+  }
+  
   /**
    * Fill the vector pfnVector with PFNs registered for lfn.
    * Returns a Vector of catalogServers corresponding to the
    * Vector of PFNs.
    */
-  private Vector<String> findPFNs(String vuid, String dsn, String lfn, boolean findAll){
+  private PFNResult findPFNs(String vuid, String dsn, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
     // For each LRC catalog try both the mysql and the http interface.
     String lfName = lfn;
     Vector<String> locations = getOrderedLocations(vuid);
-    Vector<String> catalogs = new Vector<String>();
     String [] locationsArray = locations.toArray(new String[locations.size()]);
+    PFNResult res = new PFNResult();
     try{
-      pfnVector.clear();
       fileBytes = null;
       fileChecksum = null;
       Debug.debug("Checking locations "+MyUtil.arrayToString(locationsArray), 3);
@@ -1617,7 +1631,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           continue;
         }
         if(getStop() || !findPFNs){
-          return catalogs;
+          return res;
         }
         String [] pfns = null;
         try{
@@ -1662,11 +1676,11 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
               }
             }
             if(pfns!=null && pfns.length>2){
-              catalogs.add(catalogServer);
+              res.getCatalogs().add(catalogServer);
               fileBytes = pfns[0];
               fileChecksum = pfns[1];
               for(int n=2; n<pfns.length; ++n){
-                pfnVector.add(pfns[n]);
+                res.getPfns().add(pfns[n]);
               }
             }
           }
@@ -1679,9 +1693,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         catch(Exception e){
           e.printStackTrace();
         }
-        Debug.debug("Found PFNs "+pfnVector, 2);
+        Debug.debug("Found PFNs "+res.getPfns(), 2);
         // break out after first location, if "Find all" is not checked
-        if(!findAll && !pfnVector.isEmpty() && pfnVector.get(0)!=null){
+        if(!findAll && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
           break;
         }
         // if we did not find anything on this location, put it last in the
@@ -1706,20 +1720,20 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       // Eliminate duplicates
       Vector<String> pfnShortVector = new Vector<String>();
       String tmpPfn = null;
-      for(Iterator<String> it=pfnVector.iterator(); it.hasNext();){
+      for(Iterator<String> it=res.getPfns().iterator(); it.hasNext();){
         tmpPfn = it.next();
         if(!pfnShortVector.contains(tmpPfn)){
           pfnShortVector.add(tmpPfn);
         }
       }
-      pfnVector = pfnShortVector;
-      Debug.debug("pfnVector:"+pfnVector.size(), 2);
+      res.setPfns(pfnShortVector);
+      Debug.debug("pfnVector:"+res.getPfns().size(), 2);
       GridPilot.getClassMgr().getStatusBar().setLabel("Querying done.");
     }
     catch(Exception e){
       e.printStackTrace();
     }
-    return catalogs;
+    return res;
   }
 
   public String getDatasetName(String datasetID){
@@ -1819,11 +1833,12 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String bytes = "";
     String checksum = "";
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
-      catalogs = MyUtil.arrayToString(findPFNs(vuid, dsn, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL).toArray());
-      for(int j=0; j<pfnVector.size(); ++j){
-        resultVector.add(pfnVector.get(j));
+      PFNResult pfnRes = findPFNs(vuid, dsn, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
+      catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
+      for(int j=0; j<pfnRes.getPfns().size(); ++j){
+        resultVector.add(pfnRes.getPfns().get(j));
       }
-      Debug.debug("pfnVector --> "+pfnVector, 3);
+      Debug.debug("pfnVector --> "+pfnRes.getPfns(), 3);
       bytes = (fileBytes==null?"":fileBytes);
       checksum = (fileBytes==null?"":fileChecksum);
       pfns = MyUtil.arrayToString(resultVector.toArray(new String[resultVector.size()]));
