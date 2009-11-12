@@ -819,7 +819,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         public void actionPerformed(ActionEvent e){
           new Thread(){
             public void run(){
-              viewFiles(false, getSelectedIdentifier(), tableResults.getSelectedRow());
+              viewFiles(false, getSelectedIdentifiers(), tableResults.getSelectedRows());
             }
           }.start();
         }
@@ -1566,7 +1566,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void actionPerformed(ActionEvent e){
         new Thread(){
           public void run(){
-            viewFiles(false, getSelectedIdentifier(), tableResults.getSelectedRow());
+            viewFiles(false, getSelectedIdentifiers(), tableResults.getSelectedRows());
           }
         }.start();
       }
@@ -2433,6 +2433,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
          "Deleting runtime environment(s) done.");
     }
     return anyDeleted;
+  }
+  
+  private void viewFiles(boolean waitForThread, String [] ids, int [] rows){
+    for(int i=0; i<rows.length; ++i){
+      viewFiles(waitForThread, ids[i], rows[i]);
+      if(ids.length>0){
+        try{
+          Thread.sleep(3000);
+        }
+        catch(InterruptedException e){
+          break;
+        }
+      }
+    }
   }
 
   /**
