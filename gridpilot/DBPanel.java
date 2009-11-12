@@ -3236,6 +3236,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           for(int i=0; i<ids.length; ++i){
             Debug.debug("Replicating dataset "+ids[i], 1);
             replicateDataset(ids[i], rows[i], dlUrl, targetDBsPanel);
+            if(ids.length>1){
+              Thread.sleep(3000);
+            }
           }
           GridPilot.FILE_ROWS = origFileRows;
           replicating = false;
