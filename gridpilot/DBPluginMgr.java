@@ -119,8 +119,8 @@ public class DBPluginMgr extends DBCache implements Database{
    */ 
   public String getTargetDatasetName(String targetDB, String sourceDatasetName,
       String executableName, String executableVersion){
-    Debug.debug("finding target dataset name for "+sourceDatasetName+" in "+targetDB+
-        " with tranformation "+executableName, 3);
+    Debug.debug("Finding target dataset name for "+sourceDatasetName+" in "+targetDB+
+        " with executable "+executableName+":"+executableVersion, 2);
         
     String findString = "";
     String replaceString = "";
@@ -160,6 +160,11 @@ public class DBPluginMgr extends DBCache implements Database{
       findString = "ReconProd";  
       Debug.debug("replacing "+findString+" -> "+replaceString, 3);
       ret = ret.replaceFirst(findString, replaceString);
+      
+      // If nothing was changed, append the executable name and version
+      if(sourceDatasetName.equals(ret)){
+        ret = ret + "_" + executableName+(executableVersion==null?"":("-"+executableVersion));
+      }
       
       Debug.debug("String now "+ret, 3);
     }

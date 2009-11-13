@@ -28,6 +28,7 @@ public class DatasetCreator{
   private String [] datasetExecutableReference;
   private String [] datasetExecutableVersionReference;
   private String datasetIdentifier = "identifier";
+  private boolean autoFillName = false;
   public boolean anyCreated = false;
 
   public DatasetCreator(  StatusBar _statusBar,
@@ -107,10 +108,9 @@ public class DatasetCreator{
         executableVersion = cstAttr[j];
       }
     }
-    String datasetNameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "Dataset");
     for(int i=0; i<datasetIDs.length; ++i){
       Debug.debug("Creating #"+datasetIDs[i], 2);
-      if(!createInTargetDB(clearAttrs, i, datasetNameField, executableName,
+      if(!createInTargetDB(clearAttrs, i, executableName,
           executableVersion)){
         return;
       }
@@ -118,66 +118,13 @@ public class DatasetCreator{
   }
 
   private boolean createInTargetDB(HashSet<Integer> clearAttrs, int i,
-      String datasetNameField, String exeName, String exeVersion) {
+       String exeName, String exeVersion) {
     DBRecord res = dbPluginMgr.getDataset(datasetIDs[i]);
     Debug.debug("Input records "+MyUtil.arrayToString(res.fields), 2);
     Debug.debug("Input values "+MyUtil.arrayToString(res.values), 2);
-    clearAttrs.clear();        
-    for(int j=0; j<cstAttrNames.length; ++j){                   
-      if(!datasetIDs[i].equals("-1")){
-        // Get values from source dataset in question, excluding
-        // executable, executableVersion and any other filled-in values.
-        // Construct name for new target dataset.
-        if((resCstAttr[j]==null || resCstAttr[j].equals("")) &&
-            cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
-          resCstAttr[j] = dbPluginMgr.getTargetDatasetName(
-              targetDB,
-              dbPluginMgr.getDatasetName(datasetIDs[i]),
-              exeName, exeVersion);
-        }
-        else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
-          String runNum = dbPluginMgr.getRunNumber(datasetIDs[i]);
-          if(runNum!=null && !runNum.equals("") && !runNum.equals("-1")){
-            resCstAttr[j] = runNum;
-          }
-        }
-        else if(cstAttrNames[j].equalsIgnoreCase("inputDataset")){
-          resCstAttr[j] = dbPluginMgr.getDatasetName(datasetIDs[i]);
-        }
-        else if(cstAttrNames[j].equalsIgnoreCase("inputDB")){
-          resCstAttr[j] = dbPluginMgr.getDBName();
-        }
-        else if(cstAttrNames[j].equalsIgnoreCase(datasetIdentifier) ||
-            cstAttrNames[j].equalsIgnoreCase("percentageValidatedFiles") ||
-            cstAttrNames[j].equalsIgnoreCase("percentageFailedFiles ") ||
-            //cstAttrNames[j].equalsIgnoreCase("totalFiles") ||
-            //cstAttrNames[j].equalsIgnoreCase("totalEvents") ||
-            cstAttrNames[j].equalsIgnoreCase("averageEventSize") ||
-            cstAttrNames[j].equalsIgnoreCase("totalDataSize") ||
-            cstAttrNames[j].equalsIgnoreCase("averageCPUTime") ||
-            cstAttrNames[j].equalsIgnoreCase("totalCPUTime") ||
-            cstAttrNames[j].equalsIgnoreCase("created") ||
-            cstAttrNames[j].equalsIgnoreCase("lastModified") ||
-            cstAttrNames[j].equalsIgnoreCase("lastStatusUpdate")){
-          resCstAttr[j] = "";
-        }
-        // See if attribute has not been set. If it hasn't, set it and clear it
-        // again after the new dataset has been created.
-        // --> hmm... Bad idea for metaData - not sure if this is a good idea in general.
-        /*else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
-          try{
-            resCstAttr[j] = res.getValue(cstAttrNames[j]).toString();
-            clearAttrs.add(new Integer(j));
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-          Debug.debug("Setting "+cstAttrNames[j]+" to "+resCstAttr[j], 2);
-        }*/
-        if(resCstAttr[j]==null){
-          resCstAttr[j] = "";
-        }
-      }       
+    clearAttrs.clear();
+    if(!datasetIDs[i].equals("-1")){
+      fillInValues(datasetIDs[i], exeName, exeVersion);
     }
     if(showResults && !okAll){
     int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
@@ -204,6 +151,65 @@ public class DatasetCreator{
       resCstAttr[((Integer) it.next()).intValue()]="";
     }
     return true;
+  }
+
+  private void fillInValues(String datasetId, String exeName, String exeVersion) {
+    String datasetNameField = MyUtil.getNameField(targetDB, "Dataset");
+    for(int j=0; j<cstAttrNames.length; ++j){         
+      // Get values from source dataset in question, excluding
+      // executable, executableVersion and any other filled-in values.
+      // Construct name for new target dataset.
+      Debug.debug("Filling in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
+      if((autoFillName || resCstAttr[j]==null || resCstAttr[j].equals("")) &&
+          cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
+        autoFillName = true;
+        resCstAttr[j] = dbPluginMgr.getTargetDatasetName(targetDB,
+           dbPluginMgr.getDatasetName(datasetId), exeName, exeVersion);
+      }
+      else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
+        String runNum = dbPluginMgr.getRunNumber(datasetId);
+        if(runNum!=null && !runNum.equals("") && !runNum.equals("-1")){
+          resCstAttr[j] = runNum;
+        }
+      }
+      else if(cstAttrNames[j].equalsIgnoreCase("inputDataset")){
+        resCstAttr[j] = dbPluginMgr.getDatasetName(datasetId);
+      }
+      else if(cstAttrNames[j].equalsIgnoreCase("inputDB")){
+        resCstAttr[j] = dbPluginMgr.getDBName();
+      }
+      else if(cstAttrNames[j].equalsIgnoreCase(datasetIdentifier) ||
+          cstAttrNames[j].equalsIgnoreCase("percentageValidatedFiles") ||
+          cstAttrNames[j].equalsIgnoreCase("percentageFailedFiles ") ||
+          //cstAttrNames[j].equalsIgnoreCase("totalFiles") ||
+          //cstAttrNames[j].equalsIgnoreCase("totalEvents") ||
+          cstAttrNames[j].equalsIgnoreCase("averageEventSize") ||
+          cstAttrNames[j].equalsIgnoreCase("totalDataSize") ||
+          cstAttrNames[j].equalsIgnoreCase("averageCPUTime") ||
+          cstAttrNames[j].equalsIgnoreCase("totalCPUTime") ||
+          cstAttrNames[j].equalsIgnoreCase("created") ||
+          cstAttrNames[j].equalsIgnoreCase("lastModified") ||
+          cstAttrNames[j].equalsIgnoreCase("lastStatusUpdate")){
+        resCstAttr[j] = "";
+      }
+      // See if attribute has not been set. If it hasn't, set it and clear it
+      // again after the new dataset has been created.
+      // --> hmm... Bad idea for metaData - not sure if this is a good idea in general.
+      /*else if(resCstAttr[j]==null || resCstAttr[j].equals("")){
+        try{
+          resCstAttr[j] = res.getValue(cstAttrNames[j]).toString();
+          clearAttrs.add(new Integer(j));
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        Debug.debug("Setting "+cstAttrNames[j]+" to "+resCstAttr[j], 2);
+      }*/
+      if(resCstAttr[j]==null){
+        resCstAttr[j] = "";
+      }
+      Debug.debug("Filled in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
+    }
   }
 
   private boolean createDataset(DBPluginMgr dbPluginMgr, String targetTable){

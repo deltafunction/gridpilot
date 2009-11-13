@@ -784,6 +784,7 @@ public class JobCreator{
     // jobDefinition fields
     ArrayList jobattributenames = fillInResCstAttr(eventSplits, currentPartition, datasetName, runNumber,
         outputDest, inputSource, evtMin, evtMax, inputFileURLs, inputFileNames);
+    Debug.debug("Job attributes: "+jobattributenames, 2);
     
     // Job parameters
     fillInJobParams(currentPartition, eventSplits, evtMin, evtMax, datasetName, runNumber,
@@ -1121,13 +1122,13 @@ public class JobCreator{
       jobAttributeNames.add(N_EVENTS);
       jobAttributes.add("0");
     }
-    if(!jobattributenames.contains(INPUT_FILE_URLS) &&
-        jobdefinitionfields.contains(INPUT_FILE_URLS)){
+    if(!jobattributenames.contains(INPUT_FILE_URLS.toLowerCase()) &&
+        jobdefinitionfields.contains(INPUT_FILE_URLS.toLowerCase())){
       jobAttributeNames.add(INPUT_FILE_URLS);
       jobAttributes.add("");
     }
-    if(!jobattributenames.contains(INPUT_FILE_NAMES) &&
-        jobdefinitionfields.contains(INPUT_FILE_NAMES)){
+    if(!jobattributenames.contains(INPUT_FILE_NAMES.toLowerCase()) &&
+        jobdefinitionfields.contains(INPUT_FILE_NAMES.toLowerCase())){
       jobAttributeNames.add(INPUT_FILE_NAMES);
       jobAttributes.add("");
     }
@@ -1140,9 +1141,9 @@ public class JobCreator{
     for(int i=0; i<jobAttributeNames.size(); ++i){
       cstAttrNames[i] = jobAttributeNames.get(i).toString();
     }
-    cstAttr = new String [jobAttributes.size()];
+    cstAttr = new String[jobAttributes.size()];
     for(int i=0; i<jobAttributes.size(); ++i){
-      Debug.debug("Setting attribute "+jobAttributes.get(i), 3);
+      Debug.debug("Setting attribute "+cstAttrNames[i]+" --> "+jobAttributes.get(i), 3);
       if(jobAttributes.get(i)!=null){
         cstAttr[i] = jobAttributes.get(i).toString();
       }
@@ -1164,9 +1165,9 @@ public class JobCreator{
         resCstAttr[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if(cstAttrNames[i].equalsIgnoreCase(INPUT_FILE_URLS)){
-        resCstAttr[i] = MyUtil.arrayToString(inputFileURLs);
         // all files from input dataset containing the needed events
         Debug.debug("setting input files "+MyUtil.arrayToString(inputFileURLs), 3);
+        resCstAttr[i] = MyUtil.arrayToString(inputFileURLs);
       }
       else if(cstAttrNames[i].equalsIgnoreCase("depJobs") && inputFileURLs!=null &&
           inputFileURLs.length>0){

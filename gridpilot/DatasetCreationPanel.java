@@ -193,7 +193,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     jbEditExe.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try {
+        try{
           viewExecutable();
         }
         catch(Exception e1){
@@ -433,7 +433,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           datasetIDs,
           targetDB
           );
-      if(dsc.anyCreated){
+      if(dsc.anyCreated && dbPluginMgr.getDBName().equals(targetDB)){
         panel.refresh();
       }
     }
@@ -814,8 +814,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
       sourceAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
     }
     targetDB = cbTargetDBSelection.getSelectedItem().toString();
-    targetDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
-        targetDB);
+    targetDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
+    String datasetNameField = MyUtil.getNameField(targetDBPluginMgr.getDBName(), "dataset");
     String [] targetFields = targetDBPluginMgr.getFieldNames("dataset");
     String [] targetAttr = new String[targetFields.length];
     for(int j=0; j<targetFields.length; ++j){
@@ -835,8 +835,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       if(targetFields[j].equalsIgnoreCase(datasetExecutableReference[1]) ||
           targetFields[j].equalsIgnoreCase(datasetExecutableVersionReference[1])){
       }
-      else if(targetFields[j].equalsIgnoreCase(
-          MyUtil.getNameField(targetDBPluginMgr.getDBName(), "dataset"))){
+      else if(datasetIDs!=null && datasetIDs.length==1 && targetFields[j].equalsIgnoreCase(datasetNameField)){
         targetAttr[j] = dbPluginMgr.getTargetDatasetName(
             targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
             executableName, executableVersion);
