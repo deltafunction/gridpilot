@@ -400,7 +400,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             msg, new Object[] {"Do nothing", "Terminate"});
       }
       else{
-        choice = confirmBox.getConfirm("Confirm terminate instances",
+        choice = confirmBox.getConfirm("Confirm terminate instance(s)",
             msg, new Object[] {"Do nothing", "Terminate all", "Terminate passive"});
       }
       if(choice==0){

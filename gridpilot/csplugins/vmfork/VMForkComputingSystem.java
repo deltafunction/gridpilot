@@ -8,7 +8,10 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
 
+import javax.swing.JOptionPane;
+
 import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.PullMgr;
@@ -408,6 +411,36 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       e.printStackTrace();
       return MyComputingSystem.RUN_FAILED;
     }
+  }
+  
+  public synchronized void exit(){
+    boolean runningVMs = false;
+    VirtualMachine vm;
+    for(Iterator<VirtualMachine> it=vmMgr.getVMs().values().iterator(); it.hasNext();){
+      vm = it.next();
+      if(vm.getState()==VirtualMachine.STATE_RUNNING){
+        runningVMs = true;
+        break;
+      }
+    }
+    if(!runningVMs){
+      return;
+    }
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    int choice = -1;
+    try{
+      String msg = "You have locally running virtual machines(s).";
+      choice = confirmBox.getConfirm("Confirm terminate instance(s)",
+          msg, new Object[] {"Do nothing", "Terminate virtual machine(s)"});
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return;
+    }
+    if(choice!=1){
+      return;
+    }
+    vmMgr.terminateAllInstances();
   }
 
 }

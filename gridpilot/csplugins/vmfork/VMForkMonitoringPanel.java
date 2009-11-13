@@ -168,7 +168,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     int row = instanceTable.getSelectedRow();
     String id = (String) instanceTable.getUnsortedValueAt(row, idField);
     VirtualMachine vm = vmMgr.getVM(id);
-    String creds = "User: "+vm.getUserName()+"\nPassword: "+vm.getPassword();
+    String creds = "User: "+vm.getUserName()+". Password: "+vm.getPassword();
     return creds;
   }
   
