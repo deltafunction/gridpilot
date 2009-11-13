@@ -809,10 +809,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     bViewJobDefinitions.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
-          viewJobDefinitions();
+        String [] ids = getSelectedIdentifiers();
+        if(ids==null || ids.length==0){
+          return;
         }
+        viewJobDefinitions(ids);
       }
-    );
+    });
     
     bViewFiles.addActionListener(
       new java.awt.event.ActionListener(){
@@ -1553,7 +1556,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JMenuItem miViewJobDefinitions = new JMenuItem("Show job definition(s)");
     miViewJobDefinitions.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        viewJobDefinitions();
+        String [] ids = getSelectedIdentifiers();
+        if(ids==null || ids.length==0){
+          return;
+        }
+        viewJobDefinitions(ids);
       }
     });
     miImportFiles.addActionListener(new ActionListener(){
@@ -2544,30 +2551,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
  
   /**
-   * Open new pane with list of jobDefinitions.
+   * Open new pane(s) with list(s) of jobDefinitions.
    */
-  private void viewJobDefinitions(){
-    if(!getSelectedIdentifier().equals("-1")){
-      new Thread(){
-        public void run(){
-          doViewJobDefinitions();
-        }
-      }.start();
+  private void viewJobDefinitions(String [] ids){
+    for(int i=0; i<ids.length; ++i){
+      viewJobDefinitions(ids[i]);
     }
   }
+
+  private void viewJobDefinitions(final String id){
+    new Thread(){
+      public void run(){
+        doViewJobDefinitions(id);
+      }
+    }.start();
+  }
   
-  private void doViewJobDefinitions(){
+  private void doViewJobDefinitions(final String id){
     SwingUtilities.invokeLater(
       new Runnable(){
         public void run(){
           try{
             // Create new panel with jobDefinitions.         
-            String id = getSelectedIdentifier();
             DBPanel dbPanel = new DBPanel(id);
             dbPanel.initDB(dbName, "jobDefinition");
             dbPanel.initGUI();
             String [] jobDefDatasetReference =
-              MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
+               MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
             dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
                 dbPluginMgr.getDataset(id).getValue(
                     jobDefDatasetReference[0]).toString(),
@@ -2813,7 +2823,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           jobDefIds[ii] = (String) jobDefs.get(ii).getValue(idField);
           ++jobCount;
         }
-        monitorJobs(jobDefIds);
+        monitorJobs(jobDefIds, false);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -3752,12 +3762,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void monitorJobs(){
     String [] jobIds = getSelectedIdentifiers();
-    monitorJobs(jobIds);
+    monitorJobs(jobIds, true);
   }
   
-  private void monitorJobs(final String [] jobDefIds){
+  private void monitorJobs(final String [] jobDefIds, boolean threaded){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
-    new Thread(){
+    Thread t = new Thread(){
       public void run(){        
         JobMgr jobMgr = null;
         
@@ -3787,7 +3797,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
         jobMgr.updateJobsByStatus();
       }
-    }.start();
+    };
+    if(threaded){
+      t.start();
+    }
+    else{
+      t.run();
+    }
   }
   
   /**
