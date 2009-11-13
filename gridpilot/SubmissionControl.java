@@ -1028,7 +1028,7 @@ public class SubmissionControl{
       }
       catch(Exception e){
         logFile.addMessage("ERROR: something went wrong with the preprocessing of the job " +
-            job.getName()+". Bailing out.");
+            job.getName()+". Bailing out.", e);
         bailOut = true;
       }
       statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
