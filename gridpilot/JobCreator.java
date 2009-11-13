@@ -67,6 +67,7 @@ public class JobCreator{
   public final static String N_EVENTS = "nEvents";
   public final static String INPUT_FILE_NAMES = "inputFileNames";
   public final static String INPUT_FILE_URLS = "inputFileURLs";
+  public final static String OUPUT_FILE_NAMES = "outputFileNames";
   
   public final static String [] AUTO_FILL_ARGS = new String [] {EVENT_MIN, EVENT_MAX, N_EVENTS,
      INPUT_FILE_NAMES, INPUT_FILE_URLS};
@@ -409,7 +410,8 @@ public class JobCreator{
         Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
         Debug.debug("resCstAttr --> "+MyUtil.arrayToString(resCstAttr), 3);
         Debug.debug("resJobParam --> "+MyUtil.arrayToString(resJobParam), 3);
-        
+        Debug.debug("resOutMap[0] --> :"+MyUtil.arrayToString(resOutMap[0])+":", 3);
+       
         if(!dbPluginMgr.createJobDefinition(
                               dbPluginMgr.getDatasetName(id),
                               cstAttrNames,

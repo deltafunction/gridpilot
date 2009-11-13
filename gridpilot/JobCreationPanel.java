@@ -350,17 +350,18 @@ public class JobCreationPanel extends CreateEditPanel{
         detailFields.add(tcJobParam[i]);
         tcJobParam[i].setText("${i:5}");
       }
-      else if(jobParamNames[i].equalsIgnoreCase("outputFileName")){
-        String extension = ".root";
+      else if(jobParamNames[i].equalsIgnoreCase(JobCreator.OUPUT_FILE_NAMES)){
+        /*String extension = ".root";
         if(outputMapNames!=null && !outputMapNames.equals("")){
           String [] fullNameStrings = MyUtil.split(outputMapNames[0], "\\.");
           if(fullNameStrings.length>0){
             extension = "."+fullNameStrings[fullNameStrings.length-1];
           }
         }
+        tcJobParam[i].setText("$n.${i:5}"+extension);*/
+        tcJobParam[i].setText(MyUtil.arrayToString(outputMapNames));
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
-        tcJobParam[i].setText("$n.${i:5}"+extension);
       }
       else if(jobParamNames[i].equalsIgnoreCase("runNumber")){
       // get from dataset

@@ -1486,8 +1486,8 @@ public class MySQLDatabase extends DBCache implements Database {
     String trparsstr = "" ;
     //trparsstr = Util.webEncode(trpars);
     trparsstr = MyUtil.arrayToString(trpars);
-    for (int i=0 ; i<ofmap.length ; i++){  
-      ofmapstr += ofmap[i] [0] + " " + ofmap[i] [1] + " ";
+    for(int i=0 ; i<ofmap.length ; i++){  
+      ofmapstr += (i==0?"":" ") + ofmap[i] [0] + " " + ofmap[i] [1];
     }
     // Update DB with "request" and return success/failure
     // Fetch current date and time

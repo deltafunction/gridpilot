@@ -953,7 +953,7 @@ public class SRMFileTransfer implements FileTransfer {
         ((type & SUPPORTED_PROTOCOL_URL)==SUPPORTED_PROTOCOL_URL)){
       if(host==null || host.equals("") || port<0){
         String error = "illegal source url: "+
-        urls[0].getURL();
+        urls[0].getURL()+" --> "+host+":"+port;
         Debug.debug(error, 2);
         throw new IllegalArgumentException(error );
        }

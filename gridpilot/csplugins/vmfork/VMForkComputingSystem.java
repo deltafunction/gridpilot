@@ -47,6 +47,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   // Only here to use checkRequirements
   private PullMgr pullMgr;
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
+  private long submitTimeout;
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -126,6 +127,12 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     createMonitor();
     
     pullMgr = new MyPullMgr();
+    
+    submitTimeout = 700L;
+    String st = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "submit timeout");
+    if(st!=null && !st.equals("")){
+      submitTimeout = Long.parseLong(st);
+    }
 
   }
   
@@ -214,6 +221,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       throw new Exception("Requirement(s) could not be satisfied. "+job);
     }
     
+    pullMgr.startDownloadInputs(job);
+    
     // Check if any VMs have been launched from VMForkMonitoringPanel
     includeManuallyBootedVMs();
     
@@ -239,11 +248,35 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     setupExecutable(runDir(job) +"/"+scriptFile, shell);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     job.setExecutable(scriptFile);
+    
+    waitForInputFilesDownload(job);
 
     return ok;
     
   }
   
+  private void waitForInputFilesDownload(JobInfo job) throws IOException, InterruptedException {
+    long startMillis = MyUtil.getDateInMilliSeconds();
+    long nowMillis;
+    while(true){
+      if(pullMgr.downloadInputsDone(job)){
+        Debug.debug("Download of input file(s) done.", 3);
+        break;
+      }
+      nowMillis = MyUtil.getDateInMilliSeconds();
+      if(nowMillis-startMillis>submitTimeout*1000L){
+        throw new IOException();
+      }
+      Debug.debug("Waiting for download of input file(s) to finish.", 3);
+      Thread.sleep(10000L);
+    }
+  }
+  public boolean cleanup(JobInfo job){
+    // Delete any downloaded input files.
+    ((MyPullMgr) pullMgr).deleteInputs(job);
+    return super.cleanup(job);
+  }
+
   public boolean postProcess(JobInfo job) {
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String[] outputFileNames = dbPluginMgr.getOutputFiles(job.getIdentifier());
