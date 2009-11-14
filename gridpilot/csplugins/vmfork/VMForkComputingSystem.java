@@ -227,6 +227,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     includeManuallyBootedVMs();
     
     boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
+    
+    waitForInputFilesDownload(job);
+    
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){
       // There may still be hosts booting or unbooted - just return false - SubmissionControl
@@ -248,8 +251,6 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     setupExecutable(runDir(job) +"/"+scriptFile, shell);
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     job.setExecutable(scriptFile);
-    
-    waitForInputFilesDownload(job);
 
     return ok;
     
@@ -259,7 +260,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     long startMillis = MyUtil.getDateInMilliSeconds();
     long nowMillis;
     while(true){
-      if(pullMgr.downloadInputsDone(job)){
+      if(((MyPullMgr) pullMgr).downloadInputsDone(job)){
         Debug.debug("Download of input file(s) done.", 3);
         break;
       }
