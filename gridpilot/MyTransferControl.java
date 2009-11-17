@@ -98,7 +98,7 @@ public class MyTransferControl extends TransferControl {
 
   }
   
-  public long getFileBytes(GlobusURL url) throws NullPointerException, Exception{
+  public long getFileBytes(GlobusURL url) throws Exception{
     String pluginName = null;
     try{
       pluginName = findPlugin(url, new GlobusURL("file:///dev/null"));
@@ -110,8 +110,22 @@ public class MyTransferControl extends TransferControl {
       throw new IOException("ERROR: protocol not supported or plugin initialization " +
           "failed. "+url.getURL());
     }
+    long size = -1L;
+    Exception e = null;
+    try{
+      size = GridPilot.getClassMgr().getFTPlugin(pluginName).getFileBytes(url);
+    }
+    catch(Exception ee){
+      e = ee;
+    }
+    if(size<0 && pluginName.equalsIgnoreCase("srm") && MyUtil.arrayContains(GridPilot.FT_NAMES, SRM2_PLUGIN_NAME)){
+      size = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME).getFileBytes(url);
+    }
+    if(size<0 && e!=null){
+      throw e;
+    }
     Debug.debug("plugin selected: "+pluginName, 3);
-    return GridPilot.getClassMgr().getFTPlugin(pluginName).getFileBytes(url);
+    return size;
   }
   
   /**
@@ -1443,12 +1457,31 @@ public class MyTransferControl extends TransferControl {
     }
     // remote gsiftp or https/webdav directory
     else if(srcUrlDir.startsWith("gsiftp://") || srcUrlDir.startsWith("https://") ||
-        srcUrlDir.startsWith("sss://") || srcUrlDir.startsWith("srm://")){
+        srcUrlDir.startsWith("sss://")){
       Debug.debug("Downloading "+destFileName+" from "+srcUrlDir+" to "+downloadDir.getAbsolutePath(), 3);
       GlobusURL globusUrl = new GlobusURL(url);
       FileTransfer fileTransfer =
         GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
       fileTransfer.getFile(globusUrl, destination/*dName*/);
+      Debug.debug("Download done - "+destFileName, 3);        
+      setStatusBarText(url+" downloaded");
+    }
+    else if(srcUrlDir.startsWith("srm://")){
+      Debug.debug("Downloading "+destFileName+" from "+srcUrlDir+" to "+downloadDir.getAbsolutePath(), 3);
+      Exception e = null;
+      GlobusURL globusUrl = new GlobusURL(url);
+      try{
+        FileTransfer fileTransfer =
+          GridPilot.getClassMgr().getFTPlugin(url.replaceFirst("^(\\w+):/.*", "$1"));
+        fileTransfer.getFile(globusUrl, destination/*dName*/);
+      }
+      catch(Exception ee){
+        e = ee;
+      }
+      if(e!=null && MyUtil.arrayContains(GridPilot.FT_NAMES, SRM2_PLUGIN_NAME)){
+        FileTransfer fileTransfer = GridPilot.getClassMgr().getFTPlugin(SRM2_PLUGIN_NAME);
+        fileTransfer.getFile(globusUrl, destination/*dName*/);
+      }
       Debug.debug("Download done - "+destFileName, 3);        
       setStatusBarText(url+" downloaded");
     }

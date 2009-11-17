@@ -67,8 +67,8 @@ public class JobValidation{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "max simultaneous validating") + "\n" +
                          "Default value = " + maxSimultaneaousValidating);
     }
-    errorPatterns = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "validation error patterns");
-    errorAntiPatterns = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "validation error anti patterns");
+    errorPatterns = configFile.getValues("Computing systems", "validation error patterns");
+    errorAntiPatterns = configFile.getValues("Computing systems", "validation error antipatterns");
   }
 
   /**

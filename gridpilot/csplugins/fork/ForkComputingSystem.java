@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.util.AbstractList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -33,6 +34,8 @@ import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 public class ForkComputingSystem implements MyComputingSystem{
+  
+  private long submitTimeout;
   
   protected RTEMgr rteMgr;
 
@@ -129,6 +132,12 @@ public class ForkComputingSystem implements MyComputingSystem{
 
     publicCertificate = configFile.getValue(csName, "public certificate");
     runtimeDBs = configFile.getValues(csName, "runtime databases");
+    
+    submitTimeout = 700000L;
+    String st = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "submit timeout");
+    if(st!=null && !st.equals("")){
+      submitTimeout = Long.parseLong(st)*1000L;
+    }
     
     GridPilot.splashShow("Setting up RTEs for "+csName);
     Debug.debug("Setting up RTEs for "+csName, 2);
@@ -902,6 +911,12 @@ public class ForkComputingSystem implements MyComputingSystem{
     Vector<String> downloadVector = new Vector<String>();
     String [] downloadFiles = null;
     for(int i=0; i<inputFiles.length; ++i){
+      try{
+        inputFiles[i] = Util.fixSrmUrl(inputFiles[i]);
+      }
+      catch(MalformedURLException e) {
+        e.printStackTrace();
+      }
       Debug.debug("Pre-processing : Getting " + inputFiles[i], 2);
       String fileName = inputFiles[i];
       String urlDir = "/";
@@ -975,7 +990,11 @@ public class ForkComputingSystem implements MyComputingSystem{
     // If source is remote, get it
     else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFile)){
       try{
-        transferControl.download(urlDir + fileName, new File(runDir(job)));
+        // This method uses fileTransfer.getFile(), which is not implemented by the SRM plugin.
+        //transferControl.download(urlDir + fileName, new File(runDir(job)));
+        // This method uses the queue() method, which is implemented by all plugins.
+        GridPilot.getClassMgr().getTransferStatusUpdateControl().localDownload(
+            urlDir + fileName, fileName, new File(runDir(job)), submitTimeout);
       }
       catch(Exception ioe){
         logFile.addMessage("WARNING: GridPilot could not get input file "+inputFile+
@@ -1024,7 +1043,8 @@ public class ForkComputingSystem implements MyComputingSystem{
         }
         else{
           Debug.debug("Getting input file "+inputFile+" --> "+runDir(job), 3);
-          transferControl.copyInputFile(MyUtil.clearFile(inputFile), runDir(job)+"/"+fileName, thisShellMgr, true, error);
+          GridPilot.getClassMgr().getTransferStatusUpdateControl().copyInputFile(
+              MyUtil.clearFile(inputFile), runDir(job)+"/"+fileName, thisShellMgr, true, submitTimeout, error);
         }
       }
       catch(Exception ioe){ 

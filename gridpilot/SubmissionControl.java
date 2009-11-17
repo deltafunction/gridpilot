@@ -71,6 +71,7 @@ public class SubmissionControl{
   private int PREPROCESS_TIMEOUT = 240000;
   /** Number of milliseconds to wait for each submit thread. */
   private int SUBMIT_TIMEOUT = 240000;
+  private boolean cancelled = false;
   private static final int CAN_NEVER_PREPROCESS_OR_RUN = -1;
   private static final int CANNOT_PREPROCESS_OR_RUN_NOW = 0;
   private static final int CAN_PREPROCESS = 1;
@@ -379,6 +380,7 @@ public class SubmissionControl{
     if(jobs==null || jobs.size()==0){
       return;
     }
+    cancelled = false;
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
       jobs = MyUtil.shuffle(jobs);
     }
@@ -622,6 +624,10 @@ public class SubmissionControl{
       return;
     }
     final MyJobInfo job = toPreprocessJobs.get(0);
+    if(cancelled){
+      failJob(job);
+      return;
+    }
     int runOk = -1;
     try{
       runOk = checkRunning(job);
@@ -678,6 +684,10 @@ public class SubmissionControl{
        return;
      }
      final MyJobInfo job = preprocessingJobs.get(0);
+     if(cancelled){
+       failJob(job);
+       return;
+     }
      int runOk = -1;
      try{
        runOk = checkRunning(job);
@@ -1001,6 +1011,10 @@ public class SubmissionControl{
    */
   private void tryPreprocess(final MyJobInfo job, int runOk){
     
+    if(cancelled){
+      return;
+    }
+    
     int dbStatus = job.getDBStatus();
     
     if(job.getName()==null || job.getName().equals("")){
@@ -1218,6 +1232,8 @@ public class SubmissionControl{
    * Empties toSubmitJobs, and set these jobs to Failed.
    */
   private void cancelSubmission(){
+    cancelled = true;
+    preprocessTimer.stop();
     submitTimer.stop();
     Vector<MyJobInfo> toCancelJobs = new Vector<MyJobInfo>();
     toCancelJobs.addAll(toPreprocessJobs);

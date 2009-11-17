@@ -10,6 +10,7 @@ import java.util.Vector;
 
 import org.globus.util.GlobusURL;
 
+import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.jobrun.ScriptGenerator;
@@ -33,6 +34,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private String [] stderrExcludeWords = null;
   private String csName = null;
   private boolean ignoreBaseSystemAndVMRTEs;
+  private long submitTimeout;
   
   /**
    * Constructor
@@ -41,8 +43,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
       boolean _onWindows){
     super(GridPilot.getClassMgr().getLogFile(), _onWindows);
     csName = _csName;
-    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Remote copy commands");
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    String [] rtCpCmds = configFile.getValues(csName, "Remote copy commands");
     if(rtCpCmds!=null && rtCpCmds.length>1){
       remoteCopyCommands = new HashMap<String, String>();
       for(int i=0; i<rtCpCmds.length/2; ++i){
@@ -51,20 +53,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     workingDir = _workingDir;
     runtimeDirectory = GridPilot.RUNTIME_DIR;
-    requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Required runtime environments");
+    requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
     try{
-       String stdoutExW = GridPilot.getClassMgr().getConfigFile().getValue(
-           csName, "Stdout exclude words");
+       String stdoutExW = configFile.getValue(csName, "Stdout exclude words");
       stdoutExcludeWords = splitPhrases(stdoutExW);
     }
     catch(Exception e){
       e.printStackTrace();
     }
     try{
-      String stderrExW = GridPilot.getClassMgr().getConfigFile().getValue(
-          csName, "Stderr exclude words");
+      String stderrExW = configFile.getValue(csName, "Stderr exclude words");
      stderrExcludeWords = splitPhrases(stderrExW);
     }
     catch(Exception e){
@@ -72,6 +71,11 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     Debug.debug("stdoutExcludeWords: "+MyUtil.arrayToString(stdoutExcludeWords), 2);
     Debug.debug("stderrExcludeWords: "+MyUtil.arrayToString(stderrExcludeWords), 2);
+    submitTimeout = 700L;
+    String st = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "submit timeout");
+    if(st!=null && !st.equals("")){
+      submitTimeout = Long.parseLong(st);
+    }
   }
   
   private static String [] splitPhrases(String _phrases) throws Exception{
@@ -260,8 +264,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // it's already on the worker node - and on the PATH.
     boolean copyScript = MyUtil.urlIsRemote(scriptSrc) || MyUtil.isLocalFileName(scriptSrc);
     if(copyScript &&
-        !GridPilot.getClassMgr().getTransferControl().copyInputFile(
-            MyUtil.clearFile(scriptSrc), scriptDest, shell, true, null)){
+        !GridPilot.getClassMgr().getTransferStatusUpdateControl().copyInputFile(
+            MyUtil.clearFile(scriptSrc), scriptDest, shell, true, submitTimeout, null)){
       throw new IOException("Copying executable script to working dir failed.");
     }
     
