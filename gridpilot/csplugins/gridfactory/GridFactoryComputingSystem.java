@@ -117,7 +117,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         Debug.debug("Input file "+job.getInputFileUrls()[i]+" not found - continuing anyway...", 3);
       }
     }
-    for(int i=initialLen; i<initialLen+executableInputs.length; ++i){
+    for(int i=0; i<executableInputs.length; ++i){
       if(fileIsRemoteOrPresent(executableInputs[i])){
         newInputs.add(executableInputs[i]);
       }
