@@ -29,7 +29,6 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private String [] cstAttr = null;
   private String executableIdentifier;
   private boolean reuseTextFields = true;
-  private Vector tcConstant = new Vector(); // contains all text components
   private DBPanel panel = null;
   private JPanel pRuntimeEnvironment = new JPanel();
   private String runtimeEnvironmentName = null;
@@ -42,6 +41,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
 
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
+  private int comboBoxIndex;
+  private JComboBox argsComboBox;
 
   public JComponent [] tcCstAttributes;
 
@@ -104,7 +105,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   }
 
   /**
-   * GUI initialisation
+   * GUI initialization
    */
   public void initGUI(){
     
@@ -116,7 +117,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         Color.white,new Color(165, 163, 151)), 
         (executableID.equals("-1")?"new executable":"executable "+executableID)));
     
-    //spAttributes.setPreferredSize(new Dimension(650, 500));
+    spAttributes.setPreferredSize(new Dimension(650, 430));
     //spAttributes.setMinimumSize(new Dimension(650, 500));
     
     setLayout(new GridBagLayout());
@@ -166,8 +167,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
 
   /**
    * Called initially.
-   * Initialises text fields with attributes for executable.
-    */
+   * Initializes text fields with attributes for executable.
+   */
   private void initExecutableCreationPanel(){
 
     // Panel Attributes
@@ -194,7 +195,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     // This is to ensure only unique elements
     // TODO: for some reason this doesn't seam to work
     Arrays.sort(ret);
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     if(runtimeEnvironments.values.length>0){
       vec.add(ret[0]);
     }
@@ -337,7 +338,9 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("arguments")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
-          JExtendedComboBox argsComboBox = createArgsComboBox();
+          comboBoxIndex = i;
+          argsComboBox = new JComboBox();
+          initArgsComboBox();
           tcCstAttributes[i] = argsComboBox;
         }
       }
@@ -391,17 +394,27 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
   }
 
-  private JExtendedComboBox createArgsComboBox() {
-    final JExtendedComboBox argsComboBox = new JExtendedComboBox();
+  private void initArgsComboBox() {
+    argsComboBox.removeAllItems();
     argsComboBox.addItem("");
     for(int ii=0; ii<JobCreator.AUTO_FILL_ARGS.length; ++ii){
       argsComboBox.addItem(JobCreator.AUTO_FILL_ARGS[ii]);
     }
     argsComboBox.addActionListener(new ActionListener() {
       public void actionPerformed(ActionEvent e) {
+        if(argsComboBox.getSelectedIndex()<0){
+          Debug.debug("Setting text to "+argsComboBox.getSelectedItem(), 3);
+          argsComboBox.removeItemAt(0);
+          argsComboBox.insertItemAt(argsComboBox.getSelectedItem(), 0);
+          return;
+        }
+        else if(argsComboBox.getSelectedIndex()==0){
+          Debug.debug("Leaving text at "+argsComboBox.getItemAt(0), 3);
+          return;
+        }
         String orig = (String) argsComboBox.getItemAt(0);
         String newItem = (String) argsComboBox.getSelectedItem();
-        System.out.println("Appending item " + newItem+" to "+orig);
+        Debug.debug("Appending item " + newItem+" to "+orig, 3);
         argsComboBox.removeItemAt(0);
         argsComboBox.insertItemAt(orig+(orig.equals("")?"":" ")+newItem, 0);
         argsComboBox.setSelectedIndex(0);
@@ -409,7 +422,6 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     });
     argsComboBox.setEditable(true);
     argsComboBox.updateUI();
-    return argsComboBox;
   }
 
   /**
@@ -474,14 +486,15 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   }
 
   public void clearPanel(){
-
-    Vector textFields = getTextFields();
-
+    Vector<JComponent> textFields = getTextFields();
     for(int i =0; i<textFields.size(); ++i)
     if(!(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier))){
-      ((JTextComponent) textFields.get(i)).setText("");
+      MyUtil.setJText(textFields.get(i), "");
     }
-  }
+    tcCstAttributes[comboBoxIndex] = argsComboBox;
+    pAttributes.updateUI();
+    pAttributes.validate();
+ }
 
 
   public void create(final boolean showResults, final boolean editing){
@@ -506,14 +519,10 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
   }
 
-  private Vector getTextFields(){
-    Vector v = new Vector();
-
-    v.addAll(tcConstant);
-
+  private Vector<JComponent> getTextFields(){
+    Vector<JComponent> v = new Vector<JComponent>();
     for(int i=0; i<tcCstAttributes.length; ++i)
       v.add(tcCstAttributes[i]);
-
     return v;
   }
 }
