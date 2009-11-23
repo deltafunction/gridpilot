@@ -86,7 +86,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     hosts = new String [maxMachines];
     localRteDir = GridPilot.RUNTIME_DIR;
     remoteRteDir = localRteDir;
-    workingDir = configFile.getValue(csName, "working directory");
+    String workingDir = configFile.getValue(csName, "working directory");
+    workingDirs.put("localhost", workingDir);
     logFile = GridPilot.getClassMgr().getLogFile();
     rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
