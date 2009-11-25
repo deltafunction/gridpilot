@@ -9,8 +9,8 @@ import java.net.MalformedURLException;
 public class LRCLookupPFN  extends LookupPFN {
 
   public LRCLookupPFN(ATLASDatabase db, String catalogServer,
-      String lfn, boolean findAll) throws MalformedURLException {
-    super(db, catalogServer, lfn, findAll);
+      String lfn, String guid, boolean findAll) throws MalformedURLException {
+    super(db, catalogServer, lfn, guid, findAll);
   }
 
   /* E.g. catalogServer--> http://dms02.usatlas.bnl.gov:8000/dq2/
@@ -20,7 +20,13 @@ public class LRCLookupPFN  extends LookupPFN {
   */
   public String [] lookup() throws Exception {
     String [] ret = null;
-    String path = "lrc/PoolFileCatalog?lfns="+lfn;
+    String path;
+    if(guid!=null){
+      path = "lrc/PoolFileCatalog?lfns="+guid;
+    }
+    else{
+      path = "lrc/PoolFileCatalog?lfns="+lfn;
+    }
     String url = catalogServer+(catalogServer.endsWith("/")?"":"/")+path;
     Debug.debug("Querying "+url, 2);
     String [] answer = MyUtil.readURL(url, GridPilot.getClassMgr().getTransferControl(), null, null);

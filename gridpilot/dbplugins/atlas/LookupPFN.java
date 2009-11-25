@@ -6,14 +6,15 @@ import org.globus.util.GlobusURL;
 
 public class LookupPFN {
   
-  ATLASDatabase db;
-  String catalogServer;
-  GlobusURL catalogUrl;
-  String lfn;
-  boolean findAll;
+  protected ATLASDatabase db;
+  protected String catalogServer;
+  protected GlobusURL catalogUrl;
+  protected String lfn;
+  protected String guid;
+  protected boolean findAll;
    
   public LookupPFN(ATLASDatabase _db, String _catalogServer,
-      String _lfn, boolean _findAll) throws MalformedURLException {
+      String _lfn, String _guid, boolean _findAll) throws MalformedURLException {
     db = _db;
     lfn = _lfn;
     findAll = _findAll;

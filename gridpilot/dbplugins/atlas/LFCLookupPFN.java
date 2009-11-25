@@ -24,11 +24,14 @@ public class LFCLookupPFN extends LookupPFN {
   private static int pathConvention = 1;
   private static final int PATH_CONVENTIONS = 6;
   private boolean tryDli;
+  private String [] pfns = null;
+  private String [] ret = null;
   
   public LFCLookupPFN(ATLASDatabase db, LFCConfig lfcConfig, String catalogServer,
-      String _dsn, String _lfn, boolean findAll, boolean _tryDli) throws MalformedURLException, URISyntaxException {
-    super(db, catalogServer, _lfn, findAll);
+      String _dsn, String _lfn, String _guid, boolean findAll, boolean _tryDli) throws MalformedURLException, URISyntaxException {
+    super(db, catalogServer, _lfn, _guid, findAll);
     dsn = _dsn;
+    guid = _guid;
     tryDli = _tryDli;
     lfcServer = new LFCServer(lfcConfig, new URI(catalogServer));
     Debug.debug("Created new LFCServer from ID "+lfcServer.getConfig().globusCredential.getIdentity(), 1);
@@ -54,10 +57,12 @@ public class LFCLookupPFN extends LookupPFN {
     
     String path = catalogUrl.getPath()==null ? "" : catalogUrl.getPath();
     String basePath = "/"+path+(path.endsWith("/")?"":"/");
-    String [] pfns = null;
-    String [] ret = null;
+    // If  GUID is given, use it
+    if(guid!=null){
+      lookupGUID();
+    }
     // If the LFN starts with "user." assume lfcUserBasePath
-    if(lfn.startsWith("user.")){
+    if(pfns==null && lfn.startsWith("user.")){
       String atlasLPN = basePath+db.lfcUserBasePath+lfn;
       try{
         pfns = lfcLookup(atlasLPN);
@@ -66,8 +71,40 @@ public class LFCLookupPFN extends LookupPFN {
         e.printStackTrace();
       }
     }
+    if(guid==null && pfns==null){
+      lookupLFN(basePath);
+    }
+    if(pfns==null){
+      pfns = new String [] {};
+    }
+    ret = new String [pfns.length+2];
+    ret[0] = null;
+    ret[1] = null;
+    for(int i=0; i<pfns.length; ++i){
+      ret[i+2] = pfns[i];
+    }
+    
+    return ret;
+    
+  }
+
+  private void lookupGUID() {
+    try{
+      pfns = lfcLookup(null);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+  }
+
+  private void lookupLFN(String basePath) {
+    String atlasLPN;
     for(int i=0; i<PATH_CONVENTIONS; ++i){
-      String atlasLPN = basePath+makeAtlasPath(lfn, dsn);
+      atlasLPN = makeAtlasPath(lfn, dsn);
+      if(atlasLPN==null){
+        continue;
+      }
+      atlasLPN = basePath+atlasLPN;
       Debug.debug("LPN: "+atlasLPN, 2);
       try{
         pfns = lfcLookup(atlasLPN);
@@ -93,18 +130,6 @@ public class LFCLookupPFN extends LookupPFN {
         break;
       }
     }
-    if(pfns==null){
-      pfns = new String [] {};
-    }
-    ret = new String [pfns.length+2];
-    ret[0] = null;
-    ret[1] = null;
-    for(int i=0; i<pfns.length; ++i){
-      ret[i+2] = pfns[i];
-    }
-    
-    return ret;
-    
   }
 
   private String[] lfcLookup(String atlasLPN) throws Exception {
@@ -113,8 +138,14 @@ public class LFCLookupPFN extends LookupPFN {
     try{
       Debug.debug("Connecting to LFC server at "+catalogServer, 2);
       lfcServer.connect();
-      Debug.debug("Looking up "+atlasLPN, 3);
-      ArrayList<ReplicaDesc> replicas = lfcServer.getReplicasByPath(atlasLPN);
+      Debug.debug("Looking up "+guid+":"+atlasLPN, 3);
+      ArrayList<ReplicaDesc> replicas;
+      if(guid!=null){
+        replicas = lfcServer.getReplicas(guid);
+      }
+      else{
+        replicas = lfcServer.getReplicasByPath(atlasLPN);
+      }
       lfcServer.disconnect();
       pfns = new String[replicas.size()];
       for(int i=0; i<pfns.length; ++i){

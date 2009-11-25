@@ -12,9 +12,12 @@ import java.util.Vector;
 
 public class MySQLLookupPFN  extends LookupPFN {
 
+  private String [] pfns = null;
+  private String [] ret = null;
+
   public MySQLLookupPFN(ATLASDatabase db, String catalogServer,
-      String lfn, boolean findAll) throws MalformedURLException {
-    super(db, catalogServer, lfn, findAll);
+      String lfn, String guid, boolean findAll) throws MalformedURLException {
+    super(db, catalogServer, lfn, guid, findAll);
   }
 
   public String [] lookup() throws Exception {
@@ -44,45 +47,20 @@ public class MySQLLookupPFN  extends LookupPFN {
     }
     Connection conn = db.getDBConnection(alias);
     // First query the t_lfn table to get the guid
-    String req = null;
-    req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
-    ResultSet rset = null;
-    String guid = null;
-    Vector guidVector = new Vector();
-    Debug.debug(">> "+req, 3);
-    rset = conn.createStatement().executeQuery(req);
-    while(rset.next()){
-      if(db.getStop() || !db.findPFNs){
-        rset.close();
-        conn.close();
-        return null;
-      }
-      guidVector.add(rset.getString("guid"));
+    if(guid==null){
+      lookupGuid(conn);
     }
-    String [] pfns = null;
-    String [] ret = null;
-    if(guidVector.size()==0){
-      rset.close();
-      conn.close();
-      pfns = new String [] {};
-      ret = new String [pfns.length+2];
-      ret[0] = null;
-      ret[1] = null;
-      for(int i=0; i<pfns.length; ++i){
-        ret[i+2] = pfns[i];
-      }
-      return ret;
-    }
-    else if(guidVector.size()>1){
-      db.error = "WARNING: More than one ("+guidVector.size()+") guids with found for lfn "+lfn;
+    if(guid==null){
+      db.error = "ERROR: No GUID found for LFN "+lfn;
       Debug.debug(db.error, 1);
+      conn.close();
+      throw new SQLException(db.error);
     }
-    guid = (String) guidVector.get(0);
     // Now query the t_pfn table to get the pfn
-    req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid = '"+guid+"' AND " +
+    String req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid = '"+guid+"' AND " +
             "t_pfn.guid = t_meta.guid";
     Debug.debug(">> "+req, 3);
-    rset = conn.createStatement().executeQuery(req);
+    ResultSet rset = conn.createStatement().executeQuery(req);
     Vector resultVector = new Vector();
     String bytes = null;
     String checksum = null;
@@ -131,5 +109,40 @@ public class MySQLLookupPFN  extends LookupPFN {
       ret[i+2] = pfns[i];
     }
     return ret;
+  }
+
+  private void lookupGuid(Connection conn) throws Exception {
+    String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
+    ResultSet rset = null;
+    Vector guidVector = new Vector();
+    Debug.debug(">> "+req, 3);
+    rset = conn.createStatement().executeQuery(req);
+    while(rset.next()){
+      if(db.getStop() || !db.findPFNs){
+        rset.close();
+        conn.close();
+        Debug.debug("LFN "+lfn+" not found.", 1);
+        return;
+      }
+      guidVector.add(rset.getString("guid"));
+    }
+    if(guidVector.size()==0){
+      rset.close();
+      conn.close();
+      pfns = new String [] {};
+      ret = new String [pfns.length+2];
+      ret[0] = null;
+      ret[1] = null;
+      for(int i=0; i<pfns.length; ++i){
+        ret[i+2] = pfns[i];
+      }
+      Debug.debug("LFN "+lfn+" not found.", 1);
+      return;
+    }
+    else if(guidVector.size()>1){
+      db.error = "WARNING: More than one ("+guidVector.size()+") guids with found for lfn "+lfn;
+      Debug.debug(db.error, 1);
+    }
+    guid = (String) guidVector.get(0);
   }
 }

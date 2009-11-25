@@ -777,10 +777,11 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         String catalogs = "";
         Debug.debug("Finding PFNs "+findPFNs, 2);
+        Debug.debug("Using guid "+guid+" extracted from "+MyUtil.arrayToString(record), 2);
         if(findPFNs){
           PFNResult pfnRes = null;
           try{
-            pfnRes = findPFNs(vuid, dsn, lfn, findAll);
+            pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll);
             catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
             bytes = (bytes.equals("")&&fileBytes!=null?fileBytes:bytes);
             checksum = (checksum.equals("")&&fileChecksum!=null?fileChecksum:checksum);
@@ -1070,7 +1071,8 @@ public class ATLASDatabase extends DBCache implements Database{
      (0, '<?xml version="1.0" encoding="UTF-8" standalone="no" ?>\n<!-- Edited By POOL -->\n<!DOCTYPE POOLFILECATALOG SYSTEM "InMemory">\n<POOLFILECATALOG>\n\n  <META name="fsize" type="string"/>\n\n  <META name="md5sum" type="string"/>\n\n  <META name="lastmodified" type="string"/>\n\n  <META name="archival" type="string"/>\n\n  <File ID="af97820a-8cee-4b3b-808a-713e6bd21e8e">\n    <physical>\n      <pfn filetype="" name="srm://dcsrm.usatlas.bnl.gov/pnfs/usatlas.bnl.gov/others01/2007/06/trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432_sub0/trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432._00001.job.log.tgz.1"/>\n    </physical>\n    <logical>\n      <lfn name="trig1_misal1_mc11.007211.singlepart_mu10.recon.log.v12000502_tid005432._00001.job.log.tgz.1"/>\n    </logical>\n    <metadata att_name="archival" att_value="V"/>\n    <metadata att_name="fsize" att_value="2748858"/>\n    <metadata att_name="lastmodified" att_value="1171075105"/>\n    <metadata att_name="md5sum" att_value="8a74295a00637eecdd8443cd36df49a7"/>\n  </File>\n\n</POOLFILECATALOG>\n') 
    */
   
-  private String [] lookupPFNs(final String _catalogServer, final String dsn, final String lfn, final boolean findAll){
+  private String [] lookupPFNs(final String _catalogServer, final String dsn, final String guid,
+      final String lfn, final boolean findAll){
     ResThread t = new ResThread(){
       String [] res = null;
       public String [] getString2Res(){
@@ -1081,7 +1083,7 @@ public class ATLASDatabase extends DBCache implements Database{
           return;
         }
         try{
-          res = doLookupPFNs(_catalogServer, dsn, lfn, findAll);
+          res = doLookupPFNs(_catalogServer, dsn, guid, lfn, findAll);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1107,7 +1109,8 @@ public class ATLASDatabase extends DBCache implements Database{
    * 
    * @param _catalogServer
    * @param dsn
-   * @param lfn
+   * @param lfn - can be null
+   * @param guid - can be null
    * @param findAll
    * @return an array where the first two entries are bytes, checksums, then
    * follows the PFNs. Bytes and checksum may each be null.
@@ -1116,22 +1119,22 @@ public class ATLASDatabase extends DBCache implements Database{
    * @throws MalformedURLException
    * @throws SQLException
    */
-  private String [] doLookupPFNs(String _catalogServer, String dsn, String lfn, boolean findAll)
+  private String [] doLookupPFNs(String _catalogServer, String dsn, String guid, String lfn, boolean findAll)
      throws Exception {
     // get rid of the :/, which GlobusURL doesn't like
     String catalogServer = _catalogServer.replaceFirst("(\\w):/(\\w)", "$1/$2");
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("lfc")){
       activateProxySsl();
-      return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, findAll, false)).lookup();
+      return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, guid, findAll, false)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       activateSsl();
-      return (new MySQLLookupPFN(this, catalogServer, lfn, findAll)).lookup();
+      return (new MySQLLookupPFN(this, catalogServer, lfn, guid, findAll)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("http")){
       activateSsl();
-      return (new LRCLookupPFN(this, catalogServer, lfn, findAll)).lookup();
+      return (new LRCLookupPFN(this, catalogServer, lfn, guid, findAll)).lookup();
     }
     else{
       error = "ERROR: protocol not supported: "+catalogUrl.getProtocol();
@@ -1608,16 +1611,17 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   }
   
   /**
-   * Fill the vector pfnVector with PFNs registered for lfn.
+   * Fill the vector pfnVector with PFNs registered for guid or lfn.
    * Returns a Vector of catalogServers corresponding to the
    * Vector of PFNs.
    */
-  private PFNResult findPFNs(String vuid, String dsn, String lfn, boolean findAll){
+  private PFNResult findPFNs(String vuid, String dsn, String _guid, String lfn, boolean findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
     // For each LRC catalog try both the mysql and the http interface.
     String lfName = lfn;
+    String guid = _guid;
     Vector<String> locations = getOrderedLocations(vuid);
     String [] locationsArray = locations.toArray(new String[locations.size()]);
     PFNResult res = new PFNResult();
@@ -1661,14 +1665,14 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
           try{
             try{
-              pfns = lookupPFNs(catalogServer, dsn, lfName, findAll);
+              pfns = lookupPFNs(catalogServer, dsn, guid, lfName, findAll);
             }
             catch(Exception e){
               e.printStackTrace();
             }
             if(fallbackServer!=null && (pfns==null || pfns.length==0)){
               Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
-              pfns = lookupPFNs(fallbackServer, dsn, lfName, findAll);
+              pfns = lookupPFNs(fallbackServer, dsn, guid, lfName, findAll);
               catalogServer = fallbackServer;
               if(pfns!=null && pfns.length>2){
                 Debug.debug("Switching to http for "+locationsArray[i], 2);
@@ -1833,7 +1837,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String bytes = "";
     String checksum = "";
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
-      PFNResult pfnRes = findPFNs(vuid, dsn, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
+      PFNResult pfnRes = findPFNs(vuid, dsn, fileID, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
       for(int j=0; j<pfnRes.getPfns().size(); ++j){
         resultVector.add(pfnRes.getPfns().get(j));
@@ -1882,22 +1886,27 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     //         lfns and guids. This is not necessarily the case...
     // TODO: improve
     DBResult allFiles = null;
+    Vector<String> toDeleteGUIDsVec = new Vector<String>();
     Vector<String> toDeleteLFNsVec = new Vector<String>();
+    String [] toDeleteGuids = null;
     String [] toDeleteLfns = null;
     try{
       allFiles = getFiles(datasetID);
       for(int i=0; i<allFiles.values.length; ++i){
         if(fileIDs==null){
+          toDeleteGUIDsVec.add((String) allFiles.getValue(i, "guid"));
           toDeleteLFNsVec.add((String) allFiles.getValue(i, "lfn"));
           continue;
         }
         for(int j=0; j<fileIDs.length; ++j){
           if(fileIDs[j].equalsIgnoreCase((String) allFiles.getValue(i, "guid"))){
+            toDeleteGUIDsVec.add(fileIDs[j]);
             toDeleteLFNsVec.add((String) allFiles.getValue(i, "lfn"));
             break;
           }
         }
       }
+      toDeleteGuids = toDeleteGUIDsVec.toArray(new String[toDeleteLFNsVec.size()]);
       toDeleteLfns = toDeleteLFNsVec.toArray(new String[toDeleteLFNsVec.size()]);
     }
     catch(Exception e){
@@ -1935,7 +1944,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       int deleted = 0;
       String datasetName = getDatasetName(datasetID);
       try{
-        deleted = deletePhysicalFiles(datasetID, datasetName, toDeleteLfns);
+        deleted = deletePhysicalFiles(datasetID, datasetName, toDeleteGuids, toDeleteLfns);
       }
       catch(Exception e){
         deletePhysOk = false;
@@ -2031,7 +2040,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     return true;
   }
   
-  private int deletePhysicalFiles(String datasetID, String datasetName, String [] toDeleteLfns)
+  private int deletePhysicalFiles(String datasetID, String datasetName, String [] toDeleteGuids, String [] toDeleteLfns)
      throws IOException, InterruptedException{
     int deleted = 0;
     // Delete the physical files.
@@ -2044,7 +2053,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
       // Get the pfns
       try{
-        pfnsArr = lookupPFNs(homeSite, datasetName, toDeleteLfns[i], true);
+        pfnsArr = lookupPFNs(homeSite, datasetName, toDeleteGuids[i], toDeleteLfns[i], true);
         if(pfnsArr!=null && pfnsArr.length>2){
           for(int j=2; j<pfnsArr.length; ++j){
             Debug.debug("Will delete "+pfnsArr[j], 2);

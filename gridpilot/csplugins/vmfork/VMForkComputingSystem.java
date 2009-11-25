@@ -67,6 +67,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     }
     defaultVmMB = minVmMB+defaultJobMB;
     shells = new HashMap<String, Shell>();
+    workingDirs = new HashMap<String, String>();
     /*
      * We set the max number of jobs allowed by super.reuseHost() to be the allowed
      * number of running jobs of the config file. The number of preprocessing and running jobs
