@@ -910,12 +910,19 @@ public class BeginningWizard{
     /*
     home site = FZKDISK mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas
     */
-    if(cbAtlas.isSelected() && tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
+    if(cbAtlas.isSelected()){
       configFile.setAttributes(
-          new String [] {"ATLAS", "ATLAS", "ATLAS"},
-          new String [] {"Enabled", "Home site", "User path"},
-          new String [] {"yes", tfHomeSite.getText().trim(), lfcPath.replaceFirst("^/grid/atlas", "")}
+          new String [] {"ATLAS"},
+          new String [] {"Enabled"},
+          new String [] {"yes"}
           );
+      if(tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
+        configFile.setAttributes(
+            new String [] {"ATLAS", "ATLAS"},
+            new String [] {"Home site", "User path"},
+            new String [] {tfHomeSite.getText().trim(), lfcPath.replaceFirst("^/grid/atlas", "")}
+            );
+      }
     }
       
     return choice;
