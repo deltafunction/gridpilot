@@ -4,6 +4,7 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
@@ -11,6 +12,8 @@ import gridfactory.common.jobrun.VirtualMachine;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import org.safehaus.uuid.UUIDGenerator;
@@ -332,23 +335,25 @@ public class CSPluginMgr implements MyComputingSystem{
    * Kills these jobs
    * @see MyComputingSystem#killJobs(Vector)
    */
-  public boolean killJobs(final Vector<JobInfo> jobs){
+  public boolean killJobs(final Set<JobInfo> jobs){
     
     StatusBar statusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     statusBar.setLabel("Killing job(s)...");
     statusBar.animateProgressBar();
     
-    HashMap csJobs = new HashMap();
+    HashMap<String, MyLinkedHashSet<JobInfo>> csJobs = new HashMap();
     String csName = null;
-    for(int i=0; i<jobs.size(); ++i){
-      csName = ((MyJobInfo) jobs.get(i)).getCSName();
+    MyJobInfo job;
+    for(Iterator it=jobs.iterator(); it.hasNext();){
+      job = (MyJobInfo) it.next();
+      csName = job.getCSName();
       if(!csJobs.keySet().contains(csName)){
-        csJobs.put(csName, new Vector());
+        csJobs.put(csName, new MyLinkedHashSet<JobInfo>());
       }
-      ((Vector) csJobs.get(csName)).add(jobs.get(i));
+      csJobs.get(csName).add(job);
     }
     
-    final HashMap csJobsFinal = csJobs;
+    final HashMap<String, MyLinkedHashSet<JobInfo>> csJobsFinal = csJobs;
     
     ResThread [] threads = new ResThread[csJobs.size()];
     for(threadI=0; threadI<threads.length; ++threadI){
@@ -359,7 +364,7 @@ public class CSPluginMgr implements MyComputingSystem{
         public void run(){
           try{
             String csName = (String) csJobsFinal.keySet().toArray()[threadI];
-            ((MyComputingSystem) cs.get(csName)).killJobs((Vector) csJobsFinal.get(csName));
+            ((MyComputingSystem) cs.get(csName)).killJobs(csJobsFinal.get(csName));
           }
           catch(Exception t){
             logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +

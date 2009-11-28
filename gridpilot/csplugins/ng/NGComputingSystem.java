@@ -435,12 +435,12 @@ public class NGComputingSystem implements MyComputingSystem{
     return gridJob;
   }
   
-  public boolean killJobs(Vector jobsToKill){
+  public boolean killJobs(Set jobsToKill){
     MyJobInfo job = null;
     Vector errors = new Vector();
-    for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
+    for(Iterator it=jobsToKill.iterator(); it.hasNext();){
       try{
-        job = (MyJobInfo) en.nextElement();
+        job = (MyJobInfo) it.next();
         Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
         ARCGridFTPJob gridJob = getGridJob(job);
         gridJob.cancel();

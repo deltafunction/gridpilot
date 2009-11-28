@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.JOptionPane;
@@ -726,12 +727,12 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
 
-  public boolean killJobs(Vector jobsToKill){
+  public boolean killJobs(Set jobsToKill){
     MyJobInfo job = null;
     Vector errors = new Vector();
-    for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
+    for(Iterator it=jobsToKill.iterator(); it.hasNext();){
       try{
-        job = (MyJobInfo) en.nextElement();
+        job = (MyJobInfo) it.next();
         Debug.debug("Killing: " + job.getName() + ":" + job.getJobId(), 3);
         wmProxyAPI.jobCancel(job.getJobId());
       }
@@ -740,9 +741,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
         logFile.addMessage("Exception during killing of " + job.getName() + ":" + job.getJobId() + ":\n" +
                            "\tException\t: " + ae.getMessage(), ae);
         ae.printStackTrace();
+        continue;
       }
       try{
-        job = (MyJobInfo) en.nextElement();
         Debug.debug("Cleaning: " + job.getName() + ":" + job.getJobId(), 3);
         wmProxyAPI.jobPurge(job.getJobId());
       }

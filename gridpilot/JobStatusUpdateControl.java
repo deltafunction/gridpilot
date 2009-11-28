@@ -3,6 +3,7 @@ package gridpilot;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
 
 import java.net.URL;
 import java.util.Iterator;
@@ -201,14 +202,17 @@ public class JobStatusUpdateControl{
     
     // get job vector
     int [] rows = _rows;
-    Vector jobs = null;
+    Vector<MyJobInfo> jobs = null;
     if(rows==null || rows.length==0){
       // if nothing is selected, we refresh all jobs
       jobs = GridPilot.getClassMgr().getMonitoredJobs();
     }
     else{
       //rows = statusTable.getSelectedRows();
-      jobs = JobMgr.getJobsAtRows(rows);
+      jobs = new Vector<MyJobInfo>();
+      for(Iterator<JobInfo> it=JobMgr.getJobsAtRows(rows).iterator(); it.hasNext();){
+        jobs.add((MyJobInfo) it.next());
+      }
     }
    
     // fill toCheckJobs with running jobs

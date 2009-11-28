@@ -3,6 +3,8 @@ package gridpilot;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.MyLinkedHashSet;
 
 import javax.swing.*;
 
@@ -11,6 +13,7 @@ import java.awt.event.*;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.event.*;
@@ -390,7 +393,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       mi.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){
           submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-          submissionControl.submitJobs((Vector) JobMgr.getJobsAtRows(statusTable.getSelectedRows()),
+          submissionControl.submitJobs(JobMgr.getJobsAtRows(statusTable.getSelectedRows()),
               /*computingSystem*/
               /*((JMenuItem) e.getSource()).getMnemonic()*/
               ((JMenuItem) e.getSource()).getText());
@@ -517,7 +520,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       return;
     }
 
-    Vector jobs = JobMgr.getJobsAtRows(rows);
+    Set jobs = JobMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     
@@ -548,12 +551,15 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       }
 
       JobMgr jobMgr = null;
-      for(int i=0; i<jobs.size(); ++i){
-        MyJobInfo job = (MyJobInfo) jobs.get(i);
+      int i = 0;
+      MyJobInfo job;
+      for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+        job = it.next();
         if(job.getDBStatus()!=dbChoices[i]){
           jobMgr = getJobMgr(job);
           jobMgr.updateDBStatus(job, dbChoices[i]);
         }
+        ++i;
       }
       statusTable.updateSelection();
       jobMgr.updateJobsByStatus();
@@ -911,12 +917,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       public void run(){    
         int [] rows = statusTable.getSelectedRows();       
         Debug.debug("Setting status of rows "+MyUtil.arrayToString(rows), 3);
-        Vector jobs = JobMgr.getJobsAtRows(rows);
+        MyLinkedHashSet<JobInfo> jobs = JobMgr.getJobsAtRows(rows);
         MyJobInfo job = null;
         JobMgr jobMgr = null;
         HashMap datasetJobs = new HashMap();
-        for(int i=0; i<jobs.size(); ++i){
-          job = (MyJobInfo) jobs.get(i);
+        int i = 0;
+        for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
+          job = (MyJobInfo) it.next();
           jobMgr = getJobMgr(job);
           if(!datasetJobs.containsKey(jobMgr)){
             datasetJobs.put(jobMgr, new Vector());
@@ -927,8 +934,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           jobMgr = (JobMgr) it.next();
           Vector jobRows = ((Vector) datasetJobs.get(jobMgr));
           int [] dsRows = new int [jobRows.size()];
-          for(int i=0; i<jobRows.size(); ++i){
-            dsRows[i] = ((Integer) jobRows.get(i)).intValue();
+          for(int j=0; i<jobRows.size(); ++j){
+            dsRows[j] = ((Integer) jobRows.get(j)).intValue();
           }
           jobMgr.setDBStatus(dsRows, dbStatus);
         }

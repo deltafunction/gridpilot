@@ -2,6 +2,8 @@ package gridpilot;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.StatusBar;
 
 import java.awt.Color;
@@ -673,9 +675,9 @@ public class JobMgr{
         logFile.addInfo("Auto-resubmitting job "+job.getIdentifier()+" : "+job.getResubmitCount()+":"+resubmitNr);
         // TODO: consider doing this in a thread...
         SubmissionControl submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-        Vector jobVector = new Vector();
-        jobVector.add(job);
-        submissionControl.resubmit(jobVector);
+        Set<JobInfo> rJobs = new LinkedHashSet<JobInfo>();
+        rJobs.add(job);
+        submissionControl.resubmit(rJobs);
       }
     }
   }
@@ -715,8 +717,8 @@ public class JobMgr{
    * Returns the jobs at the specified rows in statusTable
    * @see #getJobAtRow(int)
    */
-  public static Vector getJobsAtRows(int[] row){
-    Vector jobs = new Vector(row.length);
+  public static MyLinkedHashSet<JobInfo> getJobsAtRows(int[] row){
+    MyLinkedHashSet jobs = new MyLinkedHashSet<JobInfo>(row.length);
     for(int i=0; i<row.length; ++i){
       jobs.add(getJobAtRow(row[i]));
     }

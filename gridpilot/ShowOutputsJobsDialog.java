@@ -36,7 +36,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
        * @return a int array (same length as 'jobs') with at i, the choice for jobs[i],
    * or -1 if windows was closed
    */
-  public static int[] show(Component parent, Vector jobs, String[] options)
+  public static int[] show(Component parent, Set<MyJobInfo> jobs, String[] options)
      throws InterruptedException, InvocationTargetException {
 
     JCheckBox cbForAll;
@@ -47,11 +47,13 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       cbForAll = null;
     }
     int[] choices = new int[jobs.size()];
-    for(int i=0; i<jobs.size(); ++i){
-
-      String[] files;
-      Vector vFiles = new Vector();
-      MyJobInfo job = (MyJobInfo) jobs.get(i);
+    MyJobInfo job;
+    String[] files;
+    Vector vFiles;
+    int i = 0;
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      job = it.next();
+      vFiles = new Vector();
       if(job.getOutTmp()!=null){
           vFiles.add(job.getOutTmp());
       }
@@ -86,6 +88,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
           choices[i] = choices[iSave];
         }
       }
+      ++i;
     }
     return choices;
   }

@@ -13,6 +13,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
@@ -551,12 +552,12 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
   }
 
-  public boolean killJobs(Vector<JobInfo> jobsToKill){
+  public boolean killJobs(Set<JobInfo> jobsToKill){
     Vector<String> errors = new Vector<String>();
     MyJobInfo job = null;
-    for(Enumeration<JobInfo> en=jobsToKill.elements(); en.hasMoreElements();){
+    for(Iterator<JobInfo> it=jobsToKill.iterator(); it.hasNext();){
       try{
-        job = (MyJobInfo) en.nextElement();
+        job = (MyJobInfo) it.next();
         shell.killProcess(job.getJobId(), logFile);
       }
       catch(Exception e){

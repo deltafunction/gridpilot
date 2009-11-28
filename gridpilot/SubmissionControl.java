@@ -9,11 +9,13 @@ import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
 
@@ -344,11 +346,12 @@ public class SubmissionControl{
   /**
    * Submits the specified jobs on the given computing system. <p>
    */
-  public void submitJobs(Vector<MyJobInfo> jobs, String csName){
+  public void submitJobs(Set<JobInfo> jobs, String csName){
     synchronized(monitoredJobs){
       Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
-      for(int i=0; i<jobs.size(); ++i){
-        MyJobInfo job = (MyJobInfo) jobs.get(i);
+      MyJobInfo job;
+      for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
+        job = (MyJobInfo) it.next();
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
         if(dbPluginMgr.reserveJobDefinition(job.getIdentifier(), "", csName)){
           job.setCSName(csName);
@@ -421,12 +424,13 @@ public class SubmissionControl{
    * If some outputs exist, the user is asked for save them.
    * If the user chooses to not save them, outputs are deleted <p>
    */
-  public void resubmit(Vector<MyJobInfo> jobs){
+  public void resubmit(Set<JobInfo> jobs){
     boolean askSave = false;
     boolean deleteFiles = false;
     monitorStatusBar.setLabel("Cleaning up jobs...");
-    for(int i=0; i<jobs.size() ; ++i){
-      MyJobInfo job = jobs.get(i);
+    MyJobInfo job;
+    for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
+      job = (MyJobInfo) it.next();
       Shell shell = null;
       try{
         shell = GridPilot.getClassMgr().getShell(job);
@@ -480,13 +484,14 @@ public class SubmissionControl{
     cleanupAndQueue(jobs);
   }
   
-  private void cleanupAndQueue(Vector<MyJobInfo> jobs){
+  private void cleanupAndQueue(Set<JobInfo> jobs){
     MyJobInfo job = null;
     JobMgr jobMgr = null;
     HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
     monitorStatusBar.setLabel("Updating job status...");
     while(jobs.size()>0){
-      job = (MyJobInfo) jobs.remove(0);
+      job = (MyJobInfo) jobs.iterator().next();
+      jobs.remove(job);
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       if(!submitables.keySet().contains(job.getDBName())){
         submitables.put(job.getDBName(), new Vector<MyJobInfo>());
