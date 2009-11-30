@@ -47,7 +47,9 @@ public class SubmissionControl{
   /** All jobs for which the submission is in progress. */
   private Vector<MyJobInfo> submittingJobs = new Vector<MyJobInfo>();
  /** Maximum number of simultaneous threads for submission. */
-  private int maxSimultaneousSubmissions = 5;
+  private int totalMaxSubmissions = 5;
+  /** Maximum total number of simultaneously submitting jobs for each CS. */
+  private int [] maxSubmittingOnEachCS;
   /** Total maximum total number of simultaneously running jobs. */
   private int totalMaxRunning = 10;
   /** Maximum total number of simultaneously running jobs for each CS. */
@@ -56,8 +58,8 @@ public class SubmissionControl{
   private HashMap<String, Integer> maxRunningPerHostOnEachCS;
   /** Maximum total number of simultaneously preprocessing jobs per CS. */
   private HashMap<String, Integer> maxPreprocessingPerHostOnEachCS;
-  /** Total maximum total number of simultaneously running jobs. */
-  private int totalMaxPreprocessing;
+  /** Total maximum total number of simultaneously preprocessing jobs. */
+  private int totalMaxPreprocessing = 10;
   /** Maximum total number of simultaneously running jobs per CS. */
   private int [] maxPreprocessingPerCS;
   /** Delay between the begin of two submission threads - in milliseconds. */
@@ -131,28 +133,26 @@ public class SubmissionControl{
    * Reloads some values from configuration file. <p>
    * These values are : <ul>
    * <li>{@link #defaultUserName}
-   * <li>{@link #maxSimultaneousSubmissions}
+   * <li>{@link #totalMaxSubmissions}
    * <li>{@link #maxRunning}
    * <li>{@link #timeBetweenSubmissions} </ul><p>
    *
    */
   public void loadValues(){
-    String tmp = configFile.getValue("Computing systems", "Max simultaneous submissions");
-    if(tmp!=null){
-      try{
-        maxSimultaneousSubmissions = Integer.parseInt(tmp);
-      }
-      catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"max simultaneous submission\" "+
-                                    "is not an integer in configuration file", nfe);
-      }
-    }
-    else{
-      logFile.addMessage(configFile.getMissingMessage("Computing systems", "max simultaneous submissions") + "\n" +
-                              "Default value = " + maxSimultaneousSubmissions);
-    }
-    totalMaxRunning = 0;
+    String tmp;
     csNames = GridPilot.getClassMgr().getCSPluginMgr().getEnabledCSNames();
+    // Submissions
+    totalMaxSubmissions = 0;
+    maxSubmittingOnEachCS = new int[csNames.length];
+    for(int i=0; i<csNames.length; ++i){
+      maxSubmittingOnEachCS[i] = MyUtil.getTotalMaxSimultaneousSubmittingJobs(csNames[i]);
+      if(!MyUtil.checkCSEnabled(csNames[i])){
+        continue;
+      }
+      totalMaxSubmissions += maxSubmittingOnEachCS[i];
+    }
+    // Running
+    totalMaxRunning = 0;
     maxRunningPerHostOnEachCS = new HashMap<String, Integer>();
     for(int i=0; i<csNames.length; ++i){
       try{
@@ -164,6 +164,15 @@ public class SubmissionControl{
       }
     }
     Debug.debug("maxRunningPerHostOnEachCS: "+maxRunningPerHostOnEachCS, 2);
+    maxRunningOnEachCS = new int[csNames.length];
+    for(int i=0; i<csNames.length; ++i){
+      maxRunningOnEachCS[i] = MyUtil.getTotalMaxSimultaneousRunningJobs(csNames[i]);
+      if(!MyUtil.checkCSEnabled(csNames[i])){
+        continue;
+      }
+      totalMaxRunning += maxRunningOnEachCS[i];
+    }
+    // Preprocessing
     maxPreprocessingPerHostOnEachCS = new HashMap<String, Integer>();
     for(int i=0; i<csNames.length; ++i){
       try{
@@ -175,21 +184,13 @@ public class SubmissionControl{
       }
     }
     Debug.debug("maxPreprocessingPerHostOnEachCS: "+maxPreprocessingPerHostOnEachCS, 2);
-    maxRunningOnEachCS = new int[csNames.length];
-    for(int i=0; i<csNames.length; ++i){
-      maxRunningOnEachCS[i] = MyUtil.getTotalMaxSimultaneousRunningJobs(csNames[i]);
-      if(!MyUtil.checkCSEnabled(csNames[i])){
-        continue;
-      }
-      totalMaxRunning += maxRunningOnEachCS[i];
-    }
     maxPreprocessingPerCS = new int[csNames.length];
     totalMaxPreprocessing = 0;
     for(int i=0; i<csNames.length; ++i){
       maxPreprocessingPerCS[i] = MyUtil.getTotalMaxSimultaneousPreprocessingJobs(csNames[i]);
       totalMaxPreprocessing += maxPreprocessingPerCS[i];
     }
-        
+    // Time
     tmp = configFile.getValue("Computing systems", "Time between submissions");
     if(tmp!=null){
       try{
@@ -204,6 +205,7 @@ public class SubmissionControl{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "time between submissions") + "\n" +
                               "Default value = " + timeBetweenSubmissions);
     }
+    // Retries
     tmp = configFile.getValue("Computing systems", "Submit retries");
     if(tmp!=null){
       try{
@@ -218,6 +220,7 @@ public class SubmissionControl{
       logFile.addMessage(configFile.getMissingMessage("Computing systems", "submit retries") + "\n" +
                               "Default value = " + timeBetweenSubmissions);
     }
+    // Initalization of timers and icons
     Debug.debug("Setting time between submissions "+timeBetweenSubmissions, 3);
     preprocessTimer.setInitialDelay(0);
     preprocessTimer.setDelay(timeBetweenSubmissions);
@@ -748,9 +751,10 @@ public class SubmissionControl{
    */
   private int checkRunning(MyJobInfo job){
 
-    if(submittingJobs.size()>=maxSimultaneousSubmissions){
+    if(submittingJobs.size()>=totalMaxSubmissions && preprocessingJobs.size()>=totalMaxPreprocessing){
       Debug.debug("Cannot preprocess or run: "+
-          submittingJobs.size()+">="+maxSimultaneousSubmissions, 3);
+          submittingJobs.size()+">="+totalMaxSubmissions+" or "+
+          preprocessingJobs.size()+">="+totalMaxPreprocessing, 3);
       return CANNOT_PREPROCESS_OR_RUN_NOW;
     }
     
@@ -775,13 +779,14 @@ public class SubmissionControl{
     MyJobInfo tmpJob;
     int [] jobsByStatus = null;
     int [] rJobsByCS = new int[csNames.length];
-    int [] pJobsByCS = new int[csNames.length];
+    int [] preprossingJobsByCS = new int[csNames.length];
     int [] ppJobsByCS = new int[csNames.length];
+    int [] submittingJobsByCS = new int[csNames.length];
     int [] submittedJobsByCS = new int[csNames.length];
     int [] preprocessedJobsByCS = new int[csNames.length];
     int jobCsIndex = -1;
     for(int i=0; i<csNames.length; ++i){
-      pJobsByCS[i] = 0;
+      preprossingJobsByCS[i] = 0;
       rJobsByCS[i] = 0;
     }
     for(Iterator<JobMgr> it=GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
@@ -818,7 +823,7 @@ public class SubmissionControl{
       for(int i=0; i<csNames.length; ++i){
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
           Debug.debug("Upping preprocessing job count for CS "+csNames[i], 3);
-          ++pJobsByCS[i];
+          ++preprossingJobsByCS[i];
         }
       }
     }
@@ -826,14 +831,18 @@ public class SubmissionControl{
     for(Iterator<MyJobInfo> it=submittingJobs.iterator(); it.hasNext();){
       tmpJob = it.next();
       for(int i=0; i<csNames.length; ++i){
+        // A security check: don't preprocess jobs that are already being submitted.
+        // - should not happen.
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
-          if(job.getDBStatus()==DBPluginMgr.PREPARED &&
-              tmpJob.getHost()!=null && tmpJob.getHost().equals(job.getHost())){
+          if(job.getDBStatus()==DBPluginMgr.DEFINED &&
+              tmpJob.getDBStatus()==DBPluginMgr.PREPARED &&
+              tmpJob.getHost()!=null &&
+              !tmpJob.getHost().equals("") && tmpJob.getHost().equals(job.getHost())){
             Debug.debug("Race condition - backing out for now.", 2);
             return CANNOT_PREPROCESS_OR_RUN_NOW;
           }
           Debug.debug("Upping submitting job count for CS "+csNames[i], 3);
-          ++rJobsByCS[i];
+          ++submittingJobsByCS[i];
         }
       }
     }
@@ -863,12 +872,14 @@ public class SubmissionControl{
         job.getDBStatus()==DBPluginMgr.PREPARED && 
         runningJobs<totalMaxRunning &&
         submittingJobs.size()+runningJobs<totalMaxRunning &&
-        rJobsByCS[jobCsIndex]<maxRunningOnEachCS[jobCsIndex]){
+        rJobsByCS[jobCsIndex]<maxRunningOnEachCS[jobCsIndex] &&
+        submittingJobsByCS[jobCsIndex]<maxSubmittingOnEachCS[jobCsIndex] &&
+        submittingJobs.size()<totalMaxSubmissions){
       ret = CAN_RUN;
     }
     else if((job.getDBStatus()==DBPluginMgr.DEFINED || job.getDBStatus()==DBPluginMgr.ABORTED) &&
         preprocessingJobs.size()<totalMaxPreprocessing &&
-        pJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
+        preprossingJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
       // If the CS in question is one that has "max running jobs per host" set and
       // there's a running host with free slot(s), tag the job to use it already now.
       tagJobHost(job);
@@ -877,14 +888,14 @@ public class SubmissionControl{
     
     Debug.debug("Found running jobs: "+
         runningJobsOnThisHost+"<"+maxRunningPerHostOnEachCS.get(job.getCSName())+":"+
-        submittingJobs.size()+"<"+maxSimultaneousSubmissions+":"+
+        submittingJobs.size()+"<"+totalMaxSubmissions+":"+
         runningJobs+"<"+totalMaxRunning+":"+
         preprocessingJobs.size()+"<"+totalMaxPreprocessing+":"+
         job.getName()+":"+
         job.getHost()+":"+
         DBPluginMgr.getStatusName(job.getDBStatus())+":"+
         MyUtil.arrayToString(csNames)+
-        " :: "+MyUtil.arrayToString(pJobsByCS)+
+        " :: "+MyUtil.arrayToString(preprossingJobsByCS)+
         " --> "+MyUtil.arrayToString(maxPreprocessingPerCS)+
         " :: "+MyUtil.arrayToString(rJobsByCS)+
         " --> "+MyUtil.arrayToString(maxRunningOnEachCS), 3);
@@ -1044,6 +1055,7 @@ public class SubmissionControl{
       boolean bailOut = false;
       try{
         ok = csPluginMgr.preProcess(job);
+        Debug.debug("Done preprocessing "+job.getName(), 2);
       }
       catch(Exception e){
         logFile.addMessage("ERROR: something went wrong with the preprocessing of the job " +
@@ -1052,8 +1064,10 @@ public class SubmissionControl{
       }
       statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
       if(!bailOut && ok){
+        Debug.debug("Job "+job.getName()+" ready for submission", 2);
         dbStatus = DBPluginMgr.PREPARED;
         if(!submitTimer.isRunning()){
+          Debug.debug("Starting submission timer", 2);
           submitTimer.restart();
         }
         preprocessRetryJobs.remove(job);

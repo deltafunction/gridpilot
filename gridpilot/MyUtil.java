@@ -1956,6 +1956,35 @@ private static String fixUrl(String _url){
     return ret;
   }
 
+  public static int getTotalMaxSimultaneousSubmittingJobs(String csName) {
+    MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    int ret = -1;
+    String tmp = configFile.getValue(csName, "max simultaneous submissions");
+    try{
+      ret = Integer.parseInt(tmp);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      logFile.addInfo("WARNING: Value of \"max simultaneous submissions\" is not"+
+                                  " defined properly for "+csName+" --> "+tmp);
+    }
+    tmp = configFile.getValue("Computing systems", "max simultaneous submissions");
+    if(ret==-1){
+      try{
+        ret = Integer.parseInt(tmp);
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: Value of \"max simultaneous submissions\" is not"+
+                                    " defined properly.", e);
+      }
+    }
+    if(ret==-1){
+      return 1;
+    }
+    return ret;
+  }
+
   public static int getTotalMaxSimultaneousPreprocessingJobs(String csName) {
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
