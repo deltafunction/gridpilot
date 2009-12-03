@@ -359,7 +359,7 @@ public class ExportImport {
       if(urlStr!=null){
         // replace IMPORT_DIR/ with 'dir'/
         newUrlStr = urlStr.replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
-            (new File(dir, DEFAULT_DATA_DIR)).getAbsolutePath()));
+            dir.getAbsolutePath()));
       }
       if(newUrlStr!=null){
         // write back the record
@@ -392,7 +392,7 @@ public class ExportImport {
           for(int j=0; j<urls.length; ++j){
             // replace IMPORT_DIR/ with 'dir'/
             urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
-                (new File(dir, EXE_FILES_DIR)).getAbsolutePath()));
+                dir.getAbsolutePath()));
           }
           newUrlsStrs[i] = MyUtil.arrayToString(urls);
         }
