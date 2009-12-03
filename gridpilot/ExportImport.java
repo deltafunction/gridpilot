@@ -221,24 +221,31 @@ public class ExportImport {
         // This is for outputLocation: catch those that have been set to a local path
         Debug.debug("Checking dir "+MyUtil.replaceWithTildeLocally(checkVal)+"<->"+gpDirStr, 2);
         Debug.debug("Checking field "+fileFields.length+":"+fileFields[0], 2);
-        if(fileFields.length==1 && fileFields[0].equalsIgnoreCase(OUTPUT_LOCATION_FIELD) &&
-            (checkVal.matches("^/.+$") || checkVal.matches("^\\w+:\\\\.+ 4"))){
+        if(fileFields.length==1 && dbResult.fields[j].equalsIgnoreCase(fileFields[0]) &&
+            fileFields[0].equalsIgnoreCase(OUTPUT_LOCATION_FIELD)/* &&
+            (checkVal.matches("^/.+$") || checkVal.matches("^\\w+:\\\\.+ 4"))*/){
           // If the path is inside of ~/GridPilot set ~/GridPilot to IMPORT_DIR
           if(MyUtil.replaceWithTildeLocally(checkVal).startsWith(gpDirStr)){
+            Debug.debug("Replacing in "+newValues[i][j], 2);
             newValues[i][j] = MyUtil.replaceWithTildeLocally(checkVal).replaceFirst(
-                gpDirStr, IMPORT_DIR).replaceAll("\\\\", "/");
+               gpDirStr, IMPORT_DIR).replaceAll("\\\\", "/");
+            Debug.debug("--> "+newValues[i][j], 2);
           }
           // Otherwise replace the whole string with with IMPORT_DIR/DEFAULT_DATA_DIR
           else{
+            Debug.debug("Replacing in "+newValues[i][j], 2);
             newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
                ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/$1");
+            Debug.debug("--> "+newValues[i][j], 2);
           }
         }
         else if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[j]) &&
             newValues[i][j]!=null){
-          // For executable files, eplace URLs with file names in exportImportDir
+          Debug.debug("Replacing in "+newValues[i][j], 2);
+          // For executable files, replace URLs with file names in exportImportDir
           newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
               ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+EXE_FILES_DIR+"/"+name+"/$1");
+          Debug.debug("--> "+newValues[i][j], 2);
         }
       }
       oneInserted = false;
@@ -364,6 +371,13 @@ public class ExportImport {
       if(newUrlStr!=null){
         // write back the record
         mgr.updateDataset(id, name, new String [] {OUTPUT_LOCATION_FIELD}, new String [] {newUrlStr});
+        try{
+          if(MyUtil.isLocalFileName(newUrlStr)){
+            LocalStaticShell.mkdirs(newUrlStr);
+          }
+        }
+        catch(Exception e){
+        }
       }
       ++recNr;
     }
