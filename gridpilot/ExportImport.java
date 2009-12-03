@@ -18,7 +18,9 @@ public class ExportImport {
    */
   private static final String IMPORT_DIR = "GRIDPILOT_IMPORT_DIR";
   private static final String [] EXE_FILE_FIELDS = new String [] {"executableFile", "inputFiles"};
-  private static final String EXE_FILES_DIR = "executableFiles";
+  private static final String EXE_FILES_DIR = "executables";
+  private static final String OUTPUT_LOCATION_FIELD = "outputLocation";
+  private static final String DEFAULT_DATA_DIR = "data";
 
   /**
    * Exports dataset and corresponding executable information from the chosen
@@ -59,14 +61,14 @@ public class ExportImport {
     }
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     String message = datasetId==null?
-         "This will export all datasets and executables of the chosen database\n" +
-              "plus any files associated with the executables. Non-local files will\n" +
+         "This will export all dataset(s) and executable(s) of the chosen database\n" +
+              "plus any file(s) associated with the executable(s). Non-local file(s) will\n" +
               "be downloded first.\n\n" +
               "Choose database to export from or choose none to cancel.\n" :
          "This will export the dataset \n\n" +
                "\"" + datasetName + "\"\n\n" +
-               "and its associated executable plus any files associated\n" +
-               "with this executable. Non-local files will be downloded\n" +
+               "and its associated executable plus any file(s) associated\n" +
+               "with this executable. Non-local file(s) will be downloaded\n" +
                "first.\n\n" +
                "Notice: if the file \n\n" +exportFileName + "\n\n" +
                "already exists in the chosen directory, it will be overwritten.\n";
@@ -88,9 +90,9 @@ public class ExportImport {
     GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
     GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
     // Save everything to the tmp dir
-    saveTableAndFiles(tmpDir, dbName, "dataset", new String [] {},
+    saveTableAndFiles(tmpDir, DEFAULT_DATA_DIR, dbName, "dataset", new String [] {OUTPUT_LOCATION_FIELD},
         datasetId);
-    saveTableAndFiles(tmpDir, dbName, "executable", EXE_FILE_FIELDS,
+    saveTableAndFiles(tmpDir, EXE_FILES_DIR, dbName, "executable", EXE_FILE_FIELDS,
         executableId);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
@@ -114,7 +116,7 @@ public class ExportImport {
   /**
    * This will fill a tmp directory with an SQL file, 'table'.sql plus a subdirectory
    * 'table'Files, containing the files found in 'fileFields'.
-   * The URLs found in 'fileFields' will be changed to 'exportImportDir'/'table'Files/[record name]/[file name].
+   * The URLs found in 'fileFields' will be changed to 'exportImportDir'/filesDirName/[record name]/[file name].
    * <br><br>
    * E.g.
    * 
@@ -127,6 +129,7 @@ public class ExportImport {
    *      
    * 
    * @param dbDir
+   * @param filesDirName
    * @param dbName
    * @param table
    * @param fileFields
@@ -134,7 +137,7 @@ public class ExportImport {
    * @param id the identifier of the row to be exported. If this is null, the whole table is exported.
    * @throws Exception
    */
-  private static void saveTableAndFiles(File dbDir, String dbName, String table,
+  private static void saveTableAndFiles(File dbDir, String filesDirName, String dbName, String table,
       String [] fileFields, String id) throws Exception{
     String idField = MyUtil.getIdentifierField(dbName, table);
     String query = "SELECT * FROM "+table;
@@ -144,7 +147,7 @@ public class ExportImport {
     }
     DBResult dbResult =
       GridPilot.getClassMgr().getDBPluginMgr(dbName).select(query, idField, true);
-    File dir = new File(dbDir, table+"Files");
+    File dir = new File(dbDir, filesDirName);
     dir.mkdir();
     saveTableFiles(dbResult, dir, dbName, table, fileFields);
     String sql = toSql(dbResult, dbName, table, fileFields);
@@ -165,7 +168,7 @@ public class ExportImport {
         if(MyUtil.arrayContainsIgnoreCase(dbResult.fields, fileFields[i])){
           name = dbResult.getString(nameField);
           urlsStr = dbResult.getString(fileFields[i]);
-          if(urlsStr==null){
+          if(fileFields[i].equals(OUTPUT_LOCATION_FIELD) || urlsStr==null || urlsStr.endsWith("/")){
             continue;
           }
           urls = MyUtil.split(urlsStr);
@@ -192,6 +195,12 @@ public class ExportImport {
 
   private static String toSql(DBResult dbResult, String dbName, String table, String [] fileFields){
     Debug.debug("Converting DBResult with "+dbResult.values.length+" rows", 2);
+    String executableDir = GridPilot.getClassMgr().getConfigFile().getValue(
+        "Fork", "executable directory");
+    File executableDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
+        executableDir)));
+    File gridPilotDir = executableDirectory.getParentFile();
+    String gpDirStr = MyUtil.replaceWithTildeLocally(gridPilotDir.getAbsolutePath());
     String nameField = MyUtil.getNameField(dbName, table);
     StringBuffer res = new StringBuffer();
     StringBuffer insFields = new StringBuffer();
@@ -200,15 +209,36 @@ public class ExportImport {
     insValues.append(") VALUES (");
     Object [][] newValues = dbResult.values.clone();
     String name;
+    String checkVal;
     boolean oneInserted = false;
     for(int i=0; i<dbResult.values.length; ++i){
       name = (String) dbResult.getValue(i, nameField);
       for(int j=0; j<dbResult.fields.length; ++j){
-        if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[j]) &&
+        if(newValues[i][j]==null || newValues[i][j].toString().trim().equals("")){
+          continue;
+        }
+        checkVal = MyUtil.clearFile(((String) newValues[i][j]).trim());
+        // This is for outputLocation: catch those that have been set to a local path
+        Debug.debug("Checking dir "+MyUtil.replaceWithTildeLocally(checkVal)+"<->"+gpDirStr, 2);
+        Debug.debug("Checking field "+fileFields.length+":"+fileFields[0], 2);
+        if(fileFields.length==1 && fileFields[0].equalsIgnoreCase(OUTPUT_LOCATION_FIELD) &&
+            (checkVal.matches("^/.+$") || checkVal.matches("^\\w+:\\\\.+ 4"))){
+          // If the path is inside of ~/GridPilot set ~/GridPilot to IMPORT_DIR
+          if(MyUtil.replaceWithTildeLocally(checkVal).startsWith(gpDirStr)){
+            newValues[i][j] = MyUtil.replaceWithTildeLocally(checkVal).replaceFirst(
+                gpDirStr, IMPORT_DIR).replaceAll("\\\\", "/");
+          }
+          // Otherwise replace the whole string with with IMPORT_DIR/DEFAULT_DATA_DIR
+          else{
+            newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
+               ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/$1");
+          }
+        }
+        else if(MyUtil.arrayContainsIgnoreCase(fileFields, dbResult.fields[j]) &&
             newValues[i][j]!=null){
-          // Replace URLs with file names in exportImportDir
+          // For executable files, eplace URLs with file names in exportImportDir
           newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
-              ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+name+"/$1");
+              ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+EXE_FILES_DIR+"/"+name+"/$1");
         }
       }
       oneInserted = false;
@@ -232,14 +262,18 @@ public class ExportImport {
         "Fork", "executable directory");
     File executableDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
         executableDir)));
+    File gridPilotDir = executableDirectory.getParentFile();
+    File dataDirectory = new File(gridPilotDir, DEFAULT_DATA_DIR);
     String [] choices = new String[GridPilot.DB_NAMES.length+1];
     System.arraycopy(GridPilot.DB_NAMES, 0, choices, 0, GridPilot.DB_NAMES.length);
     choices[choices.length-1] = "none (cancel)";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = confirmBox.getConfirm("Import in database",
-  "<html>This will import datasets and executables in the chosen database.<br>" +
-        "Any files associated with the executables will be copied to<br>" +
+  "<html>This will import dataset(s) and executable(s) in the chosen database.<br>" +
+        "Any file(s) associated with the executables will be copied to<br>" +
         executableDirectory + "/.<br><br>" +
+        "Non-existing local output location(s) will be set to<br>" +
+        dataDirectory + "/.<br><br>" +
         "Choose database to use.<br></html>", choices);
     if(choice<0 || choice>=choices.length-1){
       return null;
@@ -276,7 +310,8 @@ public class ExportImport {
     // Move executable input files to executable dir
     int numFiles = moveTransInputs((new File(tmpDir, EXE_FILES_DIR)).getAbsolutePath(), executableDirectory);
     // Read back any rows containing IMPORT_DIR and modify IMPORT_DIR to the GridPilot directory
-    fixImportedFileLocations(dbName, executableDirectory);
+    fixImportedExecutableFilesLocations(dbName, gridPilotDir);
+    fixImportedOutputLocations(dbName, gridPilotDir);
     // Clean up
     tmpDir.delete();
     ret += "\ninto database "+dbName+"";
@@ -305,7 +340,36 @@ public class ExportImport {
     return tmpDir;
   }
 
-  private static void fixImportedFileLocations(String dbName, File dir) {
+  private static void fixImportedOutputLocations(String dbName, File dir) {
+    DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    String sql = "SELECT * FROM dataset WHERE outputLocation CONTAINS "+IMPORT_DIR+"/";
+    String idField = MyUtil.getIdentifierField(dbName, "dataset");
+    String nameField = MyUtil.getNameField(dbName, "dataset");
+    DBResult dbResult = mgr.select(sql, idField, true);
+    String id;
+    String name;
+    String urlStr;
+    String newUrlStr;
+    int recNr = 0;
+    while(dbResult.moveCursor()){
+      newUrlStr = null;
+      id = dbResult.getString(idField);
+      name = dbResult.getString(nameField);
+      urlStr = dbResult.getString(OUTPUT_LOCATION_FIELD);
+      if(urlStr!=null){
+        // replace IMPORT_DIR/ with 'dir'/
+        newUrlStr = urlStr.replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
+            (new File(dir, DEFAULT_DATA_DIR)).getAbsolutePath()));
+      }
+      if(newUrlStr!=null){
+        // write back the record
+        mgr.updateDataset(id, name, new String [] {OUTPUT_LOCATION_FIELD}, new String [] {newUrlStr});
+      }
+      ++recNr;
+    }
+  }
+  
+  private static void fixImportedExecutableFilesLocations(String dbName, File dir) {
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     String sql = "SELECT * FROM executable WHERE ";
     for(int i=0; i<EXE_FILE_FIELDS.length; ++i){
@@ -328,7 +392,7 @@ public class ExportImport {
           for(int j=0; j<urls.length; ++j){
             // replace IMPORT_DIR/ with 'dir'/
             urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
-                dir.getAbsolutePath()));
+                (new File(dir, EXE_FILES_DIR)).getAbsolutePath()));
           }
           newUrlsStrs[i] = MyUtil.arrayToString(urls);
         }

@@ -569,8 +569,10 @@ private static String fixUrl(String _url){
     if(str==null){
       return str;
     }
-    if(str.startsWith(System.getProperty("user.home"))){
-      str = "~"+str.substring(System.getProperty("user.home").length());
+    String userHome = System.getProperty("user.home");
+    Debug.debug("Checking for user home: "+str+"<->"+userHome, 2);
+    if(str.startsWith(userHome)){
+      str = "~"+str.substring(userHome.length());
     }
     if(onWindows()){
       str =str.replaceAll("\\\\", "/");

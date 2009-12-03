@@ -2084,13 +2084,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       JobMgr jobMgr = null;
       try{
         jobMgr = GridPilot.getClassMgr().getJobMgr(dbName);
+        jobMgr.removeRow(ids[i]);
       }
       catch(Throwable e){
         Debug.debug("ERROR: could not get JobMgr. "+e.getMessage(), 1);
         e.printStackTrace();
         return false;
       }
-      jobMgr.removeRow(ids[i]);
     }
     
     Debug.debug("Deleting "+ids.length+" rows", 2);
@@ -2852,6 +2852,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, cleanup not done");
           return;
         }
+        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         boolean ok = true;
         String error = "";
         int jobCount = 0;
@@ -2904,6 +2906,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           e.printStackTrace();
           error = e.getMessage();
         }
+        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         deleteJobDefs = null;
         cleanupJobDefs = null;
         deleteFiles = null;
@@ -3289,21 +3292,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(!getSelectedIdentifier().equals("-1") && !exportingDataset){
       new Thread(){
         public void run(){
-          JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
           exportingDataset = true;
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
           try{
-            frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             exportDataset(datasetID);
-            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           }
           catch(Exception e){
             String error = "ERROR: could not export dataset";
             Debug.debug(error, 1);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-            frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             exportingDataset = false;
             return;
           }         
@@ -3313,16 +3315,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  protected void exportDataset(String datasetID) {
-    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+  private void exportDataset(String datasetID) {
     try{
       //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         Debug.debug("Exporting to "+url, 2);
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
@@ -3331,7 +3330,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     catch(Exception ex){
       String error = "ERROR: could not export DB(s). "+ex.getMessage();
       MyUtil.showError(error);
-      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
       ex.printStackTrace();
     }
@@ -3484,8 +3482,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           catch(Exception e){
           }
-          JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
           if(catalogsColumnIndex>-1 && catsPfns!=null && catsPfns[0]!=null){
@@ -3494,7 +3491,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(pfnsColumnIndex>-1 && catsPfns!=null && catsPfns[1]!=null){
             tableResults.setValueAt(MyUtil.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
           }
-          frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
         GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
@@ -3523,10 +3520,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           pfnsColumnIndex = j;
         }
       }
-      JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
-      frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+      setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       pfns[i] = tableResults.getUnsortedValueAt(selectedRows[i], pfnsColumnIndex);
-      frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     StringSelection stringSelection = new StringSelection(MyUtil.arrayToString(pfns));
@@ -3538,8 +3534,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   // Returns a 3xn array of URLs, sizes and URL dirs
   private String [][] getImportFiles() throws Exception{
-    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
-    frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     final String finUrl = "";
     final String finBaseUrl = "";
     JCheckBox cbRecursive = new JCheckBox();
@@ -3605,7 +3600,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       ret[0][i] = fixLocalFile(ret0[0][i]);
       ret[2][i] = wb.getLastURL();
     }
-    frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
     Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+" --> "+
         MyUtil.arrayToString(ret[1]), 2);

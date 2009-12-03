@@ -9,6 +9,7 @@ import gridfactory.common.StatusBar;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.*;
 
@@ -563,9 +564,25 @@ public class JobMgr{
 
   /**
    * Removes row according to job name.
-   * (from AtCom1)
+   * @throws InvocationTargetException 
+   * @throws InterruptedException 
    */
-  public void removeRow(String jobDefID){
+  public void removeRow(final String jobDefID) throws InterruptedException, InvocationTargetException{
+    if(SwingUtilities.isEventDispatchThread()){
+      doRemoveRow(jobDefID);
+    }
+    else{
+      SwingUtilities.invokeAndWait(
+        new Runnable(){
+          public void run(){
+            doRemoveRow(jobDefID);
+          }
+        }
+      );
+    }
+  }
+ 
+  private void doRemoveRow(String jobDefID){
     String lfn = dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString();
     // Remove jobs from status vectors
     for(int i=0; i<monitoredjobs.size(); ++i){
@@ -584,6 +601,7 @@ public class JobMgr{
     }
     updateJobsByStatus();
     statusTable.updateUI();
+    statusTable.validate();
   }
 
   /**

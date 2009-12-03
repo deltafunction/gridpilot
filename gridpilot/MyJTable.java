@@ -456,7 +456,7 @@ public class MyJTable extends JTable implements Table {
    */
   public synchronized void removeRow(int r){
     tableModel.removeRow(r);
-    revalidate();
+    //revalidate();
   }
   
   public synchronized TableCellRenderer getCellRenderer(int row, int column){
