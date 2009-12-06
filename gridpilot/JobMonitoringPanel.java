@@ -916,11 +916,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     new Thread(){
       public void run(){    
         int [] rows = statusTable.getSelectedRows();       
-        Debug.debug("Setting status of rows "+MyUtil.arrayToString(rows), 3);
+        Debug.debug("Setting status of rows "+MyUtil.arrayToString(rows)+" from "+statusTable.getRowCount(), 2);
         MyLinkedHashSet<JobInfo> jobs = JobMgr.getJobsAtRows(rows);
         MyJobInfo job = null;
         JobMgr jobMgr = null;
-        HashMap datasetJobs = new HashMap();
+        HashMap<JobMgr, Vector<Integer>> datasetJobs = new HashMap<JobMgr, Vector<Integer>>();
         int i = 0;
         for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
           job = (MyJobInfo) it.next();
@@ -928,15 +928,18 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           if(!datasetJobs.containsKey(jobMgr)){
             datasetJobs.put(jobMgr, new Vector());
           }
-          ((Vector) datasetJobs.get(jobMgr)).add(new Integer(rows[i]));
+          datasetJobs.get(jobMgr).add(new Integer(rows[i]));
+          ++i;
         }
-        for(Iterator it=datasetJobs.keySet().iterator(); it.hasNext();){
-          jobMgr = (JobMgr) it.next();
-          Vector jobRows = ((Vector) datasetJobs.get(jobMgr));
+        Vector<Integer> jobRows;
+        for(Iterator<JobMgr> it=datasetJobs.keySet().iterator(); it.hasNext();){
+          jobMgr = it.next();
+          jobRows = datasetJobs.get(jobMgr);
           int [] dsRows = new int [jobRows.size()];
-          for(int j=0; i<jobRows.size(); ++j){
+          for(int j=0; j<jobRows.size(); ++j){
             dsRows[j] = ((Integer) jobRows.get(j)).intValue();
           }
+          Debug.debug("Setting status "+dbStatus +" of rows "+MyUtil.arrayToString(dsRows), 2);
           jobMgr.setDBStatus(dsRows, dbStatus);
         }
       }
