@@ -6,8 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
-import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.Timer;
@@ -309,12 +310,11 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
    * @throws GeneralSecurityException 
    * @throws IOException 
    */
-  public boolean killJobs(Vector<JobInfo> jobs) {
+  public boolean killJobs(Set<JobInfo> jobs) {
     boolean ok = true;
-    Enumeration<JobInfo> en = jobs.elements();
     MyJobInfo job = null;
-    while(en.hasMoreElements()){
-      job = (MyJobInfo) en.nextElement();
+    for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
+      job = (MyJobInfo) it.next();
       try{
         getLRMS().kill(submitHost, new String [] {job.getJobId()});
       }

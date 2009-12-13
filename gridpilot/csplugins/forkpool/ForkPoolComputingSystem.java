@@ -1,10 +1,10 @@
 package gridpilot.csplugins.forkpool;
 
 import java.io.File;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
 
 import com.jcraft.jsch.JSchException;
@@ -269,12 +269,12 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       }
   }
 
-  public boolean killJobs(Vector jobsToKill){
+  public boolean killJobs(Set<JobInfo> jobsToKill){
     Vector errors = new Vector();
     MyJobInfo job = null;
-    for(Enumeration en=jobsToKill.elements(); en.hasMoreElements();){
+    for(Iterator<JobInfo>it=jobsToKill.iterator(); it.hasNext();){
       try{
-        job = (MyJobInfo) en.nextElement();
+        job = (MyJobInfo) it.next();
         getShell(job.getHost()).killProcess(job.getJobId(), logFile);
       }
       catch(Exception e){
