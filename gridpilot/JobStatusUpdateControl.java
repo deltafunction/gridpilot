@@ -313,10 +313,13 @@ public class JobStatusUpdateControl{
           GridPilot.getClassMgr().getJobValidation().validate(job);
           break;
         // This is only used by ForkComputingSystem from GridFactory (i.e. by VMForkComputingSystem)
-        // TODO: avoid this when running on GridFactoryComputingSystem
         case MyJobInfo.STATUS_EXECUTED:
-          job.setNeedsUpdate(false);
-          GridPilot.getClassMgr().getJobValidation().validate(job);
+          // Argh, ugly hack...
+          // TODO: think of a better way to avoid this when running on GridFactoryComputingSystem
+          if(job.getCSName().equalsIgnoreCase("VMFork")){
+            job.setNeedsUpdate(false);
+            GridPilot.getClassMgr().getJobValidation().validate(job);
+          }
           break;
         case MyJobInfo.STATUS_RUNNING:
           statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
