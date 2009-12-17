@@ -23,6 +23,7 @@ public class NGScriptGenerator extends ScriptGenerator{
   private String cpuTime = null;
   private String memory = null;
   private String reRun = null;
+  private String extraXrsl = null;
   private String csName = null;
   private ConfigFile configFile = null;
   
@@ -33,6 +34,7 @@ public class NGScriptGenerator extends ScriptGenerator{
     cpuTime = configFile.getValue(csName, "CPU time");
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
+    extraXrsl = configFile.getValue(csName, "Extra xrsl");
   }
 
   // Returns List of input files, needed for ARCGridFTPJob.submit()
@@ -252,6 +254,11 @@ public class NGScriptGenerator extends ScriptGenerator{
           writeLine(bufXRSL, "(runTimeEnvironment="+MyUtil.dos2unix(uses[i])+")");
           writeLine(bufXRSL, "");
         }
+      }
+      
+      // Extra XRSL
+      if(extraXrsl!=null && !extraXrsl.equals("")){
+        writeLine(bufXRSL, extraXrsl);
       }
       
       // TODO: maxCPUTime maxDisk ftpThreads MinMemory

@@ -44,7 +44,6 @@ import java.net.NetworkInterface;
 import java.net.URL;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -759,19 +758,6 @@ private static String fixUrl(String _url){
       w.add(v.remove(rand.nextInt(v.size())));
     }
     return w;
-  }
-
-  /**
-   * Returns an array which contains all elements from <code>v</code>, but in a
-   * random order. <p>
-   */
-  public static Object [] shuffle(Object [] arr){
-    ArrayList arl = new ArrayList();
-    for(int i=0; i<arr.length; ++i){
-      arl.add(arr[i]);
-    }
-    Collections.shuffle(arl);
-    return arl.toArray();
   }
 
   /**
@@ -1748,12 +1734,14 @@ private static String fixUrl(String _url){
     Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
     Collections.addAll(rtes, rteNames);
-    Vector<String> deps = rteMgr.getRteDepends(rtes, job.getOpSys(), ignoreCatalogInconsistencies);
+    HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(rtes, job.getOpSys(), ignoreCatalogInconsistencies);
+    String vmOs = depsMap.keySet().iterator().next();
+    Vector<String> deps = depsMap.get(vmOs);
     InstancePackage ip = null;
     String name = null;
     String os = null;
     boolean osEntry = true;
-    Debug.debug("Setting up RTEs "+Util.arrayToString(deps.toArray()), 2);
+    Debug.debug("Setting up RTEs "+depsMap, 2);
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
       // The first dependency returned by getRteDepends is the OS; skip it. The fact
       // that the job landed on that system means it matches.

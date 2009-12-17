@@ -4,7 +4,6 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -304,7 +303,7 @@ public class NGComputingSystem implements MyComputingSystem{
     String scriptName = runDir(job) + File.separator + job.getName() + ".job";
     String xrslName = runDir(job) + File.separator + job.getName() + ".xrsl";
     try{
-      boolean ret = ngSubmission.submit(submissionNumber, job, scriptName, xrslName);
+      boolean ret = ngSubmission.submit(job, scriptName, xrslName);
       ++submissionNumber;
       return ret;
     }
