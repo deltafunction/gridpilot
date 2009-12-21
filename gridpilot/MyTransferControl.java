@@ -203,7 +203,13 @@ public class MyTransferControl extends TransferControl {
     }    
   }
   
-  private String findPlugin(GlobusURL firstSrc, GlobusURL firstDest) {
+  /**
+   * Find plugin that supports this transfer.
+   * @param src
+   * @param dest
+   * @return name of plugin
+   */
+  private static String findPlugin(GlobusURL src, GlobusURL dest) {
     String [] fts = GridPilot.FT_NAMES;
     String pluginName = null;
     GlobusURL [] checkSources = null;
@@ -211,8 +217,8 @@ public class MyTransferControl extends TransferControl {
 
     for(int i=0; i<fts.length; ++i){
       Debug.debug("Checking plugin "+fts[i], 3);
-      checkSources = new GlobusURL [] {firstSrc};
-      checkDestinations = new GlobusURL [] {firstDest};
+      checkSources = new GlobusURL [] {src};
+      checkDestinations = new GlobusURL [] {dest};
       try{
         if(GridPilot.getClassMgr().getFTPlugin(
             fts[i]).checkURLs(checkSources, checkDestinations)){

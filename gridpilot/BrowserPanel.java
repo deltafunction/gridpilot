@@ -19,6 +19,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLDecoder;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.ListIterator;
@@ -36,7 +37,7 @@ import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
 import gridfactory.common.TransferInfo;
-//import gridfactory.common.https.MyUrlCopy;
+
 import gridpilot.ftplugins.gsiftp.GSIFTPFileTransfer;
 import gridpilot.ftplugins.https.HTTPSFileTransfer;
 import gridpilot.ftplugins.srm.SRMFileTransfer;
@@ -2085,7 +2086,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
   //Set lastURL and close the dialog
   void exit(){
     //GridPilot.lastURL = ep.getPage();
-    Debug.debug("Setting lastURL, "+thisUrl, 3);
+    if(currentUrlBox.getSelectedItem()!=null && (
+        thisUrl==null || thisUrl.equals("") || 
+        !currentUrlBox.getSelectedItem().toString().equals(thisUrl))){
+      thisUrl = currentUrlBox.getSelectedItem().toString();
+    }
+    Debug.debug("Setting lastURL, "+thisUrl, 2);
     lastURL = MyUtil.urlDecode(thisUrl);
     saveHistory();
     dispose();
@@ -2160,7 +2166,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(url==null){
       return;
     }
-    String msg = "Are you sure you want to delete "+url+"?";
+    String msg = "Are you sure you want to delete "+url+" and all contained files?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
@@ -2177,31 +2183,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String baseUrl = url.replaceFirst("/$", "").replaceFirst("(.*/)[^/]+$", "$1");
     Debug.debug("baseUrl: "+baseUrl, 3);
     try{
+      ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       if(url.startsWith("file:") || url.startsWith("/")){
         Debug.debug("Deleting file "+url, 3);
         localDeleteFile(url);
-        statusBar.setLabel(url+" deleted");
-      }
-      else if(url.startsWith("gsiftp://") || url.startsWith("https://") ||
-          url.startsWith("sss://")){
-        GlobusURL globusUrl = new GlobusURL(url);
-        if(url.startsWith("gsiftp://")){
-          gsiftpFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
-        }
-        else if(url.startsWith("https://")){
-          httpsFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
-        }
-        else if(url.startsWith("sss://")){
-          sssFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
-        }
-        else if(url.startsWith("srm://")){
-          srmFileTransfer.deleteFiles(new GlobusURL [] {globusUrl});
-        }
-        statusBar.setLabel(globusUrl.getPath()+" deleted");
       }
       else{
-        throw(new IOException("Unknown protocol for "+thisUrl));
+        remoteDeleteFile(url);
       }
+      statusBar.setLabel(url+" deleted");
       try{
         ep.getDocument().putProperty(
             Document.StreamDescriptionProperty, null);
@@ -2212,8 +2202,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Debug.debug("WARNING: could not display "+thisUrl, 1);
         ioe.printStackTrace();
       }
+      ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     catch(Exception e){
+      ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       Debug.debug("ERROR: could not delete "+url+". "+e.getMessage(), 1);
       e.printStackTrace();
       ep.setText("ERROR: "+url+" could not be deleted.\n\n"+
@@ -2224,6 +2216,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
   
+  private void remoteDeleteFile(String url) throws Exception {
+    String [] filesAndDirs = MyTransferControl.findAllFilesAndDirs(url, "")[0];
+    Arrays.sort(filesAndDirs);
+    GlobusURL globusUrl;
+    for(int i=filesAndDirs.length-1; i>=0; --i){
+      globusUrl = new GlobusURL(filesAndDirs[i]);
+      GridPilot.getClassMgr().getTransferControl().deleteFiles(new GlobusURL [] {globusUrl});
+    }
+  }
+
   /**
    * Creates a file on a URL.
    */
