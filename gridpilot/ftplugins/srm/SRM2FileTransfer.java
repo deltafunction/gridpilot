@@ -458,11 +458,13 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           and not to be confused with the request id or the
    *                           index of the file in question in the array
    *                           RequestStatus.fileStatuses.
+   * @throws IOException 
    */
-  public void finalize(String fileTransferID) throws SRMException {    
+  public void finalize(String fileTransferID) throws SRMException, IOException {    
     String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String requestId = idArr[2];
+    String destUrl = idArr[5];
     String surl = idArr[6];
 
     Debug.debug("Finalizing request "+requestId, 2);
@@ -481,6 +483,8 @@ public class SRM2FileTransfer implements FileTransfer {
     catch(Exception e){
       throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
     }
+    File destinationFile = new File((new GlobusURL(destUrl)).getPath());
+    GridPilot.getClassMgr().getFileCacheMgr().writeCacheInfo(destinationFile);
   }
   
   /**
@@ -733,7 +737,7 @@ public class SRM2FileTransfer implements FileTransfer {
         turls[i] = new GlobusURL(assignedTurls[i]);
       }
       ids[i] = pluginName+"-get::"+requestId+"::"+i+"::'"+turls[i].getURL()+"' '"+destUrls[i].getURL()+
-      "' '"+srcUrls[0].getURL()+"'";
+         "' '"+srcUrls[0].getURL()+"'";
       startDates.put(ids[i], MyUtil.getDateInMilliSeconds()*1000);
     }
     // if no exception was thrown, all is ok and we can set files to "File busy"
