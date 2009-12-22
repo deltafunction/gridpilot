@@ -1493,7 +1493,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   private boolean checkSkip(String site){
     if(skipSites!=null && skipSites.length>0){
       for(int j=0; j<skipSites.length; ++j){
-        if(site.equals(skipSites[j])){
+        if(site.matches("(?i)"+skipSites[j])){
           return true;
         }
       }
@@ -1548,7 +1548,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       added = false;
       for(int i=0; i<dqLocations.getComplete().length; ++i){
         if(!dqLocations.getComplete()[i].equalsIgnoreCase(homeSite) &&
-            dqLocations.getComplete()[i].equalsIgnoreCase(preferredSites[ii]) &&
+            dqLocations.getComplete()[i].matches("(?i)"+preferredSites[ii]) &&
             !checkSkip(preferredSites[ii])){
           locations.add(preferredSites[ii]);
           added = true;
