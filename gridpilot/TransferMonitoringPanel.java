@@ -15,7 +15,7 @@ import java.util.Vector;
 import javax.swing.event.*;
 
 /**
- * Shows a table with informations about runnings transfers
+ * Shows a table with informations about running transfers
  *
  * <p><a href="TransferMonitoringPanel.java.html">see sources</a>
  */
@@ -462,10 +462,10 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector submittedJobs = GridPilot.getClassMgr().getSubmittedTransfers();
-    Enumeration e =  submittedJobs.elements();
+    Vector<TransferInfo> submittedJobs = GridPilot.getClassMgr().getSubmittedTransfers();
+    Enumeration<TransferInfo> e =  submittedJobs.elements();
     while(e.hasMoreElements()){
-      TransferInfo transfer = (TransferInfo) e.nextElement();
+      TransferInfo transfer = e.nextElement();
       if(MyTransferControl.isRunning(transfer)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(transfer.getTableRow());
@@ -549,7 +549,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    */
   private void resubmit(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    Vector transfers = getTransfersAtRows(statusTable.getSelectedRows());
+    Vector<TransferInfo> transfers = getTransfersAtRows(statusTable.getSelectedRows());
     try{
       GridPilot.getClassMgr().getTransferControl().resubmit(transfers);
     }
@@ -623,9 +623,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * @see #getTransfersAtRows(int[])
    */
   public static TransferInfo getTransferAtRow(int row){
-    Vector submTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    Vector<TransferInfo> submTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
     Debug.debug("Got transfers at row "+row+". "+submTransfers.size(), 3);
-    return (TransferInfo) submTransfers.get(row);
+    return submTransfers.get(row);
   }
 
   /**
@@ -633,7 +633,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * @see #getTransferAtRow(int)
    */
   public static Vector<TransferInfo> getTransfersAtRows(int[] rows){
-    Vector transfers = new Vector(rows.length);
+    Vector<TransferInfo> transfers = new Vector<TransferInfo>(rows.length);
     for(int i=0; i<rows.length; ++i){
       transfers.add(getTransferAtRow(rows[i]));
     }
@@ -641,9 +641,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   }
   
   private boolean areKillables(int [] rows){
-    Vector transferVector = getTransfersAtRows(rows);
-    for(Iterator it=transferVector.iterator(); it.hasNext();){
-      TransferInfo transfer = (TransferInfo) it.next();
+    Vector<TransferInfo> transferVector = getTransfersAtRows(rows);
+    for(Iterator<TransferInfo> it=transferVector.iterator(); it.hasNext();){
+      TransferInfo transfer = it.next();
       int internalStatus = transfer.getInternalStatus();
       if(internalStatus==FileTransfer.STATUS_DONE ||
           //internalStatus==FileTransfer.STATUS_ERROR ||
@@ -655,9 +655,9 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   }
  
   private boolean areResubmitables(int [] rows){
-    Vector transferVector = getTransfersAtRows(rows);
-    for(Iterator it=transferVector.iterator(); it.hasNext();){
-      TransferInfo transfer = (TransferInfo) it.next();
+    Vector<TransferInfo> transferVector = getTransfersAtRows(rows);
+    for(Iterator<TransferInfo> it=transferVector.iterator(); it.hasNext();){
+      TransferInfo transfer = it.next();
       int internalStatus = transfer.getInternalStatus();
       if(internalStatus==FileTransfer.STATUS_WAIT ||
           internalStatus==FileTransfer.STATUS_RUNNING){

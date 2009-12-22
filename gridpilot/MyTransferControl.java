@@ -78,6 +78,7 @@ public class MyTransferControl extends TransferControl {
   private Object [][] tableValues = new Object[0][GridPilot.TRANSFER_STATUS_FIELDS.length];
   private JProgressBar pbSubmission;
   private int batchSize = 1;
+  private boolean cancelled;
   
   final private static String SRM2_PLUGIN_NAME = "srm2";
   
@@ -95,7 +96,7 @@ public class MyTransferControl extends TransferControl {
       }
     });
     loadValues();
-
+    cancelled = false;
   }
   
   public long getFileBytes(GlobusURL url) throws Exception{
@@ -568,13 +569,13 @@ public class MyTransferControl extends TransferControl {
    * Adds transfers to toSubmitTransfers.
    * @param   transfers     Vector of TransferInfo's.
    */
-  public synchronized void queue(final Vector _transfers) throws Exception {
+  public synchronized void queue(final Vector<TransferInfo> _transfers) throws Exception {
 
     Debug.debug("setting progress bar", 2);
     setProgressBar1(0, 0);
 
     ResThread t = new ResThread(){
-      Vector transfers;
+      Vector<TransferInfo> transfers;
       public void run(){
         increaseProgressBarMax(pbSubmission, _transfers.size());
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
@@ -891,7 +892,7 @@ public class MyTransferControl extends TransferControl {
    */
   public void deleteFiles(String [] toDeleteFiles){
     // get the list of remote files, ordered by protocol
-    HashMap remoteFiles = new HashMap();
+    HashMap<String, HashSet<String>> remoteFiles = new HashMap<String, HashSet<String>>();
     String protocol = null;
     for(int i=0; i<toDeleteFiles.length; ++i){
       if(toDeleteFiles[i].matches("^\\w+:.*") &&
@@ -899,9 +900,9 @@ public class MyTransferControl extends TransferControl {
           !toDeleteFiles[i].toLowerCase().startsWith("file:")){
         protocol = toDeleteFiles[i].replaceFirst("^(\\w+):.*", "$1");
         if(remoteFiles.get(protocol)==null){
-          remoteFiles.put(protocol, new HashSet());
+          remoteFiles.put(protocol, new HashSet<String>());
         }
-        ((HashSet) remoteFiles.get(protocol)).add(toDeleteFiles[i]);
+        remoteFiles.get(protocol).add(toDeleteFiles[i]);
       }
     }
     // Delete local files
@@ -920,15 +921,15 @@ public class MyTransferControl extends TransferControl {
     }
     // Delete remote files
     GlobusURL [] remoteUrls = null;
-    HashSet urlSet = null;
+    HashSet<String> urlSet = null;
     int j = 0;
-    for(Iterator it=remoteFiles.keySet().iterator(); it.hasNext();){
-      urlSet = ((HashSet) remoteFiles.get(it.next()));
+    for(Iterator<String> it=remoteFiles.keySet().iterator(); it.hasNext();){
+      urlSet = remoteFiles.get(it.next());
       remoteUrls = new GlobusURL [urlSet.size()];
       j = 0;
-      for(Iterator itt=urlSet.iterator(); itt.hasNext(); ++j){
+      for(Iterator<String> itt=urlSet.iterator(); itt.hasNext(); ++j){
         try{
-          remoteUrls[j] = new GlobusURL((String) itt.next());
+          remoteUrls[j] = new GlobusURL(itt.next());
         }
         catch(MalformedURLException e){
           e.printStackTrace();
@@ -978,12 +979,17 @@ public class MyTransferControl extends TransferControl {
     GridPilot.getClassMgr().getFTPlugin(
         ftPluginName).deleteFiles(urls);
   }
+  
+  public boolean allTransfersCancelled(){
+    return cancelled;
+  }
 
   /**
    * Stops the submission. <br>
    * Empties toSubmitJobs, and set these jobs to Failed.
    */
   private void cancelQueueing(){
+    cancelled = true;
     timer.stop();
     Enumeration<TransferInfo> e = toSubmitTransfers.elements();
     while(e.hasMoreElements()){
@@ -1182,7 +1188,7 @@ public class MyTransferControl extends TransferControl {
   /**
    * Checks the status of the transfers and updates the TransferInfo objects. <p>
    */
-  public void updateStatus(Vector transfers){
+  public void updateStatus(Vector<TransferInfo> transfers){
     String status = null;
     String transferred = null;
     int percentComplete = -1;

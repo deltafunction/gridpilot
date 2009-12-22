@@ -3247,6 +3247,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.FILE_ROWS = 0;
           setTransfersRefresh();
           for(int i=0; i<ids.length; ++i){
+            if(GridPilot.getClassMgr().getTransferControl().allTransfersCancelled()){
+              break;
+            }
             Debug.debug("Replicating dataset "+ids[i], 1);
             replicateDataset(ids[i], rows[i], dlUrl, targetDBsPanel);
             if(ids.length>1){
@@ -3378,7 +3381,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   /**
-   * Called when mouse is pressed on the Copy button
+   * Called when mouse is pressed on the Replicate button
    */
   private void download(final String _dlUrl, final TargetDBsPanel _targetDBsPanel){
     new Thread(){
@@ -3877,7 +3880,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     statusBar.setLabel("Preparing jobs, please wait...");
     setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     statusBar.animateProgressBar();
-    statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");
+    statusBar.setIndeterminateProgressBarToolTip("click here to interrupt");
     statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
