@@ -3248,6 +3248,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           setTransfersRefresh();
           for(int i=0; i<ids.length; ++i){
             if(GridPilot.getClassMgr().getTransferControl().allTransfersCancelled()){
+              GridPilot.getClassMgr().getTransferControl().setAllTransfersCancelled(false);
               break;
             }
             Debug.debug("Replicating dataset "+ids[i], 1);

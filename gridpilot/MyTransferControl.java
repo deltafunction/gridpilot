@@ -984,6 +984,10 @@ public class MyTransferControl extends TransferControl {
     return cancelled;
   }
 
+  public void setAllTransfersCancelled(boolean _cancelled){
+    cancelled = _cancelled;
+  }
+
   /**
    * Stops the submission. <br>
    * Empties toSubmitJobs, and set these jobs to Failed.
