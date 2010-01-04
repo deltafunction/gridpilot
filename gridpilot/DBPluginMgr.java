@@ -1706,7 +1706,9 @@ public class DBPluginMgr extends DBCache implements Database{
     // For a file catalog, just get the size
     if(db.isFileCatalog()){
       try{
-        size = (String) db.getFile(datasetName, fileId, LOOKUP_PFNS_NONE).getValue(MyUtil.getFileSizeField(dbName));
+        String sizeField = MyUtil.getFileSizeField(dbName);
+        size = (String) db.getFile(datasetName, fileId, LOOKUP_PFNS_NONE).getValue(sizeField);
+        Debug.debug("Looked up size of "+datasetName+" / "+fileId+" : "+sizeField+" --> "+size, 3);
       }
       catch(Exception e){
         e.printStackTrace();

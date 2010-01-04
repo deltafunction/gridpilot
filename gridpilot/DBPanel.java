@@ -350,7 +350,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bClear =  MyUtil.mkButton("clear.png", "Clear", "Clear");
     bNext =  MyUtil.mkButton1("next.png", "Next search results", ">>");
     bPrevious =  MyUtil.mkButton1("previous.png", "Previous search results", "<<");
-    bReplicate =  MyUtil.mkButton("replicate.png", "Replicate file(s)", "Replicate files from or to a remote server");
+    bReplicate =  MyUtil.mkButton("replicate.png", "Replicate file(s)", "Replicate file(s) from or to a remote server");
     bSubmit =  MyUtil.mkButton("run.png", "Submit job(s)", "Submit job(s) to a computing backend");
     bMonitor =  MyUtil.mkButton("monitor.png", "Monitor", "Monitor job(s)");
     bProcessDatasets =  MyUtil.mkButton("run.png", "Run", "Run application(s)/dataset(s)");
@@ -1588,6 +1588,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         replicate();
       }
     });
+    JMenuItem miGetInfoOnDataset = new JMenuItem("Get info on file(s)");
+    miGetInfoOnDataset.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        getInfo();
+      }
+    });
     miExportDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         new Thread(){
@@ -1617,6 +1623,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miImportFiles.setEnabled(dbPluginMgr.isFileCatalog());
     miViewFiles.setEnabled(true);
     miReplicateDataset.setEnabled(true);
+    miGetInfoOnDataset.setEnabled(true);
     miExportDataset.setEnabled(true);
     miViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miCreateJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
@@ -1627,6 +1634,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miExportDataset);
     tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miGetInfoOnDataset);
     tableResults.addMenuItem(miViewFiles);
     tableResults.addMenuItem(miReplicateDataset);
     tableResults.addMenuItem(miViewJobDefinitions);
@@ -2624,7 +2632,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(!ok){
           MyUtil.showError("Problem processing dataset(s). "+
-              (error!=null||error.equals("")?"See the log for details.":error));
+              (error==null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
@@ -2700,7 +2708,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       ok = false;
       String error = e.getMessage();
       MyUtil.showError("Problem submitting job(s) "+
-          (error!=null||error.equals("")?"See the log for details.":error));
+          (error==null||error.equals("")?"See the log for details.":error));
       return ok;
     }
     setJobsRefresh();
@@ -2790,7 +2798,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(!ok){
           MyUtil.showError("Problem monitoring dataset(s). "+
-              (error!=null||error.equals("")?"See the log for details.":error));
+              (error==null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
@@ -2914,7 +2922,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         stopWorking();
         if(!ok){
           MyUtil.showError("Problem cleaning up dataset(s). "+
-              (error!=null||error.equals("")?"See the log for details.":error));
+              (error==null||error.equals("")?"See the log for details.":error));
         }
       }
     }.start();
@@ -3218,6 +3226,71 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       };
       SwingUtilities.invokeLater(rt);
     }
+  }
+  
+  /**
+   * Called from the right-click menu
+   */
+  private void getInfo() {
+    Debug.debug("Getting info on file(s) of dataset(s)", 2);
+    new Thread(){
+      public void run(){
+        try{
+          setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          int [] rows = tableResults.getSelectedRows();
+          if(rows==null || rows.length==0){
+            return;
+          }
+          String fileIdField = MyUtil.getIdentifierField(dbName, "file");
+          String [] ids = getSelectedIdentifiers();
+          String name;
+          int totalFiles = 0;
+          long totalBytes = 0L;
+          DBResult files;
+          String fileId;
+          String fileBytesStr;
+          long fileBytes;
+          for(int i=0; i<ids.length; ++i){
+            name = dbPluginMgr.getDatasetName(ids[i]);
+            Debug.debug("Checking dataset "+name, 1);
+            files = dbPluginMgr.getFiles(ids[i]);
+            for(int ii=0; ii<files.size(); ++ii){
+              ++totalFiles;
+              fileId = (String) files.get(ii).getValue(fileIdField);
+              fileBytesStr = dbPluginMgr.getFileBytes(name, fileId);
+              try{
+                fileBytes = Long.parseLong(fileBytesStr);
+                totalBytes += fileBytes;
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+            }
+            if(ids.length>1){
+              Thread.sleep(1000);
+            }
+          }
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          String msg = "Number of files: "+totalFiles+"\nTotal size: "+totalBytes+" bytes";
+          String exMsg = null;
+          if(totalBytes>1000L){
+            exMsg = " ("+totalBytes/1000L+" KB)";
+            if(totalBytes>1000000L){
+              exMsg = " ("+totalBytes/1000000L+" MB)";
+              if(totalBytes>1000000000L){
+                exMsg = " ("+totalBytes/1000000000L+" GB)";
+              }
+            }
+            msg = msg + exMsg;
+          }
+          MyUtil.showMessage("Information on selected dataset(s)", msg);
+        }
+        catch(Exception e){
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          e.printStackTrace();
+        }
+      }
+    }.start();
   }
   
   /**
