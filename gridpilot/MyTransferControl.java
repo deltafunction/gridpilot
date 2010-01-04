@@ -1779,10 +1779,12 @@ public class MyTransferControl extends TransferControl {
   }
   
   /**
-   * Find all files and their sizes in a given directory - local or remote.
+   * Find all files and their sizes in a given directory - local or remote,
+   * including the directory 'url' itself.
    * @param url the URL of the directory
    * @return a 2xn array of the form {{url1, url2, ...}, {size1, size2, ...}},
-   *         where url1, url2 etc. are absolute urls
+   *         where url1, url2 etc. are absolute urls. Notice that this array
+   *         includes the directory 'url' itself
    * @throws Exception
    */
   public static String[][] findAllFilesAndDirs(String url, String filter)
@@ -1884,14 +1886,14 @@ public class MyTransferControl extends TransferControl {
           size = fileOrDirArr[fileOrDirArr.length-1];
           fileOrDir = urlsList[i]+fileOrDirAndSize.replaceFirst(size+"\\s*$", "").trim();
           if(!onlyFiles || !fileOrDir.endsWith("/")){
-            Debug.debug("Adding "+fileOrDir, 3);
+            Debug.debug("Adding: "+fileOrDir, 3);
             files.add(fileOrDir);
             sizes.add(size);
           }
         }
-        // If the directory is empty add itself
-        if(!onlyFiles && filesAndDirs.size()==0){
-          Debug.debug("Adding "+urlsList[i], 3);
+        // If the directory is not in the list returned, add itself
+        if(!onlyFiles && !files.contains(urlsList[i])){
+          Debug.debug("Adding:: "+urlsList[i], 3);
           files.add(urlsList[i]);
           sizes.add(urlsList[i]);
         }

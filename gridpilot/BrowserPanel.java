@@ -2184,8 +2184,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     Debug.debug("baseUrl: "+baseUrl, 3);
     try{
       ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+      Debug.debug("Deleting file or dir "+url, 3);
       if(url.startsWith("file:") || url.startsWith("/")){
-        Debug.debug("Deleting file "+url, 3);
         localDeleteFile(url);
       }
       else{

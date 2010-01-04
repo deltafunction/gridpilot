@@ -17,6 +17,7 @@ import org.globus.gsi.gssapi.auth.Authorization;
 import org.globus.io.urlcopy.UrlCopy;
 import org.globus.io.urlcopy.UrlCopyException;
 import org.globus.util.GlobusURL;
+
 import org.ietf.jgss.GSSCredential;
 import org.apache.log4j.*;
 
@@ -617,18 +618,24 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   public Vector<String> find(GlobusURL globusUrl, String filter) throws Exception {
-    return TransferControl.find(this, globusUrl, new Long(getFileBytes(globusUrl)), filter, new Vector<GlobusURL>(),
+    Vector<String> urls = TransferControl.find(this, globusUrl, new Long(getFileBytes(globusUrl)), filter, new Vector<GlobusURL>(),
         new Vector<Long>(), 1);
+    String url;
+    for(int i=0; i<urls.size(); ++i){
+      url = urls.get(i);
+      urls.set(i, url.replaceFirst("^"+globusUrl.getURL(), ""));
+    }
+    return urls;
   }
   
-  public Vector list(GlobusURL globusUrl, String filter) throws IOException, FTPException{
+  public Vector<String> list(GlobusURL globusUrl, String filter) throws IOException, FTPException{
     return list(globusUrl, filter, null);
   }
 
   /**
    * List files and/or directories in a *directory* on gridftp server.
    */
-  public Vector list(GlobusURL globusUrl, String filter,
+  private Vector<String> list(GlobusURL globusUrl, String filter,
       StatusBar statusBar) throws IOException, FTPException{
     globusUrl = new GlobusURL(globusUrl.getURL().replaceFirst("/[^\\/]*/\\.\\.", ""));
     String localPath = "/";
@@ -672,13 +679,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       };
       gridFtpClient.list("", "", dataSink);
       textArr = MyUtil.split(received2.toString(), "\n");
-      Vector textVector = new Vector();
-      String [] entryArr = null;
       String line = null;
-      String fileName = null;
-      String bytes = null;
-      int directories = 0;
-      int files = 0;
       boolean onlyDirs = false;
       if(filter==null || filter.equals("")){
         filter = "*";
@@ -694,66 +695,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
       }
       Debug.debug("Filter is "+filter, 3);
       Debug.debug("Filtering with "+filter, 3);
+      Vector<String> textVector = new Vector<String>();
+      Integer directories = new Integer(0);
+      Integer files = new Integer(0);
       for(int i=0; i<textArr.length; ++i){
         line = textArr[i].toString();
         Debug.debug(line, 3);
-        // Here we are assuming that there are no file names with spaces
-        // on the gridftp server...
-        // TODO: improve
-        if(line.length()==0 || line.matches("total \\d+")){
-          continue;
-        }
-        else{
-          entryArr = MyUtil.split(line);
-          fileName = entryArr[entryArr.length-1];
-          // Really ugly: we cannot know how the server chooses to display the information.
-          // E.g.
-          // NorduGrid ARC:
-          // -------   1 user     group  Mon Oct 13 11:20:41 2008       1912035286  data1.txt
-          // gLite
-          // -rw-rw----    1 glite           9 Oct 13 11:21 data1.txt
-          // TODO: Find some way to improve this wild guessing...
-          bytes = entryArr[entryArr.length-2];
-          try{
-            Integer.parseInt(bytes);
-          }
-          catch(NumberFormatException e){
-            if(entryArr.length==8){
-              bytes = entryArr[entryArr.length-5];
-            }
-          }
-        }
-        // If server is nice enough to provide file information, use it
-        if(MyUtil.filterMatches(fileName, filter)){
-          if(line.matches("d[rwxsS-]* .*") ||
-             /*BNL style*/line.matches("d\\? +.*")){
-            textVector.add(fileName+"/");
-            ++directories;
-            continue;
-          }
-          else if(!onlyDirs && line.matches("-[rwxsS-]* .*") ||
-             /*BNL style*/line.matches("-\\? +.*")){
-            textVector.add(fileName+" "+bytes);
-            ++files;
-            continue;
-          }
-          try{
-            // File information not provided, we have to do it the slow way...
-            // Check if fileName it is a directory by trying to cd into it
-            Debug.debug("Checking file/directory information the slow way...", 2);
-            gridFtpClient.changeDir(fileName);
-            gridFtpClient.goUpDir();
-            textVector.add(fileName+"/");
-            ++directories;
-          }
-          catch(Exception e){
-            if(onlyDirs){
-              continue;
-            }
-            textVector.add(fileName+" "+bytes);
-            ++files;
-          }
-        }
+        parseLine(gridFtpClient, textVector, directories, files,
+            line, filter, onlyDirs);
       }
       if(statusBar!=null){
         statusBar.setLabel(directories+" directories, "+files+" files");
@@ -773,12 +722,83 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
   }
   
+  private void parseLine(GridFTPClient gridFtpClient, Vector<String> textVector,
+      Integer directories, Integer files,
+      String line, String filter, boolean onlyDirs) {
+    // Here we are assuming that there are no file names with spaces
+    // on the gridftp server...
+    // TODO: improve
+    if(line.length()==0 || line.matches("total \\d+")){
+      return;
+    }
+    String [] entryArr = MyUtil.split(line);
+    String fileName = entryArr[entryArr.length-1];
+    String bytes = null;
+    // Really ugly: we cannot know how the server chooses to display the information.
+    // E.g.
+    // NorduGrid ARC:
+    // -------   1 user     group  Mon Oct 13 11:20:41 2008       1912035286  data1.txt
+    // gLite
+    // -rw-rw----    1 glite           9 Oct 13 11:21 data1.txt
+    // TODO: Find some way to improve this wild guessing...
+    bytes = entryArr[entryArr.length-2];
+    try{
+      Integer.parseInt(bytes);
+    }
+    catch(NumberFormatException e){
+      if(entryArr.length==8){
+        bytes = entryArr[entryArr.length-5];
+      }
+      e.printStackTrace();
+    }
+    Debug.debug("bytes: "+bytes, 3);
+    // If server is nice enough to provide file information, use it
+    if(!MyUtil.filterMatches(fileName, filter)){
+      return;
+    }
+    if(line.matches("d[rwxsS-]* .*") ||
+        /*BNL style*/line.matches("d\\? +.*")){
+      textVector.add(fileName+"/");
+      ++directories;
+      return;
+    }
+    else if(!onlyDirs && line.matches("-[rwxsS-]* .*") ||
+        /*BNL style*/line.matches("-\\? +.*")){
+      textVector.add(fileName+" "+bytes);
+      ++files;
+      return;
+    }
+    try{
+      // File information not provided, we have to do it the slow way...
+      // Check if fileName it is a directory by trying to cd into it
+      Debug.debug("Checking file/directory information the slow way...", 2);
+      gridFtpClient.changeDir(fileName);
+      gridFtpClient.goUpDir();
+      textVector.add(fileName+"/");
+      ++directories;
+    }
+    catch(Exception e){
+      if(onlyDirs){
+        return;
+      }
+       textVector.add(fileName+" "+bytes);
+       ++files;
+    }
+  }
+
   public long getFileBytes(GlobusURL url) throws Exception {
     String file = url.getPath().replaceFirst(".*/([^/]+)", "$1");
     String dir = url.getURL().replaceFirst("(.*/)[^/]+", "$1");
-    Vector listVector = list(new GlobusURL(dir), file, null);
-    String line = (String) listVector.get(0);
+    Vector<String> listVector = list(new GlobusURL(dir), file, null);
+    String line = listVector.get(0);
     String [] entries = MyUtil.split(line);
+    if(entries.length<1){
+      throw new Exception("Could not parse line "+line);
+    } 
+    if(entries.length==1){
+      // directory
+      return 0L;
+    } 
     return Long.parseLong(entries[1]);
   }
   
