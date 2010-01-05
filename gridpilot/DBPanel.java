@@ -2539,7 +2539,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     };
     if(waitForThread){
       //SwingUtilities.invokeAndWait(rt);
-      rt.start();
+      //rt.start();
+      SwingUtilities.invokeLater(rt);
       if(!MyUtil.waitForThread(rt, "", fileCatalogTimeout, "", GridPilot.getClassMgr().getLogFile())){
         throw new Exception("Timed out creating files panel.");
       }
