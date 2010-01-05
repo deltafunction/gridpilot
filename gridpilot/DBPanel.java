@@ -3328,7 +3328,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             Debug.debug("Replicating dataset "+ids[i], 1);
             replicateDataset(ids[i], rows[i], dlUrl, targetDBsPanel);
             if(ids.length>1){
-              Thread.sleep(3000);
+              Thread.sleep(4000);
             }
           }
           GridPilot.FILE_ROWS = origFileRows;
@@ -3348,9 +3348,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     dbPluginMgr.requestStopLookup();
     DBPanel filesPanel = viewFiles(true, id, row);
     dbPluginMgr.clearRequestStopLookup();
-    Debug.debug("Waiting 3 seconds for "+filesPanel, 2);
+    Debug.debug("Waiting 4 seconds for "+filesPanel, 2);
     try{
-      Thread.sleep(3000);
+      Thread.sleep(4000);
     }
     catch(InterruptedException e){
        e.printStackTrace();

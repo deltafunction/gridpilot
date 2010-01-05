@@ -45,7 +45,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
   private static int timeBetweenCheking = 1000;
 
   /** For each plug-in, maximum number of transfer for one update (0 = INF)*/
-  private HashMap maxTransfersByUpdate;
+  private HashMap<String, Integer> maxTransfersByUpdate;
 
   /** counters of jobs ordered by local status
    */
@@ -67,18 +67,18 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
   /**
    * Contains all transfers for which update is processing. <p>
    * Each transfer in this transfer vector : <ul>
-   * <li> corresponds to one and only one thread in {@link #checkingThread}
+   * <li> corresponds to one and only one thread in {@link #checkingThreads}
    *      (but a thread in checkingThread could correspond to several transfers in checkingTransfers),
    * <li> should be "needed to be refreshed" (see {@link #toCheckTransfers})and has
    *      belonged to {@link #toCheckTransfers}, but doesn't belong to it anymore,
    */
-  private Vector checkingTransfers = new Vector(); //
+  private Vector<TransferInfo> checkingTransfers = new Vector<TransferInfo>(); //
 
   /**
    * Thread vector. <p>
    * @see #checkingTransfers
    */
-  private Vector checkingThread = new Vector();
+  private Vector<Thread> checkingThreads = new Vector<Thread>();
   private ImageIcon iconChecking;
   
   /**
@@ -127,20 +127,20 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
       public void actionPerformed(ActionEvent ae){
         //Debug.debug(checkingThread.size()+":"+maxSimultaneousChecking +":"+
             //!toCheckTransfers.isEmpty(), 3);
-        if(checkingThread.size()<maxSimultaneousChecking && !toCheckTransfers.isEmpty()){
+        if(checkingThreads.size()<maxSimultaneousChecking && !toCheckTransfers.isEmpty()){
           Thread t = new Thread(){
             public void run(){
               Debug.debug("Checking...", 3);
               trigCheck();
-              checkingThread.remove(this);
+              checkingThreads.remove(this);
           }};
-          checkingThread.add(t);
+          checkingThreads.add(t);
           t.start();
         }
       }
     });
 
-    maxTransfersByUpdate = new HashMap();
+    maxTransfersByUpdate = new HashMap<String, Integer>();
 
     loadValues();
 
@@ -170,7 +170,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     /**
      * Load of maxSimultaneousChecking
      */
-    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "max simultaneous checking");
+    String tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Max simultaneous checking");
     if(tmp!=null){
       try{
         maxSimultaneousChecking = Integer.parseInt(tmp);
@@ -248,7 +248,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     
     // get transfer vector
     int [] rows = _rows;
-    Vector transfers = null;
+    Vector<TransferInfo> transfers = null;
     if(rows==null || rows.length==0){
       // if nothing is selected, we refresh all transfers
       transfers = GridPilot.getClassMgr().getSubmittedTransfers();
@@ -260,9 +260,9 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
    
     // fill toCheckTransfers with running transfers
     synchronized(toCheckTransfers){
-      Enumeration e = transfers.elements();
+      Enumeration<TransferInfo> e = transfers.elements();
       while(e.hasMoreElements()){
-        TransferInfo transfer = (TransferInfo) e.nextElement();
+        TransferInfo transfer = e.nextElement();
         Debug.debug("Adding transfer to toCheckTransfers: "+transfer.getTransferID()+" "+
             transfer.getNeedsUpdate() +" "+ !toCheckTransfers.contains(transfer) +" "+
             !checkingTransfers.contains(transfer), 3);
@@ -298,7 +298,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
     Debug.debug("trigCheck", 1);
 
-    Vector transfers = new Vector();
+    Vector<TransferInfo> transfers = new Vector<TransferInfo>();
     synchronized(toCheckTransfers){
       if(toCheckTransfers.isEmpty()){
         return;
@@ -314,7 +314,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
         }
         ftName = null;
         try{
-          ftName = ((TransferInfo) toCheckTransfers.get(currentTransfer)).getFTName();
+          ftName = toCheckTransfers.get(currentTransfer).getFTName();
         }
         catch(Exception e){
         }
@@ -328,8 +328,8 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
           break;
         }
         Debug.debug("Adding transfer to toCheckTransfers "+currentTransfer, 3);
-        if(((TransferInfo) toCheckTransfers.get(
-            currentTransfer)).getFTName().toString().equalsIgnoreCase(ftName)){
+        if(toCheckTransfers.get(
+            currentTransfer).getFTName().toString().equalsIgnoreCase(ftName)){
           transfers.add(toCheckTransfers.remove(currentTransfer));
         }
         else{
@@ -342,8 +342,8 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
     int [] previousInternalStatus = new int [transfers.size()];
     for(int i=0; i<transfers.size(); ++i){
-      transferStatusTable.setValueAt(iconChecking, ((TransferInfo) transfers.get(i)).getTableRow(), FIELD_CONTROL);
-      previousInternalStatus[i] = ((TransferInfo) transfers.get(i)).getInternalStatus();
+      transferStatusTable.setValueAt(iconChecking, transfers.get(i).getTableRow(), FIELD_CONTROL);
+      previousInternalStatus[i] = transfers.get(i).getInternalStatus();
       Debug.debug("Setting previousInternalStatus for transfer "+i+" : "+
           previousInternalStatus[i], 3);
     }
@@ -360,12 +360,12 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
 
     for(int i=0; i<transfers.size(); ++i){
       Debug.debug("Setting value of transfer #"+i, 3);
-      transferStatusTable.setValueAt(null, ((TransferInfo) transfers.get(i)).getTableRow(),
+      transferStatusTable.setValueAt(null, transfers.get(i).getTableRow(),
           FIELD_CONTROL);
-      transferStatusTable.setValueAt(((TransferInfo) transfers.get(i)).getStatus(),
-          ((TransferInfo) transfers.get(i)).getTableRow(), FIELD_STATUS);
-      transferStatusTable.setValueAt(((TransferInfo) transfers.get(i)).getTransferred(),
-          ((TransferInfo) transfers.get(i)).getTableRow(), FIELD_TRANSFERRED);
+      transferStatusTable.setValueAt(transfers.get(i).getStatus(),
+          transfers.get(i).getTableRow(), FIELD_STATUS);
+      transferStatusTable.setValueAt(transfers.get(i).getTransferred(),
+          transfers.get(i).getTableRow(), FIELD_TRANSFERRED);
     }
 
     // Update the statistics information
@@ -374,7 +374,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     
     // Take actions depending on the change of status
     for(int i=0; i<transfers.size(); ++i){
-      TransferInfo transfer = (TransferInfo) transfers.get(i);
+      TransferInfo transfer = transfers.get(i);
       Debug.debug("Setting file transfer system status of transfer #"+i+"; "+
           transfer.getInternalStatus()+"<->"+previousInternalStatus[i], 3);
       if(transfer.getInternalStatus()!=previousInternalStatus[i]){       
@@ -431,13 +431,13 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     int runIndex = 1;
     int doneIndex = 2;
 
-    Vector submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
 
     for(int i=0; i<submittedTransfers.size(); ++i){
       
-      ++transfersByFTStatus[((TransferInfo) submittedTransfers.get(i)).getInternalStatus()-1];
+      ++transfersByFTStatus[submittedTransfers.get(i).getInternalStatus()-1];
       
-      switch(((TransferInfo) submittedTransfers.get(i)).getInternalStatus()){
+      switch(submittedTransfers.get(i).getInternalStatus()){
       
         case FileTransfer.STATUS_WAIT:
           ++transfersByStatus[waitIndex];
