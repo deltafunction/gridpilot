@@ -638,7 +638,30 @@ private static String fixUrl(String _url){
   /**
    * Asks the user if he wants to interrupt a plug-in
    */
-  private static boolean askForInterrupt(String name, String fct){
+  private static boolean askForInterrupt(final String name, final String fct){
+    if(SwingUtilities.isEventDispatchThread()){
+      return doAskForInterrupt(name, fct);
+    }
+    // else
+    try{
+      ResThread t = new ResThread(){
+        boolean ret = false;
+        public void run(){
+          ret = doAskForInterrupt(name, fct);
+        }
+        public boolean getBoolRes(){
+          return ret;
+        }
+      };
+      SwingUtilities.invokeAndWait(t);
+      return t.getBoolRes();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
+  }
+  private static boolean doAskForInterrupt(String name, String fct){
     
     if(!GridPilot.ASK_BEFORE_INTERRUPT){
       return !GridPilot.WAIT_FOREVER;

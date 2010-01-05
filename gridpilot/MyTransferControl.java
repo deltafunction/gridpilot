@@ -598,7 +598,7 @@ public class MyTransferControl extends TransferControl {
     };
     t.start();
 
-    if(!MyUtil.myWaitForThread(t, "", TRANSFER_SUBMIT_TIMEOUT, "transfer")){
+    if(!MyUtil.myWaitForThread(t, "queue", TRANSFER_SUBMIT_TIMEOUT, "transfer")){
       setMonitorStatus("WARNING: queueing transfers timed out.");
       stopAnimation();
     }
@@ -1086,7 +1086,7 @@ public class MyTransferControl extends TransferControl {
 
     t.start();
 
-    if(!MyUtil.myWaitForThread(t, "", TRANSFER_CANCEL_TIMEOUT, "transfer")){
+    if(!MyUtil.myWaitForThread(t, "cancel", TRANSFER_CANCEL_TIMEOUT, "transfer")){
       stopAnimation();
       setMonitorStatus("WARNING: cancel transfers timed out.");
     }
