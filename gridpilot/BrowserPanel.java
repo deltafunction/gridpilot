@@ -748,7 +748,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
         panel.getPreferredSize().height);
 
     setSize(dim);
-    setVisible(true);
+    try{
+      setVisible(true);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     
     // Close window with ctrl+w
     jtFilter.addKeyListener(new KeyAdapter(){
@@ -2069,6 +2074,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     else{
       try{
         String newUrl = thisUrl.substring(0, thisUrl.lastIndexOf("/")+1);
+        if(MyUtil.isLocalFileName(thisUrl) && MyUtil.onWindows()){
+          newUrl = thisUrl.substring(0, thisUrl.lastIndexOf(File.separator))+"/";
+        }
         //thisUrl = newUrl;
         //setUrl(thisUrl);
         setDisplay0(newUrl);
