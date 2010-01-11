@@ -2174,7 +2174,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(url==null){
       return;
     }
-    String msg = "Are you sure you want to delete "+url+" and all contained files?";
+    String msg = "Are you sure you want to delete "+url+(url.endsWith("/")?
+        " and all contained files":"") +
+    		"?";
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
