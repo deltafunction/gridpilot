@@ -313,7 +313,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
           return;
         }
         String dirStr = MyUtil.clearFile(jtf.getText().trim());
-        if(!(new File(dirStr)).exists() || !(new File(dirStr)).isDirectory()){
+        if(dirStr==null || dirStr.equals("") || !(new File(dirStr)).exists() || !(new File(dirStr)).isDirectory()){
           MyUtil.showError("Directory does not exist");
           dir = null;
           return;
@@ -376,7 +376,12 @@ public class CreateSoftwarePackageWizard extends GPFrame{
 
   private void packageInTmpDir() throws IOException {
     // copy data files to tmp dir
-    LocalStaticShell.copyDirectory(dir, new File(tmpDir, "data"));
+    if(dir==null){
+      (new File(tmpDir, "data")).mkdir();
+    }
+    else{
+      LocalStaticShell.copyDirectory(dir, new File(tmpDir, "data"));
+    }
     File tarFile = new File(tmpDir, shortName+".tar");
     File gzipFile = new File(tmpDir, shortName+".tar.gz");
     MyUtil.tar(tarFile, tmpDir);
