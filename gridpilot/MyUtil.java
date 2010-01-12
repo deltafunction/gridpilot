@@ -1763,18 +1763,8 @@ private static String fixUrl(String _url){
     InstancePackage ip = null;
     String name = null;
     String os = null;
-    boolean osEntry = true;
-    Debug.debug("Setting up RTEs "+depsMap, 2);
+    Debug.debug("Setting up RTEs "+deps, 2);
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
-      // The first dependency returned by getRteDepends is the OS; skip it. The fact
-      // that the job landed on that system means it matches.
-      if(osEntry){
-        os = it.next();
-        osEntry = false;
-        if(!it.hasNext()){
-          break;
-        }
-      }
       name = it.next();
       // Check if installation was already done.
       // This we need, because GridPilot's HTTPSFileTransfer does not cache.
