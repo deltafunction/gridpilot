@@ -48,6 +48,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private PullMgr pullMgr;
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   private long submitTimeout;
+  private int mbPerVM = 512;
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -65,7 +66,6 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     if(bt!=null && !bt.equals("")){
       bootTimeout = Integer.parseInt(bt);
     }
-    defaultVmMB = minVmMB+defaultJobMB;
     shells = new HashMap<String, Shell>();
     workingDirs = new HashMap<String, String>();
     /*
@@ -105,13 +105,17 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         logFile.addMessage("Value of \"enforce virtualization\" is not set in configuration file", nfe);
       }
     }
+    mbPerVM = minVmMB+defaultJobMB;
+    int totalVmMBs = maxMachines * mbPerVM;
     tmp = configFile.getValue(csName, "default ram per vm");
     if(tmp!=null){
       try{
-        defaultVmMB = Integer.parseInt(tmp);
+        mbPerVM = Integer.parseInt(tmp);
+        totalVmMBs = maxMachines * mbPerVM;
+        defaultJobMB = mbPerVM - minVmMB;
       }
       catch(NumberFormatException nfe){
-        logFile.addMessage("Value of \"default ram per vm\" is not"+
+        logFile.addMessage("WARNING: Value of \"default ram per vm\" is not"+
                                     " an integer in configuration file", nfe);
       }
     }
@@ -121,7 +125,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     catch(Exception e){
       user = System.getProperty("user.name").trim();
     }
-    vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl, /*Total memory assigned to VMs*/defaultVmMB,
+    vmMgr = new VMMgr(rteMgr, transferStatusUpdateControl,
+        /*Total memory assigned to all VMs*/totalVmMBs,
         bootTimeout, localRteDir, logFile);
     
     localRuntimeDBs = configFile.getValues(csName, "runtime databases");
