@@ -1214,7 +1214,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
     RTEMgr rteMgr = getRteMgr();
     RTECatalog catalog = rteMgr.getRTECatalog();
-    HashMap<String, Vector<String>> depsMap =  new HashMap<String, Vector<String>>();
+    HashMap<String, Vector<String>> depsMap = new HashMap<String, Vector<String>>();
     try{
       // getVmRteDepends() throws an exception if no instance package can be found -
       // which is the case if opsysRte is an AMI name with no AMIPackage defined in
@@ -1222,38 +1222,44 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       depsMap = rteMgr.getVmRteDepends(opsysRte, null);
     }
     catch(Exception e){
-      //e.printStackTrace();
+      e.printStackTrace();
       return new EBSSnapshotPackage[] {};
     }
-    Vector<String> deps = depsMap.get(opsysRte);
-    Debug.debug("Found EBSSnapshot dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
-    String dep;
+    //Vector<String> deps = depsMap.get(opsysRte);
+    Vector<String> deps = depsMap.get(null);
+    Debug.debug("Found possible EBSSnapshot dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
+    String dep = null;
     MetaPackage mp;
-    Vector<EBSSnapshotPackage> sPacks = new Vector();
+    Vector<EBSSnapshotPackage> sPacks = new Vector<EBSSnapshotPackage>();
     InstancePackage ip;
     String initLines = "";
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
+      initLines = "";
       dep = it.next();
       mp = catalog.getMetaPackage(dep);
-      Debug.debug("Checking dependency "+dep+":"+mp, 2);
+      Debug.debug("Checking possible EBSSnapshot dependence "+dep+":"+mp, 2);
       if(mp==null || mp.instances==null){
         // If mp has no instances, it certainly has no EBSSnapshotPackage instance
         continue;
       }
-      Debug.debug("Instances:"+MyUtil.arrayToString(mp.instances), 2);
+      Debug.debug("Possible EBSSnapshot instances:"+MyUtil.arrayToString(mp.instances), 2);
       for(int i=0; i<mp.instances.length; ++i){
         ip = catalog.getInstancePackage(mp.instances[i]);
-        Debug.debug("Snapshot ID --> "+ip.url, 2);
         if(ip.getClass().getCanonicalName().equals(RTECatalog.EBSSnapshotPackage.class.getCanonicalName())){
+          Debug.debug("Snapshot ID --> "+((RTECatalog.EBSSnapshotPackage)ip).snapshotId, 2);
           initLines += "source "+((EBSSnapshotPackage) ip).mountpoint+"/control/runtime 1";
           sPacks.add((EBSSnapshotPackage) ip);
           // There should be only one EBSSnapshotPackage instance of a MetaPackage.
           break;
         }
       }
-    }
-    if(initLines.length()>0){
-      addEbsInitLines(opsysRte, initLines, dbName);
+      if(initLines.length()>0 && dep!=null){
+        try{
+          addEbsInitLines(/*opsysRte*/dep, initLines, dbName);
+        }
+        catch(Exception e){
+        }
+      }
     }
     return sPacks.toArray(new EBSSnapshotPackage[sPacks.size()]);
   }
