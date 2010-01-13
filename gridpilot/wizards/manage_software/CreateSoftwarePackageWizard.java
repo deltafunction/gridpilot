@@ -376,11 +376,14 @@ public class CreateSoftwarePackageWizard extends GPFrame{
 
   private void packageInTmpDir() throws IOException {
     // copy data files to tmp dir
+    File dataDir = new File(tmpDir, "data");
     if(dir==null){
-      (new File(tmpDir, "data")).mkdir();
+      Debug.debug("Creating new data dir.", 2);
+      dataDir.mkdir();
     }
     else{
-      LocalStaticShell.copyDirectory(dir, new File(tmpDir, "data"));
+      Debug.debug("Copying data dir "+dir+" to "+dataDir, 2);
+      LocalStaticShell.copyDirectory(dir, dataDir);
     }
     File tarFile = new File(tmpDir, shortName+".tar");
     File gzipFile = new File(tmpDir, shortName+".tar.gz");
