@@ -380,27 +380,28 @@ public class EC2Mgr {
             Debug.debug("Deleting volume "+volume.getVolumeId(), 2);
             if(ai.getStatus().equalsIgnoreCase("attached")){
               ec2.detachVolume(volume.getVolumeId(), ai.getInstanceId(), ai.getDevice(), true);
-              Exception ee = null;
-              int i;
-              // Try 10 times with 2 seconds in between to delete volume, then give up.
-              for(i=0; i<10; ++i){
-                try{
-                  Thread.sleep(2000);
-                  ec2.deleteVolume(volume.getVolumeId());
-                  Debug.debug("Volume "+volume.getVolumeId()+" deleted.", 2);
-                  break;
-                }
-                catch(Exception eee){
-                  ee = eee;
-                  continue;
-                }
+            }
+            // If the volume was not created from a snapshot, don't delete it.
+            if(volume.getSnapshotId()!=null && !volume.getSnapshotId().equals("")){
+              continue;
+            }
+            Exception ee = null;
+            int i;
+            // Try 10 times with 3 seconds in between to delete volume, then give up.
+            for(i=0; i<10; ++i){
+              try{
+                Thread.sleep(2000);
+                ec2.deleteVolume(volume.getVolumeId());
+                Debug.debug("Volume "+volume.getVolumeId()+" deleted.", 3);
+                break;
               }
-              if(i==9 && ee!=null){
-                throw ee;
+              catch(Exception eee){
+                ee = eee;
+                continue;
               }
             }
-            else{
-              ec2.deleteVolume(volume.getVolumeId());
+            if(i==9 && ee!=null){
+              throw ee;
             }
           }
         }
@@ -562,9 +563,6 @@ public class EC2Mgr {
     logFile.addInfo("Attached volume "+volumeInfo.getVolumeId()+" on " +device+
         "\n-->Status: "+status);
     return volumeInfo.getVolumeId();
-  }
-  
-  public void deleteUnattachedVolumes(Set vids){
   }
 
 }
