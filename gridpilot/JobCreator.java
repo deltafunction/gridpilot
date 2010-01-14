@@ -21,7 +21,7 @@ public class JobCreator{
   
   private String [] datasetIdentifiers;
   private boolean showResults;
-  private Vector constants;
+  private Vector<JComponent> constants;
   private String [] cstAttr;
   private String [] jobParam;
   private String [][] outMap;
@@ -46,8 +46,8 @@ public class JobCreator{
   private String dbName;
   private StatusBar statusBar;
   // Caches
-  private HashMap datasetNameIds = new HashMap();
-  private HashMap datasetIdFiles = new HashMap();
+  private HashMap<String, String> datasetNameIds = new HashMap<String, String>();
+  private HashMap<String, DBResult> datasetIdFiles = new HashMap<String, DBResult>();
   
   private DBResult inputFileRecords = null;
   private String [] inputFileIds = null;
@@ -76,7 +76,7 @@ public class JobCreator{
                     String _dbName,
                     String [] _datasetIdentifiers,
                     boolean _showResults,
-                    Vector _constants,
+                    Vector<JComponent> _constants,
                     String [] _cstAttr,
                     String [] _jobParam,
                     String [][] _outMap,
@@ -784,7 +784,7 @@ public class JobCreator{
     String[] inputFileNames = inputFileNamesVec.toArray(new String[inputFileNamesVec.size()]);
     
     // jobDefinition fields
-    ArrayList jobattributenames = fillInResCstAttr(eventSplits, currentPartition, datasetName, runNumber,
+    ArrayList<String> jobattributenames = fillInResCstAttr(eventSplits, currentPartition, datasetName, runNumber,
         outputDest, inputSource, evtMin, evtMax, inputFileURLs, inputFileNames);
     Debug.debug("Job attributes: "+jobattributenames, 2);
     
@@ -871,7 +871,7 @@ public class JobCreator{
           if(!datasetNameIds.containsKey(inputDatasetName)){
             datasetNameIds.put(inputDatasetName, inputMgr.getDatasetID(inputDatasetName));
           }
-          inputDatasetID = (String) datasetNameIds.get(inputDatasetName);
+          inputDatasetID = datasetNameIds.get(inputDatasetName);
           if(!datasetIdFiles.containsKey(inputDatasetID)){
             datasetIdFiles.put(inputDatasetID, inputMgr.getFiles(inputDatasetID));
           }
@@ -899,7 +899,7 @@ public class JobCreator{
           if(!datasetNameIds.containsKey(inputDatasetName)){
             datasetNameIds.put(inputDatasetName, inputMgr.getDatasetID(inputDatasetName));
           }
-          inputDatasetID = (String) datasetNameIds.get(inputDatasetName);
+          inputDatasetID = datasetNameIds.get(inputDatasetName);
           inputJobDefRecords = inputMgr.getJobDefinitions(inputDatasetID, 
                   new String [] {inputDBJobDefIdentifierField, EVENT_MIN, EVENT_MAX, "outFileMapping"},
                   null, null);
@@ -1011,8 +1011,11 @@ public class JobCreator{
         
         DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1], DBPluginMgr.LOOKUP_PFNS_ONE);
         Debug.debug("Looked up input file "+inputFile, 2);
-        String inputFils = (String) inputFile.getValue(pfnsField);
-        inputFiles.add(inputFils);
+        String inputUrlsStr = (String) inputFile.getValue(pfnsField);
+        String [] inputUrls = MyUtil.split(inputUrlsStr);
+        // Take the first PFN found
+        String firstInputUrl = inputUrls[0];
+        inputFiles.add(firstInputUrl);
         /*String [] inputFilArr = null;
         try{
           inputFilArr = MyUtil.splitUrls(inputFils);
@@ -1035,12 +1038,12 @@ public class JobCreator{
 
   private void fillInJobParams(int currentPartition,
       int [][] eventSplits, int evtMin, int evtMax, String name, String number,
-      String outputDest, String inputSource, ArrayList jobattributenames,
+      String outputDest, String inputSource, ArrayList<String> jobattributenames,
       String [] inputFileURLs, String [] inputFileNames) throws ArithmeticException, SyntaxException {
     Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("metaData");
-    HashMap metaData = MyUtil.parseMetaData(metaDataString);
+    HashMap<String, String> metaData = MyUtil.parseMetaData(metaDataString);
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
           metaData.containsKey(jobParamNames[i].toLowerCase())+ " : "+
@@ -1092,7 +1095,7 @@ public class JobCreator{
     }
   }
 
-  private ArrayList fillInResCstAttr(int [][] eventSplits, int currentPartition, String datasetName, String runNumber,
+  private ArrayList<String> fillInResCstAttr(int [][] eventSplits, int currentPartition, String datasetName, String runNumber,
      String outputDest, String inputSource, int evtMin, int evtMax, String [] inputFileURLs, String [] inputFileNames)
      throws ArithmeticException, SyntaxException {
     // Add eventMin, eventMax and inputFileURLs if they are
@@ -1102,12 +1105,12 @@ public class JobCreator{
     for(int i=0; i<jobdeffields.length; ++i){
       jobdeffields[i] = jobdeffields[i].toLowerCase();
     }
-    ArrayList jobdefinitionfields = new ArrayList(Arrays.asList(jobdeffields));    
-    ArrayList jobattributenames = new ArrayList(Arrays.asList(cstAttrNames));
-    ArrayList jobAttributeNames = new ArrayList(Arrays.asList(cstAttrNames));
-    ArrayList jobAttributes = new ArrayList(Arrays.asList(cstAttr));
+    ArrayList<String> jobdefinitionfields = new ArrayList<String>(Arrays.asList(jobdeffields));    
+    ArrayList<String> jobattributenames = new ArrayList<String>(Arrays.asList(cstAttrNames));
+    ArrayList<String> jobAttributeNames = new ArrayList<String>(Arrays.asList(cstAttrNames));
+    ArrayList<String> jobAttributes = new ArrayList<String>(Arrays.asList(cstAttr));
     for(int i=0; i<jobattributenames.size(); ++i){
-      jobattributenames.set(i, ((String) jobattributenames.get(i)).toLowerCase());
+      jobattributenames.set(i, jobattributenames.get(i).toLowerCase());
     }
     if(!jobattributenames.contains(EVENT_MIN.toLowerCase()) &&
         jobdefinitionfields.contains(EVENT_MIN.toLowerCase())){

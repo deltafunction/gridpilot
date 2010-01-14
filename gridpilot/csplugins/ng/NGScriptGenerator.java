@@ -149,7 +149,8 @@ public class NGScriptGenerator extends ScriptGenerator{
           inputFileName = inputFiles[i];
         }
         inputFileURL = null;
-        if(inputFiles[i].startsWith("http://") ||
+        if( inputFiles[i].startsWith("srm://") ||
+            inputFiles[i].startsWith("http://") ||
             inputFiles[i].startsWith("https://") ||
             inputFiles[i].startsWith("gsiftp://") ||
             inputFiles[i].startsWith("ftp://")||
