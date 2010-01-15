@@ -650,7 +650,7 @@ public class CSPluginMgr implements MyComputingSystem{
           /*logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + csName +
                              " for getUserInfo", t);*/
-          Debug.debug("Could not get user info. "+t.getMessage(), 1);
+          Debug.debug("Could not get user info. "+csName+"-->"+((MyComputingSystem) cs.get(csName))+t.getMessage(), 1);
           t.printStackTrace();
           res = null;
         }

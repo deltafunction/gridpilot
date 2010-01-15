@@ -770,7 +770,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     String csName = "";
     DBResult allJobDefinitions = null;
     // Group the file IDs by dataset
-    HashMap jobMgrsAndIds = new HashMap();
+    HashMap<JobMgr, Vector<String>> jobMgrsAndIds = new HashMap<JobMgr, Vector<String>>();
 
     for(int ii=0; ii<GridPilot.DB_NAMES.length; ++ii){
       dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[ii]);
@@ -812,26 +812,26 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         }
         // if status ok, add the job
         if(!jobMgrsAndIds.containsKey(mgr)){
-          jobMgrsAndIds.put(mgr, new Vector());
+          jobMgrsAndIds.put(mgr, new Vector<String>());
         }
         Debug.debug("Adding job #"+id, 3);
-        ((Vector) jobMgrsAndIds.get(mgr)).add(id);
+        jobMgrsAndIds.get(mgr).add(id);
       }
     }
     // Add them
     String [] ids = null;
-    Vector idVec = null;
+    Vector<String> idVec = null;
     JobMgr jobMgr = null;
-    for(Iterator it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
-      jobMgr = (JobMgr) it.next();
-      idVec = (Vector) jobMgrsAndIds.get(jobMgr);
+    for(Iterator<JobMgr> it=jobMgrsAndIds.keySet().iterator(); it.hasNext();){
+      jobMgr = it.next();
+      idVec = jobMgrsAndIds.get(jobMgr);
       ids = new String [idVec.size()];
       for(int i=0; i<idVec.size(); ++i){
         ids[i] = idVec.get(i).toString();
       }
       jobMgr.addJobs(ids);
+      jobMgr.updateJobsByStatus();
     }
-    jobMgr.updateJobsByStatus();
   }
 
   /**
@@ -926,7 +926,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           job = (MyJobInfo) it.next();
           jobMgr = getJobMgr(job);
           if(!datasetJobs.containsKey(jobMgr)){
-            datasetJobs.put(jobMgr, new Vector());
+            datasetJobs.put(jobMgr, new Vector<Integer>());
           }
           datasetJobs.get(jobMgr).add(new Integer(rows[i]));
           ++i;
@@ -970,8 +970,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector submittedJobs = GridPilot.getClassMgr().getMonitoredJobs();
-    Enumeration e =  submittedJobs.elements();
+    Vector<MyJobInfo> submittedJobs = GridPilot.getClassMgr().getMonitoredJobs();
+    Enumeration<MyJobInfo> e =  submittedJobs.elements();
     while(e.hasMoreElements()){
       MyJobInfo job = (MyJobInfo) e.nextElement();
       if(JobMgr.isRunning(job)){
@@ -1008,8 +1008,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       return false;
     }
     JobMgr mgr = null;
-    for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-      mgr = ((JobMgr) it.next());
+    for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+      mgr = it.next();
       if(mgr.isPostProcessing()){
         Debug.debug("cannot clear table during post-processing", 3);
         return false;
@@ -1020,8 +1020,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     GridPilot.getClassMgr().getMonitoredJobs().removeAllElements();
     statusTable.createRows(0);
     try{
-      for(Iterator it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
-        mgr = ((JobMgr) it.next());
+      for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
+        mgr = it.next();
         mgr.initChanges();
       }
       mgr.updateJobsByStatus();

@@ -135,6 +135,9 @@ public class JobCreator{
     //  When using recon_detail, version is not known
     for(int i=0; i<datasetIdentifiers.length; ++i){
       
+      firstPartition = 1;
+      lastPartition  = -1;
+
       currentDatasetID = datasetIdentifiers[i];
       setInputMgrAndDataset();
       
@@ -163,7 +166,7 @@ public class JobCreator{
       // If that didn't work, see if we can get the number of files
       // of the input dataset directly
       if(lastPartition<=0){
-        String error = "WARNING: could not get event splitting.";
+        String error = "WARNING: still could not get event splitting.";
         GridPilot.getClassMgr().getLogFile().addInfo(error);
         statusBar.setLabel(error);
         split = getSplitFromInputDataset();

@@ -1500,8 +1500,14 @@ public class MySQLDatabase extends DBCache implements Database {
     arg += "executableParameters, outFileMapping, stdoutDest," +
             "stderrDest, created, lastModified";
     arg += ") values ('"+datasetName+"', 'Defined', ";
+    String val;
     for(int i=0; i<resCstAttr.length; ++i){
-      arg += "'"+resCstAttr[i]+"', ";
+      val = resCstAttr[i];
+      if((val==null || val.equals("")) &&
+          isNumField(cstAttrNames[i])){
+        val = "0";
+      }
+      arg += "'"+val+"', ";
     }
 
     arg += "'"
@@ -1530,6 +1536,15 @@ public class MySQLDatabase extends DBCache implements Database {
       Debug.debug("ERROR: Could not get dataset of job definition", 1);
       return false;
     }
+  }
+
+  private boolean isNumField(String field){
+    return field.equalsIgnoreCase("outputFileBytes") ||
+    field.equalsIgnoreCase("cpuSeconds") || 
+    field.equalsIgnoreCase("number") ||
+    field.equalsIgnoreCase("eventMin") ||
+    field.equalsIgnoreCase("eventMax") ||
+    field.equalsIgnoreCase("nEvents");
   }
 
   public synchronized boolean createDataset(String table,
