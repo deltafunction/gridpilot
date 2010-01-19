@@ -3394,18 +3394,22 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void exportDataset(String datasetID) {
+    DBPanel activePanel = GridPilot.getClassMgr().getGlobalFrame().getActiveDBPanel();
     try{
       //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
       }
     }
     catch(Exception ex){
+      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String error = "ERROR: could not export DB(s). "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);

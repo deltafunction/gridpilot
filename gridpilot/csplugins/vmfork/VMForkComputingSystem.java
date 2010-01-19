@@ -239,8 +239,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){
-      // There may still be hosts booting or unbooted - just return false - SubmissionControl
-      // will check and fail job if necessary.
+      // There may still be hosts booting or unbooted - flag them as failed and return false
+      // - SubmissionControl will check and fail job if necessary.
       Debug.debug("super.preProcess() failed, returning false", 2);
       return false;
     }

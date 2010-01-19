@@ -1005,10 +1005,11 @@ public class GlobalFrame extends GPFrame{
     catch(IOException e){
       e.printStackTrace();
     }
+    DBPanel activePanel = getActiveDBPanel();
     try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        DBPanel activePanel = getActiveDBPanel();
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         if(activePanel.getSelectedIdentifiers().length==1){
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               activePanel.getDBName(), activePanel.getSelectedIdentifier());
@@ -1017,12 +1018,14 @@ public class GlobalFrame extends GPFrame{
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               null, null);
         }
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
       }
     }
     catch(Exception ex){
+      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String error = "ERROR: could not export DB(s). "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
