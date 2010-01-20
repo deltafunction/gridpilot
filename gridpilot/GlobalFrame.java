@@ -510,6 +510,7 @@ public class GlobalFrame extends GPFrame{
 
       public void menuSelected(MenuEvent e) {
         // Refresh active elements of the menu
+        selectedPanel = getActiveDBPanel();
         selectedPanel.fileMenuSelected();
       }
     });
