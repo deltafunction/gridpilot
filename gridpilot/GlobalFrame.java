@@ -61,7 +61,9 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miExport = new JMenuItem();
-  
+  private JMenuItem miDBs = new JMenuItem();
+
+
   private Object app;
   private Class<?> appc;
   private Class<?> lc;
@@ -83,7 +85,9 @@ public class GlobalFrame extends GPFrame{
   }
   
   private void setMacOSMenus(){
-    
+
+    miDBs.setEnabled(false);
+
     menuEditCopy.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     menuEditCut.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     menuEditPaste.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
@@ -452,7 +456,14 @@ public class GlobalFrame extends GPFrame{
   protected void processWindowEvent(WindowEvent e){
     super.processWindowEvent(e);
     if (e.getID()==WindowEvent.WINDOW_CLOSING){
-      GridPilot.exit(0);
+      if(MyUtil.onMacOSX()){
+        // Just hide the window
+        this.setVisible(false);
+        miDBs.setVisible(true);
+      }
+      else{
+        GridPilot.exit(0);
+      }
     }
   }
 
@@ -694,17 +705,55 @@ public class GlobalFrame extends GPFrame{
       }
     }
 
+    if(MyUtil.onMacOSX()){
+      miDBs = new JMenuItem("Show DB browser \t\t \u2318 n");
+      miDBs.setVisible(false);
+      miDBs.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+      miDBs.addActionListener(new ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          ResThread t = (new ResThread(){
+            public void run(){
+              try{
+                ResThread t = new ResThread(){
+                  public void run(){
+                    try{
+                      miDBs.setVisible(false);
+                      GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
+                    }
+                    catch(Exception ex){
+                      Debug.debug("WARNING: could not create DB browser panel.", 1);
+                      ex.printStackTrace();
+                    }
+                  }
+                };
+                t.start();
+              }
+              catch(Exception ex){
+                Debug.debug("WARNING: could not create DB Browser.", 1);
+                ex.printStackTrace();
+              }
+            }
+          });     
+          SwingUtilities.invokeLater(t);
+        }
+      });
+      menuView.add(miDBs);
+      menuView.validate();
+      
+      menuView.addSeparator();
+    }
+
     menuView.add(cbMonitor);
     
     menuView.addSeparator();
 
     JMenuItem miBrowser;
     if(MyUtil.onMacOSX()){
-      miBrowser = new JMenuItem("New browser \t\t \u2318 o");
+      miBrowser = new JMenuItem("New file browser \t\t \u2318 o");
       miBrowser.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     }
     else{
-      miBrowser = new JMenuItem("New browser (ctrl o)");
+      miBrowser = new JMenuItem("New file browser (ctrl o)");
     }
     miBrowser.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){

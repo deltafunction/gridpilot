@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jnlp spec="1.0+" codebase="http://gridfactory.org/download/" href="gridpilot.jnlp">
+  <information>
+    <title>Welcome to GridPilot!</title>
+    <vendor>Frederik Orellana</vendor>
+    <homepage href="http://gridpilot.dk/" />
+    <offline-allowed />
+  </information>
+  <resources>
+    <j2se version="1.6+" />
+    <jar href="gridpilot.jar" />
+  </resources>
+  <application-desc main-class="gridpilot.GridPilot" />
+</jnlp>

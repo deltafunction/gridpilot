@@ -413,7 +413,7 @@ public class GridPilot extends JApplet{
     catch(Exception e){
     }
     if(theme!=null){
-      Debug.debug("Setting Metal theme "+theme, 2);
+      Debug.debug("Setting theme "+theme, 2);
       try{
         if(theme.equals("DefaultMetal")){
           MetalLookAndFeel.setCurrentTheme(new DefaultMetalTheme());
@@ -570,7 +570,7 @@ public class GridPilot extends JApplet{
    * GUI
    */
 
-  private void initGUI() throws Exception{
+  protected void initGUI() throws Exception{
     if(MyUtil.onMacOSX()){
       System.setProperty("com.apple.macos.useScreenMenuBar", "true");
       System.setProperty("com.apple.mrj.application.growbox.intrudes", "false");
