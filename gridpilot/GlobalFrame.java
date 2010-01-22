@@ -174,12 +174,15 @@ public class GlobalFrame extends GPFrame{
     */
    tabbedPane.addMouseListener(new MouseAdapter(){
      public void mouseReleased(MouseEvent evt){
-       if (tabbedPane.getTabCount()==0 || tabbedPane.getSelectedIndex()<0){
+       if(tabbedPane.getTabCount()==0 || tabbedPane.getSelectedIndex()<0){
          return;
        }
-       if (!evt.isPopupTrigger()){
+       if(!evt.isPopupTrigger()){
          IconProxy iconProxy = (IconProxy) tabbedPane.getIconAt(tabbedPane.getSelectedIndex());
-         if (iconProxy.contains(evt.getX(), evt.getY())){
+         DBPanel activePanel = getActiveDBPanel();
+         if((GridPilot.ADVANCED_MODE || !activePanel.getTableName().startsWith("application") &&
+             !activePanel.getTableName().toLowerCase().startsWith("dataset")) &&
+             iconProxy.contains(evt.getX(), evt.getY())){
            removePanel();
          }
        }
@@ -309,7 +312,10 @@ public class GlobalFrame extends GPFrame{
     }
     Debug.debug("Adding tab "+allPanels.size(), 3);
     allPanels.addElement(newPanel);
-    tabbedPane.addTab(smallTitle, new IconProxy(closeIcon), (JPanel) newPanel);
+    tabbedPane.addTab(smallTitle,
+        !GridPilot.ADVANCED_MODE && (title.toLowerCase().startsWith("application") ||
+         title.toLowerCase().startsWith("dataset"))?null:new IconProxy(closeIcon),
+        (JPanel) newPanel);
     Debug.debug("Added tab "+allPanels.size(), 3);
     // focus on new panel
     ((ListPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
