@@ -618,9 +618,10 @@ public class MyJTable extends JTable implements Table {
       }
 
     }
-
-
-    popupMenu.add(menuSort);
+    
+    if(GridPilot.ADVANCED_MODE){
+      popupMenu.add(menuSort);
+    }
     
 
     // menuShow initialisation
@@ -664,7 +665,9 @@ public class MyJTable extends JTable implements Table {
       }
     }
 
-    popupMenu.add(menuShow);
+    if(GridPilot.ADVANCED_MODE){
+      popupMenu.add(menuShow);
+    }
 /*
     popupMenu.addSeparator();
 

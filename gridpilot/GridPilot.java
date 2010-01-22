@@ -60,6 +60,7 @@ public class GridPilot extends JApplet{
   public static String [] MY_EXCLUDE_ITEMS = {"Systems", "*field*", "class", "driver",
       "parameters", "randomized", "* name", "* identifier", "* reference", "default user"};
   public static String TOP_CONFIG_SECTION = "GridPilot";
+  public static boolean ADVANCED_MODE = false;
   public static String DEFAULT_CONF_FILE_NAME_UNIX = ".gridpilot";
   public static String DEFAULT_FILE_NAME_WINDOWS = "gridpilot.conf";
   public static String [] PREFERRED_FILE_SERVERS = null;
@@ -72,7 +73,8 @@ public class GridPilot extends JApplet{
   public static String RESOURCES_PATH = null;
   private static String SKIN_NAME = null;
   public static String ICONS_PATH = null;
-  public static String [] TABS = null;
+  public static String [] TAB_DBS = null;
+  public static String [] TAB_TABLES = null;
   public static Splash SPLASH;
   // Allow plugins to add monitoring panels. Any Component in
   // to extraMonitorTabs will be added by MonitoringPanel (called by initGUI).
@@ -227,6 +229,12 @@ public class GridPilot extends JApplet{
   }
 
   public static void doLoadConfigValues() throws Exception{   
+    try{  
+       String adv = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Advanced mode");
+       ADVANCED_MODE = "yes".equalsIgnoreCase(adv) || "true".equalsIgnoreCase(adv);
+    }
+    catch(Throwable e){
+    }
     try{
       RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Resources");
     }
@@ -311,7 +319,31 @@ public class GridPilot extends JApplet{
         }
       }
     }
-    TABS = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Initial panels");
+    String [] tabs = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Initial panels");
+    TAB_DBS = new String[0];
+    TAB_TABLES = new String[0];
+    if(tabs!=null && tabs.length>0){
+      try{
+        TAB_DBS = new String[tabs.length];
+        TAB_TABLES = new String[tabs.length];
+        String[] strs;
+        for(int i=0; i<tabs.length; ++i){
+          strs = MyUtil.split(tabs[i], ":");
+          TAB_DBS[i] = strs[0].trim();
+          TAB_TABLES[i] = strs[1].trim();
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    if(TAB_DBS.length==0 || TAB_TABLES.length==0){
+      getClassMgr().getLogFile().addMessage(
+          "WARNING: you have not specified any inital panels. " +
+          "A default set will be used.");
+      TAB_DBS = new String[] {"My_DB_Local"};
+      TAB_TABLES = new String[] {"dataset"};
+    }
     PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
        "Proxy type", "RFC");
     PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
@@ -1029,7 +1061,7 @@ public class GridPilot extends JApplet{
     GridPilot.getClassMgr().getStatusBar().setLabel("Connection ok.");
   }
 
-  public static String getTabDisplayName(String tableName) {
+  public static String getTabDisplayName(String dbName, String tableName) {
     if(tableName.equalsIgnoreCase("executable")){
       return "executables";
     }
@@ -1037,7 +1069,16 @@ public class GridPilot extends JApplet{
       return "runtime environments";
     }
     else if(tableName.equalsIgnoreCase("dataset")){
-      return "applications/datasets";
+      DBPluginMgr db = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+      if(db.isFileCatalog() && !db.isJobRepository()){
+        return "datasets";
+      }
+      else if(!db.isFileCatalog() && db.isJobRepository()){
+        return "applications";
+      }
+      else{
+        return "applications/datasets";
+      }
     }
     else if(tableName.equalsIgnoreCase("jobDefinition")){
       return "job definitions";

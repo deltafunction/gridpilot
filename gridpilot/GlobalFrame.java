@@ -250,16 +250,16 @@ public class GlobalFrame extends GPFrame{
     if(GridPilot.DB_NAMES.length<=0){
       return;
     }
-    for(int i=0; i<GridPilot.TABS.length; ++i){
+    for(int i=0; i<GridPilot.TAB_DBS.length; ++i){
       try{
         DBPanel panel = new DBPanel();
-        panel.initDB(GridPilot.DB_NAMES[0], GridPilot.TABS[i]);
+        panel.initDB(GridPilot.TAB_DBS[i], GridPilot.TAB_TABLES[i]);
         panel.initGUI();
         addPanel(panel);
       }
       catch(Exception e){
         Debug.debug("ERROR: could not load database panel for "+
-            GridPilot.DB_NAMES[0] + " : " + GridPilot.TABS[i], 1);
+            GridPilot.TAB_DBS[i] + " : " + GridPilot.TAB_TABLES[i], 1);
         e.printStackTrace();
       }
     }
@@ -486,10 +486,14 @@ public class GlobalFrame extends GPFrame{
     // Import/export
     JMenuItem miImport = new JMenuItem("Import application(s)");
     menuFile.add(miImport);
-    menuFile.add(miExport);
+    if(GridPilot.ADVANCED_MODE){
+      menuFile.add(miExport);
+    }
     miImport.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        importToDB();
+        DBPanel activePanel = getActiveDBPanel();
+        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));       
+        importToDB(activePanel);
       }
     });
     miExport.addActionListener(new ActionListener(){
@@ -650,12 +654,14 @@ public class GlobalFrame extends GPFrame{
       }
     });
 
-    menuFile.addSeparator();
-    menuFile.add(miCsReconnect);
-    menuFile.add(miDbRefreshRTEs);
-    menuFile.addSeparator();
-    menuFile.add(miDbClearCaches);
-    menuFile.add(miDbReconnect);
+    if(GridPilot.ADVANCED_MODE){
+      menuFile.addSeparator();
+      menuFile.add(miCsReconnect);
+      menuFile.add(miDbRefreshRTEs);
+      menuFile.addSeparator();
+      menuFile.add(miDbClearCaches);
+      menuFile.add(miDbReconnect);
+    }
    
     if(!GridPilot.isApplet()){
       if(!MyUtil.onMacOSX()){
@@ -723,126 +729,13 @@ public class GlobalFrame extends GPFrame{
     menuView.add(miBrowser);
     menuView.validate();
     
-    menuView.addSeparator();
-    
-    for(i=0; i<GridPilot.DB_NAMES.length; ++i){
-      
-      final JMenu mDB = new JMenu("New tab with "+GridPilot.DB_NAMES[i]);
-      mDB.setName(GridPilot.DB_NAMES[i]);
-      
-      // Check if there is a runtimeEnvironment table in this database
-      try{
-        if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.DB_NAMES[i]).getFieldNames("runtimeEnvironment")!=null)){
-          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("runtimeEnvironment"));
-          miNewTab.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-              try{
-                DBPanel panel = new DBPanel();
-                panel.initDB(mDB.getName(), "runtimeEnvironment");
-                panel.initGUI();
-                addPanel(panel, GridPilot.getTabDisplayName("runtimeEnvironment"));          
-              }
-              catch(Exception ex){
-                Debug.debug("Could not add panel ", 1);
-                ex.printStackTrace();
-              }
-              selectedPanel = getActiveDBPanel();
-            }
-          });
-          mDB.add(miNewTab);
-        }
+    if(GridPilot.ADVANCED_MODE){
+      menuView.addSeparator();
+      for(i=0; i<GridPilot.DB_NAMES.length; ++i){
+        addDBMenuItem(GridPilot.DB_NAMES[i], menuView);
       }
-      catch(Exception e){
-      }
-
-      // Check if there is a executable table in this database
-      try{
-        if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.DB_NAMES[i]).getFieldNames("executable")!=null)){
-          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("executable"));
-          miNewTab.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-              try{
-                DBPanel panel = new DBPanel();
-                panel.initDB(mDB.getName(), "executable");
-                panel.initGUI();
-                addPanel(panel, GridPilot.getTabDisplayName("executable"));          
-              }
-              catch(Exception ex){
-                Debug.debug("Could not add panel ", 1);
-                ex.printStackTrace();
-              }
-              selectedPanel = getActiveDBPanel();
-            }
-          });
-          mDB.add(miNewTab);
-        }
-      }
-      catch(Exception e){
-      }
-      
-      // Check if there is a dataset table in this database
-      try{
-        Debug.debug("Checking for dataset in "+GridPilot.DB_NAMES[i], 2);
-        if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.DB_NAMES[i]).getFieldNames("dataset")!=null)){
-          Debug.debug("---> ok, adding", 2);
-          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("dataset"));
-          miNewTab.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-              try{
-                DBPanel panel = new DBPanel();
-                panel.initDB(mDB.getName(), "dataset");
-                panel.initGUI();
-                addPanel(panel, GridPilot.getTabDisplayName("dataset"));          
-              }
-              catch(Exception ex){
-                Debug.debug("Could not add panel ", 1);
-                ex.printStackTrace();
-              }
-              selectedPanel = getActiveDBPanel();
-            }
-          });
-          mDB.add(miNewTab);
-        }
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-      
-      // Check if there is a jobDefinition table in this database
-      try{
-        if((GridPilot.getClassMgr().getDBPluginMgr(
-            GridPilot.DB_NAMES[i]).getFieldNames("jobDefinition")!=null)){
-          JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName("jobDefinition"));
-          miNewTab.addActionListener(new ActionListener(){
-            public void actionPerformed(ActionEvent e){
-              try{
-                DBPanel panel = new DBPanel();
-                panel.initDB(mDB.getName(), "jobDefinition");
-                panel.initGUI();
-                addPanel(panel, GridPilot.getTabDisplayName("jobDefinition"));          
-              }
-              catch(Exception ex){
-                Debug.debug("Could not add panel ", 1);
-                ex.printStackTrace();
-              }
-              selectedPanel = getActiveDBPanel();
-            }
-          });
-          mDB.add(miNewTab);
-        }
-      }
-      catch(Exception e){
-      }
-      
-      if(mDB.getMenuComponentCount()>0){
-        menuView.add(mDB);
-      }
-
     }
-    
+
     cbMonitor.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         toggleMonitoringPanel();
@@ -917,6 +810,122 @@ public class GlobalFrame extends GPFrame{
 
   }
   
+  private void addDBMenuItem(final String dbName, JMenu menuView) {
+    final JMenu mDB = new JMenu("New tab with "+dbName);
+    mDB.setName(dbName);
+    
+    // Check if there is a runtimeEnvironment table in this database
+    try{
+      if((GridPilot.getClassMgr().getDBPluginMgr(
+          dbName).getFieldNames("runtimeEnvironment")!=null)){
+        JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName(dbName, "runtimeEnvironment"));
+        miNewTab.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            try{
+              DBPanel panel = new DBPanel();
+              panel.initDB(mDB.getName(), "runtimeEnvironment");
+              panel.initGUI();
+              addPanel(panel, GridPilot.getTabDisplayName(dbName, "runtimeEnvironment"));          
+            }
+            catch(Exception ex){
+              Debug.debug("Could not add panel ", 1);
+              ex.printStackTrace();
+            }
+            selectedPanel = getActiveDBPanel();
+          }
+        });
+        mDB.add(miNewTab);
+      }
+    }
+    catch(Exception e){
+    }
+
+    // Check if there is a executable table in this database
+    try{
+      if((GridPilot.getClassMgr().getDBPluginMgr(
+          dbName).getFieldNames("executable")!=null)){
+        JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName(dbName, "executable"));
+        miNewTab.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            try{
+              DBPanel panel = new DBPanel();
+              panel.initDB(mDB.getName(), "executable");
+              panel.initGUI();
+              addPanel(panel, GridPilot.getTabDisplayName(dbName, "executable"));          
+            }
+            catch(Exception ex){
+              Debug.debug("Could not add panel ", 1);
+              ex.printStackTrace();
+            }
+            selectedPanel = getActiveDBPanel();
+          }
+        });
+        mDB.add(miNewTab);
+      }
+    }
+    catch(Exception e){
+    }
+    
+    // Check if there is a dataset table in this database
+    try{
+      Debug.debug("Checking for dataset in "+dbName, 2);
+      if((GridPilot.getClassMgr().getDBPluginMgr(
+          dbName).getFieldNames("dataset")!=null)){
+        Debug.debug("---> ok, adding", 2);
+        JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName(dbName, "dataset"));
+        miNewTab.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            try{
+              DBPanel panel = new DBPanel();
+              panel.initDB(mDB.getName(), "dataset");
+              panel.initGUI();
+              addPanel(panel, GridPilot.getTabDisplayName(dbName, "dataset"));          
+            }
+            catch(Exception ex){
+              Debug.debug("Could not add panel ", 1);
+              ex.printStackTrace();
+            }
+            selectedPanel = getActiveDBPanel();
+          }
+        });
+        mDB.add(miNewTab);
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
+    // Check if there is a jobDefinition table in this database
+    try{
+      if((GridPilot.getClassMgr().getDBPluginMgr(
+          dbName).getFieldNames("jobDefinition")!=null)){
+        JMenuItem miNewTab = new JMenuItem(GridPilot.getTabDisplayName(dbName, "jobDefinition"));
+        miNewTab.addActionListener(new ActionListener(){
+          public void actionPerformed(ActionEvent e){
+            try{
+              DBPanel panel = new DBPanel();
+              panel.initDB(mDB.getName(), "jobDefinition");
+              panel.initGUI();
+              addPanel(panel, GridPilot.getTabDisplayName(dbName, "jobDefinition"));          
+            }
+            catch(Exception ex){
+              Debug.debug("Could not add panel ", 1);
+              ex.printStackTrace();
+            }
+            selectedPanel = getActiveDBPanel();
+          }
+        });
+        mDB.add(miNewTab);
+      }
+    }
+    catch(Exception e){
+    }
+    
+    if(mDB.getMenuComponentCount()>0){
+      menuView.add(mDB);
+    }
+  }
+
   protected void setDefineMenu(boolean ds, int selectedRows, boolean notFilePanel){
     mDbDefineRecords.setVisible(ds);
     miWithoutInput.setVisible(ds);
@@ -995,6 +1004,15 @@ public class GlobalFrame extends GPFrame{
   }
 
   protected void exportDB() {
+    final DBPanel activePanel = getActiveDBPanel();
+    activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    new Thread(){
+      public void run(){
+        doExportDB(activePanel);
+      }
+    }.start();
+  }
+  protected void doExportDB(DBPanel activePanel) {
     String url = null;
     try{
       //url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
@@ -1003,37 +1021,53 @@ public class GlobalFrame extends GPFrame{
     catch(IOException e){
       e.printStackTrace();
     }
-    DBPanel activePanel = getActiveDBPanel();
     try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         if(activePanel.getSelectedIdentifiers().length==1){
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               activePanel.getDBName(), activePanel.getSelectedIdentifier());
+          MyUtil.showMessage("Export successful",
+              "Thanks and congratulations! You've successfully exported your application/dataset, " +
+              "making it available for others to use.");
         }
         else{
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               null, null);
+          MyUtil.showMessage("Export successful",
+              "Thanks and congratulations! You've successfully exported your applications/datasets, " +
+              "making them available for others to use.");
         }
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
       }
     }
     catch(Exception ex){
-      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       String error = "ERROR: could not export DB(s). "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
       ex.printStackTrace();
     }
+    activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
   }
     
-  protected void importToDB() {
-    DBPanel activePanel = getActiveDBPanel();
-    activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+  protected void importToDB(final DBPanel activePanel) {
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          doImportToDB(activePanel);
+        }
+        catch(Exception ex){
+          Debug.debug("WARNING: could not import.", 1);
+          ex.printStackTrace();
+        }
+      }
+    };     
+    t.start(); 
+  }
+  
+  private void doImportToDB(DBPanel activePanel) {
     String url = null;
     try{
       //url = MyUtil.getURL("file:~/", null, false, "Choose *.gpa file to import from.");

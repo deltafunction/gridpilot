@@ -910,11 +910,12 @@ public class BeginningWizard{
     /*
     home site = FZKDISK mysql://dq2user:dqpwd@grid00.unige.ch:3306/localreplicas
     */
+    String initalPanels = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Initial panels");
     if(cbAtlas.isSelected()){
       configFile.setAttributes(
-          new String [] {"ATLAS"},
-          new String [] {"Enabled"},
-          new String [] {"yes"}
+          new String [] {GridPilot.TOP_CONFIG_SECTION, "ATLAS"},
+          new String [] {"Initial panels", "Enabled"},
+          new String [] {initalPanels+" ATLAS:dataset", "yes"}
           );
       if(tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
         configFile.setAttributes(
@@ -1506,12 +1507,12 @@ public class BeginningWizard{
       // Local DB, enable My_DB_Local, disable My_DB_Remote and GP_DB.
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = My_DB_Local
        configFile.setAttributes(
-          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+          new String [] {GridPilot.TOP_CONFIG_SECTION, "My_DB_Local", "My_DB_Remote", "GP_DB",
               "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
-          new String [] {"Enabled", "Enabled", "Enabled",
+          new String [] {"Initial panels", "Enabled", "Enabled", "Enabled",
               "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
               "Runtime databases","Runtime databases","Runtime databases"},
-          new String [] {"yes", "no", "no",
+          new String [] {"My_DB_Local:dataset", "yes", "no", "no",
               "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local", "My_DB_Local",
               "My_DB_Local", "My_DB_Local"}
       );  
@@ -1522,12 +1523,12 @@ public class BeginningWizard{
       // Set GP_DB:database = gridpilot
       // Set [Fork|GRIDFACTORY|SSH|SSH_POOL|NG|GLite|EC2]:runtime databases = GP_DB My_DB_Local
       configFile.setAttributes(
-          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+          new String [] {GridPilot.TOP_CONFIG_SECTION, "My_DB_Local", "My_DB_Remote", "GP_DB",
               "GP_DB", "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
-          new String [] {"Enabled", "Enabled", "Enabled",
+          new String [] {"Initial panels", "Enabled", "Enabled", "Enabled",
               "Database", "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
               "Runtime databases", "Runtime databases", "Runtime databases"},
-          new String [] {"yes", "no", "yes",
+          new String [] {"GP_DB:dataset My_DB_Local:dataset", "yes", "no", "yes",
               "jdbc:mysql://www.gridpilot.dk:3306/gridpilot", "My_DB_Local", "GP_DB My_DB_Local",
               "My_DB_Local", "My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local", "GP_DB My_DB_Local"}
       );  
@@ -1544,14 +1545,14 @@ public class BeginningWizard{
         dbDesc = origDbDesc;
       }
       configFile.setAttributes(
-          new String [] {"My_DB_Local", "My_DB_Remote", "GP_DB",
+          new String [] {GridPilot.TOP_CONFIG_SECTION, "My_DB_Local", "My_DB_Remote", "GP_DB",
               "My_DB_Remote", "My_DB_Remote",
               "Fork", "GRIDFACTORY", "SSH", "SSH_POOL", "NG", "GLite", "EC2"},
-          new String [] {"Enabled", "Enabled", "Enabled",
+          new String [] {"Initial panels", "Enabled", "Enabled", "Enabled",
              "Database", "Description",
               "Runtime databases", "Runtime databases", "Runtime databases", "Runtime databases",
               "Runtime databases", "Runtime databases", "Runtime databases"},
-          new String [] {"yes", "yes", "no",
+          new String [] {"My_DB_Remote:dataset My_DB_Local:dataset", "yes", "yes", "no",
               "jdbc:mysql://"+newDirs[sel].trim()+":3306/", dbDesc,
               "My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Local", "My_DB_Local",
               "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local", "My_DB_Remote My_DB_Local"}

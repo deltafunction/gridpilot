@@ -654,7 +654,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       menuEditCut.setEnabled(false);
       menuEditPaste.setEnabled(false);
     }
-    showFilter(false);
+    showFilter(dbPluginMgr.isFileCatalog() && !dbPluginMgr.isJobRepository());
     updateUI();
   }
 
@@ -983,7 +983,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   public String getTitle(){
-    return GridPilot.getTabDisplayName(tableName);
+    return GridPilot.getTabDisplayName(dbName, tableName);
   }
 
   public void panelShown(){
@@ -1596,16 +1596,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miExportDataset.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        new Thread(){
-          public void run(){
-            try{
-              exportDataset();
-            }
-            catch(Exception e){
-              e.printStackTrace();
-            }
-          }
-        }.start();
+        exportDataset();
       }
     });
     JMenuItem miDelete = new JMenuItem("Delete");
@@ -1629,15 +1620,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miCreateJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
-    tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miImportFiles);
-    tableResults.addMenuSeparator();
-    tableResults.addMenuItem(miExportDataset);
-    tableResults.addMenuSeparator();
+    
+    if(GridPilot.ADVANCED_MODE){
+      tableResults.addMenuSeparator();
+      tableResults.addMenuItem(miImportFiles);
+      tableResults.addMenuSeparator();
+      tableResults.addMenuItem(miExportDataset);
+      tableResults.addMenuSeparator();
+    }
+
     tableResults.addMenuItem(miGetInfoOnDataset);
     tableResults.addMenuItem(miViewFiles);
-    tableResults.addMenuItem(miReplicateDataset);
     tableResults.addMenuItem(miViewJobDefinitions);
+    tableResults.addMenuSeparator();
+    tableResults.addMenuItem(miReplicateDataset);
     tableResults.addMenuItem(miCreateJobDefinitions);
     tableResults.addMenuSeparator();
     tableResults.addMenuItem(miEdit);
@@ -1805,8 +1801,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miDelete.setEnabled(true);
     miEdit.setEnabled(true);
     miMonitor.setEnabled(true);
-    tableResults.addMenuItem(jmSetFieldValue);
-    tableResults.addMenuSeparator();
+    if(GridPilot.ADVANCED_MODE){
+      tableResults.addMenuItem(jmSetFieldValue);
+      tableResults.addMenuSeparator();
+    }
     tableResults.addMenuItem(miMonitor);
     tableResults.addMenuItem(jmSubmit);
     tableResults.addMenuSeparator();
@@ -3367,6 +3365,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called from the right-click menu
    */
   private void exportDataset(){
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    new Thread(){
+      public void run(){
+        try{
+          doExportDataset();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    }.start();
+  }
+  
+  private void doExportDataset(){
     if(!getSelectedIdentifier().equals("-1") && !exportingDataset){
       new Thread(){
         public void run(){
@@ -3374,19 +3386,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
           try{
-            setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             exportDataset(datasetID);
-            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            MyUtil.showMessage("Export successful",
+                "Thanks and congratulations! You've successfully exported your application/dataset, " +
+                "making it available for others to use.");
           }
           catch(Exception e){
             String error = "ERROR: could not export dataset";
             Debug.debug(error, 1);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             exportingDataset = false;
-            return;
           }         
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           exportingDataset = false;
         }
       }.start();
@@ -3394,23 +3406,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void exportDataset(String datasetID) {
-    DBPanel activePanel = GridPilot.getClassMgr().getGlobalFrame().getActiveDBPanel();
     try{
       //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
       String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       else{
         Debug.debug("Not exporting. "+url, 2);
       }
     }
     catch(Exception ex){
-      activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-      String error = "ERROR: could not export DB(s). "+ex.getMessage();
+      String error = "ERROR: could not export from DB. "+ex.getMessage();
       MyUtil.showError(error);
       GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
       ex.printStackTrace();

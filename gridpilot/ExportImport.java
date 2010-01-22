@@ -252,13 +252,27 @@ public class ExportImport {
       for(int j=0; j<dbResult.fields.length; ++j){
         if(newValues[i][j]!=null && !newValues[i][j].equals("")){
           insFields.append((oneInserted?", ":"")+dbResult.fields[j]);
-          insValues.append((oneInserted?", ":"")+"'"+newValues[i][j]+"'");
+          insValues.append((oneInserted?", ":"")+"'"+sqlToText((String) newValues[i][j])+"'");
           oneInserted = true;
         }
       }
       res.append(insFields.toString()+insValues.toString()+");\n");
     }
     return res.toString();
+  }
+  
+  private static String sqlToText(String value){
+    String value1 = value.replaceAll("\\\\\'", "\\\\quote");
+    value1 = value1.replaceAll("\'", "\\\\quote");
+    return value1;
+  }
+
+  private static String textToSql(String value){
+    if(value==null){
+      return "";
+    }
+    String value1 = value.replaceAll("\\\\quote", "\\\'");
+    return value1;
   }
 
   /**
@@ -295,6 +309,7 @@ public class ExportImport {
     // Insert the SQL
     String sqlFile = (new File(tmpDir, "executable.sql")).getAbsolutePath();
     String sql = LocalStaticShell.readFile(sqlFile);
+    sql = textToSql(sql);
     mgr.executeUpdate(sql);
     Debug.debug("mgr reports: "+mgr.getError(), 3);
     if(mgr.getError()!=null && !mgr.getError().equals("")){
