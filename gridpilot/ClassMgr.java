@@ -46,21 +46,21 @@ public class ClassMgr{
   private StatisticsPanel transferStatisticsPanel;
   private JobValidation jobValidation;
   private GridPilot gridPilot;
-  private HashMap dbMgrs = new HashMap();
-  private HashMap ft = new HashMap();
+  private HashMap<String, DBPluginMgr> dbMgrs = new HashMap<String, DBPluginMgr>();
+  private HashMap<String, FileTransfer> ft = new HashMap<String, FileTransfer>();
   private HashMap<String, JobMgr> jobMgrs = new HashMap<String, JobMgr>();
   private Vector<MyJobInfo> monitoredJobs = new Vector<MyJobInfo>();
-  private Vector submittedTransfers = new Vector();
+  private Vector<TransferInfo> submittedTransfers = new Vector<TransferInfo>();
   private SubmissionControl submissionControl;
   private MyTransferControl transferControl;
-  private HashMap shellMgrs = new HashMap();
+  private HashMap<String, Shell> shellMgrs = new HashMap<String, Shell>();
   private static String DEFAULT_POOL_SIZE = "10";
   /** List of urls in db pool */
-  private HashSet dbURLs = new HashSet();
+  private HashSet<String> dbURLs = new HashSet<String>();
   private MySSL ssl = null;
   private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
   private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
-  private Vector urlList = new Vector();
+  private Vector<String> urlList = new Vector<String>();
   private FileCacheMgr fileCacheMgr;
   private HashMap<String, HashMap<String, String>> reverseRteTranslationMap =
      new HashMap<String, HashMap<String, String>>();
@@ -80,7 +80,7 @@ public class ClassMgr{
       dbMgrs.put(dbName, dbPluginMgr);
     }
     catch(NullPointerException e){
-      dbMgrs.put(dbName, new HashMap());
+      dbMgrs.put(dbName, null);
     }
     try {
       dbPluginMgr.init();
@@ -154,7 +154,7 @@ public class ClassMgr{
     if(ft.get(ftName)==null){
       throw new NullPointerException("FT plugin null for "+ftName);
     }
-    return (FileTransfer) ft.get(ftName);
+    return ft.get(ftName);
   }
   
   public void setFTPlugin(String ftName, FileTransfer ftObject){
@@ -256,7 +256,7 @@ public class ClassMgr{
   }
 
   public void clearDBCaches(){
-    for(Iterator i=dbMgrs.values().iterator(); i.hasNext();){
+    for(Iterator<DBPluginMgr> i=dbMgrs.values().iterator(); i.hasNext();){
       ((DBPluginMgr) i.next()).clearCaches();
     }
   }

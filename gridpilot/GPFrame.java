@@ -20,9 +20,6 @@ public class GPFrame extends JFrame{
   // GridPilot.getClassMgr().getStatusBar()
   public StatusBar statusBar;
   
-  /**
-   * Constructor
-   */
   public GPFrame(){
     
     //JFrame.setDefaultLookAndFeelDecorated(true);

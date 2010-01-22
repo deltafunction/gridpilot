@@ -61,8 +61,6 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem miWithoutInput = new JMenuItem("from scratch");
   private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miExport = new JMenuItem();
-  private JMenuItem miDBs = new JMenuItem();
-
 
   private Object app;
   private Class<?> appc;
@@ -72,10 +70,6 @@ public class GlobalFrame extends GPFrame{
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
 
-  
-  /**
-   * Constructor
-   */
   public GlobalFrame() throws Exception{
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector<ListPanel>();
@@ -86,16 +80,14 @@ public class GlobalFrame extends GPFrame{
   
   private void setMacOSMenus(){
 
-    miDBs.setEnabled(false);
-
     menuEditCopy.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     menuEditCut.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     menuEditPaste.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     cbMonitor.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
-    menuEditCopy.setText("Copy \t\t \u2318 c");
-    menuEditCut.setText("Cut \t\t \u2318 x");
-    menuEditPaste.setText("Paste \t\t \u2318 v");
-    cbMonitor.setText("Show monitor \t\t \u2318 m");
+    menuEditCopy.setText("Copy \t\t\t\t \u2318 c");
+    menuEditCut.setText("Cut \t\t\t\t \u2318 x");
+    menuEditPaste.setText("Paste \t\t\t\t \u2318 v");
+    cbMonitor.setText("Show monitor \t\t\t\t \u2318 m");
     
     try{
       app = MyUtil.loadClass("com.apple.eawt.Application", new Class[] {}, new String [] {});
@@ -456,14 +448,7 @@ public class GlobalFrame extends GPFrame{
   protected void processWindowEvent(WindowEvent e){
     super.processWindowEvent(e);
     if (e.getID()==WindowEvent.WINDOW_CLOSING){
-      if(MyUtil.onMacOSX()){
-        // Just hide the window
-        this.setVisible(false);
-        miDBs.setVisible(true);
-      }
-      else{
-        GridPilot.exit(0);
-      }
+      GridPilot.exit(0);
     }
   }
 
@@ -705,51 +690,13 @@ public class GlobalFrame extends GPFrame{
       }
     }
 
-    if(MyUtil.onMacOSX()){
-      miDBs = new JMenuItem("Show DB browser \t\t \u2318 n");
-      miDBs.setVisible(false);
-      miDBs.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
-      miDBs.addActionListener(new ActionListener(){
-        public void actionPerformed(ActionEvent e){
-          ResThread t = (new ResThread(){
-            public void run(){
-              try{
-                ResThread t = new ResThread(){
-                  public void run(){
-                    try{
-                      miDBs.setVisible(false);
-                      GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
-                    }
-                    catch(Exception ex){
-                      Debug.debug("WARNING: could not create DB browser panel.", 1);
-                      ex.printStackTrace();
-                    }
-                  }
-                };
-                t.start();
-              }
-              catch(Exception ex){
-                Debug.debug("WARNING: could not create DB Browser.", 1);
-                ex.printStackTrace();
-              }
-            }
-          });     
-          SwingUtilities.invokeLater(t);
-        }
-      });
-      menuView.add(miDBs);
-      menuView.validate();
-      
-      menuView.addSeparator();
-    }
-
     menuView.add(cbMonitor);
     
     menuView.addSeparator();
 
     JMenuItem miBrowser;
     if(MyUtil.onMacOSX()){
-      miBrowser = new JMenuItem("New file browser \t\t \u2318 o");
+      miBrowser = new JMenuItem("New file browser \t\t\t \u2318 o");
       miBrowser.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     }
     else{
@@ -973,7 +920,8 @@ public class GlobalFrame extends GPFrame{
   protected void setDefineMenu(boolean ds, int selectedRows, boolean notFilePanel){
     mDbDefineRecords.setVisible(ds);
     miWithoutInput.setVisible(ds);
-    miWithInputDataset.setVisible(ds);  
+    miWithInputDataset.setVisible(ds);
+    miDbDefineRecords.setEnabled(!ds && notFilePanel);
     miDbDefineRecords.setVisible(!ds && notFilePanel);
     miWithInputDataset.setEnabled(ds && selectedRows>0);
     miWithoutInput.setEnabled(notFilePanel);
