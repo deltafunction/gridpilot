@@ -1540,7 +1540,7 @@ public class MyTransferControl extends TransferControl {
    * @throws IOException
    * @throws FTPException
    */
-  public void upload(File file, final String uploadUrl) throws Exception, FTPException{
+  public void upload(File file, final String uploadUrl) throws Exception{
     String uploadUrlDir = null;
     String uploadFileName = null;
     

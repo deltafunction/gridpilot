@@ -3386,10 +3386,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           // Get the dataset name and id
           String datasetID = getSelectedIdentifier();
           try{
-            exportDataset(datasetID);
-            MyUtil.showMessage("Export successful",
-                "Thanks and congratulations! You've successfully exported your application/dataset, " +
-                "making it available for others to use.");
+            if(exportDataset(datasetID)){
+              MyUtil.showMessage("Export successful",
+                  "Thanks and congratulations! You've successfully exported your application/dataset, " +
+                  "making it available for others to use.");
+            }
           }
           catch(Exception e){
             String error = "ERROR: could not export dataset";
@@ -3405,23 +3406,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  private void exportDataset(String datasetID) {
-    try{
-      //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
-      String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
-      if(url!=null && !url.equals("")){
-        Debug.debug("Exporting to "+url, 2);
-        ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)), dbName, datasetID);
-      }
-      else{
-        Debug.debug("Not exporting. "+url, 2);
-      }
+  private boolean exportDataset(String datasetID) throws Exception {
+    //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
+    String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
+    if(url!=null && !url.equals("")){
+      Debug.debug("Exporting to "+url, 2);
+      ExportImport.exportDB(
+          MyUtil.urlIsRemote(url)?
+          url:
+          MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
+          dbName, datasetID);
+      return true;
     }
-    catch(Exception ex){
-      String error = "ERROR: could not export from DB. "+ex.getMessage();
-      MyUtil.showError(error);
-      GridPilot.getClassMgr().getLogFile().addMessage(error, ex);
-      ex.printStackTrace();
+    else{
+      Debug.debug("Not exporting. "+url, 2);
+      return false;
     }
   }
 
