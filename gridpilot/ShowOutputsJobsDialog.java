@@ -49,11 +49,11 @@ public class ShowOutputsJobsDialog extends JOptionPane{
     int[] choices = new int[jobs.size()];
     MyJobInfo job;
     String[] files;
-    Vector vFiles;
+    Vector<String> vFiles;
     int i = 0;
     for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
       job = it.next();
-      vFiles = new Vector();
+      vFiles = new Vector<String>();
       if(job.getOutTmp()!=null){
           vFiles.add(job.getOutTmp());
       }
@@ -82,11 +82,11 @@ public class ShowOutputsJobsDialog extends JOptionPane{
         return null;
       }
 
-      if(cbForAll!=null && cbForAll.isSelected()){
-        int iSave = i;
-        for (++i; i<jobs.size(); ++i){
-          choices[i] = choices[iSave];
+      if(cbForAll!=null && cbForAll.isSelected() && jobs.size()>i+1){
+        for(int j=i+1; j<jobs.size(); ++j){
+          choices[j] = choices[i];
         }
+        break;
       }
       ++i;
     }
@@ -139,7 +139,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
     if(cb!=null){
       mainPanel.add(cb, BorderLayout.SOUTH);
     }
-    Vector threads = new Vector();
+    Vector<Thread> threads = new Vector<Thread>();
     for(int i=0; i<filesPaths.length; ++i){
       if(filesPaths[i]!=null){
         final JPanel panel = new JPanel(new BorderLayout());
@@ -218,7 +218,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
     dialog.setVisible(true);
     dialog.dispose();
     for (int i=0; i<threads.size(); ++i) {
-      Thread t = (Thread) threads.get(i);
+      Thread t = threads.get(i);
       t.interrupt();
     }
     if(options==null){
@@ -382,7 +382,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       final MyJobInfo job, final String[] filesPaths,
       String[] options, JCheckBox cb){
     final JPanel mainPanel = createMainPanel(cb);
-    Vector threads = new Vector();
+    Vector<Thread> threads = new Vector<Thread>();
     if(filesPaths==null){
       String content = "This job definition does not appear to have any associated scripts.";
       JPanel panel = createPanel("No scripts");
@@ -441,7 +441,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
     dialog.setVisible(true);
     dialog.dispose();
     for (int i=0; i<threads.size(); ++i) {
-      Thread t = (Thread) threads.get(i);
+      Thread t = threads.get(i);
       t.interrupt();
     }
     if(options==null){

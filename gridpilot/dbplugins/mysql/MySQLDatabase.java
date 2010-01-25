@@ -2206,7 +2206,14 @@ public class MySQLDatabase extends DBCache implements Database {
 
   public String [] getExecutableInputs(String executableID){    
     String inputs = (String) getExecutable(executableID).getValue("inputFiles");
-    return MyUtil.split(inputs);
+    String [] ret = null;
+    try{
+      ret = MyUtil.splitUrls(inputs);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return ret;
   }
   
   public String getError(){
