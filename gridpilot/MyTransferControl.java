@@ -725,7 +725,7 @@ public class MyTransferControl extends TransferControl {
         statusTable.setValueAt(userInfo, transfers[i].getTableRow(),
             MyTransferStatusUpdateControl.FIELD_USER);
         incrementProgressBarValue(pbSubmission, 1);
-        Debug.debug("Transfer submitted", 2);
+        Debug.debug("Transfer "+transfers[i].getTransferID()+" submitted", 2);
       }
       //increaseProgressBarMax(pbSubmission, -transfers.length);
       statusTable.updateSelection();
