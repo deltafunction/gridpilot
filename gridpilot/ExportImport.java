@@ -172,7 +172,7 @@ public class ExportImport {
           if(fileFields[i].equals(OUTPUT_LOCATION_FIELD) || urlsStr==null || urlsStr.endsWith("/")){
             continue;
           }
-          urls = MyUtil.split(urlsStr);
+          urls = MyUtil.splitUrls(urlsStr);
           for(int j=0; j<urls.length; ++j){
             // Download url to 'dir'/[record name]
             dlDir = new File(dir, name);
@@ -404,7 +404,7 @@ public class ExportImport {
     }
   }
   
-  private static void fixImportedExecutableFilesLocations(String dbName, File dir) {
+  private static void fixImportedExecutableFilesLocations(String dbName, File dir) throws Exception {
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     String sql = "SELECT * FROM executable WHERE ";
     for(int i=0; i<EXE_FILE_FIELDS.length; ++i){
@@ -423,7 +423,7 @@ public class ExportImport {
         urlsStr = dbResult.getString(EXE_FILE_FIELDS[i]);
         newUrlsStrs[i] = "";
         if(urlsStr!=null){
-          urls = MyUtil.split(urlsStr);
+          urls = MyUtil.splitUrls(urlsStr);
           for(int j=0; j<urls.length; ++j){
             // replace IMPORT_DIR/ with 'dir'/
             urls[j] = urls[j].replaceFirst("^"+IMPORT_DIR, "file:"+MyUtil.replaceWithTildeLocally(
