@@ -7,6 +7,7 @@ import gridfactory.common.LocalStaticShell;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.Vector;
 
 import javax.swing.JOptionPane;
 
@@ -285,12 +286,17 @@ public class ExportImport {
         executableDir)));
     File gridPilotDir = executableDirectory.getParentFile();
     File dataDirectory = new File(gridPilotDir, DEFAULT_DATA_DIR);
-    String [] choices = new String[GridPilot.DB_NAMES.length+1];
-    System.arraycopy(GridPilot.DB_NAMES, 0, choices, 0, GridPilot.DB_NAMES.length);
-    choices[choices.length-1] = "none (cancel)";
+    Vector<String> choicesVec = new Vector<String>();
+    for(int i=0; i<GridPilot.DB_NAMES.length; ++i){
+      if(GridPilot.getClassMgr().getDBPluginMgr(GridPilot.DB_NAMES[i]).isJobRepository()){
+        choicesVec.add(GridPilot.DB_NAMES[i]);
+      }
+    }
+    choicesVec.add("none (cancel)");
+    String [] choices = choicesVec.toArray(new String[choicesVec.size()]);
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = confirmBox.getConfirm("Import in database",
-  "<html>This will import dataset(s) and executable(s) in the chosen database.<br>" +
+        "<html>This will import dataset(s) and executable(s) in the chosen database.<br>" +
         "Any file(s) associated with the executables will be copied to<br>" +
         executableDirectory + "/.<br><br>" +
         "Non-existing local output location(s) will be set to<br>" +
@@ -299,8 +305,7 @@ public class ExportImport {
     if(choice<0 || choice>=choices.length-1){
       return null;
     }
-    String ret = "Successfully imported:\n\n";
-    String dbName = GridPilot.DB_NAMES[choice];
+    String dbName = choices[choice];
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     // Download the import file, unpack it in a tmp dir
     File tmpDir = downloadAndUnpack(importFile);
@@ -315,6 +320,7 @@ public class ExportImport {
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
     }
+    String ret = "Successfully imported:\n\n";
     ret += (sql!=null&&!sql.equals("")?
         " - "+((sql.length()-sql.toLowerCase().replaceAll("(?i)(?s)insert ", "").length())/7)+
            " executable record(s)\n":
@@ -340,7 +346,7 @@ public class ExportImport {
     ret +=(numFiles>0? "\n\nand\n\n - "+numFiles+ " application file(s)\n\ninto directory "+executableDirectory+".":
         ".");
     return ret;
-   }
+  }
   
   private static File downloadAndUnpack(String importFile) throws Exception{
     // Work in a tmp dir
