@@ -1756,7 +1756,15 @@ private static String fixUrl(String _url){
     String [] rteNames = job.getRTEs();
     Debug.debug("Setting up job RTES "+Util.arrayToString(rteNames), 2);
     Vector<String> rtes = new Vector<String>();
-    Collections.addAll(rtes, rteNames);
+    for(int i=0; i<rteNames.length; ++i){
+      if(rteMgr.getRTECatalog().getBaseSystem(rteNames[i])!=null){
+        continue;
+      }
+      if(rteMgr.isVM(rteNames[i])){
+        continue;
+      }
+      rtes.add(rteNames[i]);
+    }
     HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(rtes, job.getOpSys(), ignoreCatalogInconsistencies);
     String vmOs = depsMap.keySet().iterator().next();
     Vector<String> deps = depsMap.get(vmOs);
