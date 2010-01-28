@@ -237,14 +237,11 @@ public class MySSL extends SSL{
         MyUtil.extractFromJAR("/resources/vomsdir", tmpFile, this.getClass());
         // Move /resources/vomsdir -> vomsdir
         File par = new File(tmpFile, "resources");
-        File src = new File(par, "vomsdir");
-        File dst = new File(tmpFile, "vomsdir");
-        LocalStaticShell.moveFile(src.getAbsolutePath(), dst.getAbsolutePath());
+        File vomsdir = new File(par, "vomsdir");
         // have the diretory deleted on exit
         GridPilot.addTmpFile(tmpDir, new File(tmpDir));
-        String vDir = (new File(tmpFile, "vomsdir")).getAbsolutePath();
-        Debug.debug("Created tmp VOMS dir "+vDir, 3);
-        return vDir;
+        Debug.debug("Created tmp VOMS dir "+vomsdir, 3);
+        return vomsdir.getAbsolutePath();
       }
       // otherwise, just use the directory
       else{
