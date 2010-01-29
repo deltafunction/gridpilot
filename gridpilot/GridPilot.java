@@ -1,6 +1,7 @@
 package gridpilot;
 
 import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalShell;
@@ -693,24 +694,18 @@ public class GridPilot extends JApplet{
     Thread t1 = new Thread(){
       public void run(){
         IS_EXITING = true;
-        EXIT_PANEL.setPreferredSize(new Dimension(400, 40));
-        EXIT_PANEL.setIgnoreRepaint(true);
-        EXIT_PANEL.setText("Exiting... Please wait or click OK to force quit.");
-        JProgressBar jp = new JProgressBar();
-        jp.setIndeterminate(true);
-        TOP_EXIT_PANEL.setLayout(new GridBagLayout());
-        TOP_EXIT_PANEL.add(EXIT_PANEL, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
-            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-            new Insets(5, 5, 5, 5), 0, 0));
-        TOP_EXIT_PANEL.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
-            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-            new Insets(5, 5, 5, 5), 0, 0));
-        TOP_EXIT_PANEL.setBackground(SystemColor.getColor("window"));
-        int ret = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
-            TOP_EXIT_PANEL,
-            "Exiting", JOptionPane.PLAIN_MESSAGE);
-        Debug.debug("return value: ", ret);
-        if(ret==JOptionPane.OK_OPTION){
+        String text = "Exiting...\n" +
+        		"Please wait or click \"Force quit\" (not recommended).";
+        String [] choices = new String [] {"Force quit"};
+        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+        int choice = -1;
+        try{
+          choice = confirmBox.getConfirm("Exiting", text, choices);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        if(choice==0){
           System.exit(-1);
         }
       }
@@ -720,7 +715,7 @@ public class GridPilot extends JApplet{
         //  Cancel all transfers
         String message = "Cancelling running transfer(s)...";
         Debug.debug(message, 2);
-        setExitPanelText(message+" Click OK to force quit.");
+        setExitPanelText(message);
         jobManagerPanelExit();
         GridPilot.getClassMgr().getTransferControl().exit();
         //Delete temporary files
@@ -743,14 +738,14 @@ public class GridPilot extends JApplet{
         // Disconnect DBs and CSs
         message = "Disconnecting computing systems...";
         Debug.debug(message, 2);
-        setExitPanelText(message+" Click OK to force quit.");
+        setExitPanelText(message);
         if(getClassMgr().csPluginMgr!=null){
           getClassMgr().getCSPluginMgr().disconnect();
           getClassMgr().getCSPluginMgr().exit();
         }
         message = "Disconnecting databases...";
         Debug.debug(message, 2);
-        setExitPanelText(message+" Click OK to force quit.");
+        setExitPanelText(message);
         for(int i=0; i<DB_NAMES.length; ++i){
           getClassMgr().getDBPluginMgr(DB_NAMES[i]).disconnect();
           Debug.debug("Disconnecting "+DB_NAMES[i], 2);
