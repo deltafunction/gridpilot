@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <install4j version="4.2.4" transformSequenceNumber="2">
   <directoryPresets config="." />
-  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" missingFilesStrategy="warn" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.2pre1" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" installerName="" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
+  <application name="GridPilot" distributionSourceDir="" applicationId="8679-5196-1096-9771" mediaDir="../distribution" mediaFilePattern="${compiler:sys.shortName}_${compiler:sys.platform}_${compiler:sys.version}" compression="6" lzmaCompression="false" pack200Compression="false" excludeSignedFromPacking="true" keepModificationTimes="false" missingFilesStrategy="warn" shortName="gridpilot" publisher="Frederik Orellana, Niels Bohr Institute, University of Copenhagen" publisherWeb="" version="0.2.2" allPathsRelative="true" backupOnSave="false" autoSave="false" convertDotsToUnderscores="true" macSignature="????" installerName="" javaMinVersion="1.6" javaMaxVersion="" allowBetaVM="true" jdkMode="runtimeJre" jdkName="">
     <languages skipLanguageSelection="false" languageSelectionInPrincipalLanguage="false">
       <principalLanguage id="en" customLocalizationFile="" />
       <additionalLanguages />
@@ -69,7 +69,7 @@
           <versionLine x="20" y="40" text="version ${compiler:sys.version}" font="Arial" fontSize="8" fontColor="0,0,0" fontWeight="500" />
         </text>
       </splashScreen>
-      <java mainClass="gridpilot.GridPilot" vmParameters="-XX:-UseGCOverheadLimit -Xms128m -Xmx1024m -Xdock:name=&quot;GridPilot&quot; -Xdock:icon=&quot;mac_icon.icns&quot;" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true">
+      <java mainClass="gridpilot.GridPilot" vmParameters="-Djava.io.tmpdir=&quot;/tmp&quot; -XX:-UseGCOverheadLimit -Xms128m -Xmx1024m -Xdock:name=&quot;GridPilot&quot; -Xdock:icon=&quot;mac_icon.icns&quot;" arguments="" allowVMPassthroughParameters="true" preferredVM="" bundleRuntime="true">
         <classPath>
           <archive location="gridpilot.jar" failOnError="true" />
           <scanDirectory location="lib" failOnError="false" />
@@ -419,7 +419,9 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
       <variables />
     </macos>
     <unixArchive name="Unix Archive" id="179" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false">
-      <excludedLaunchers />
+      <excludedLaunchers>
+        <launcher id="224" />
+      </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
       <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
