@@ -117,7 +117,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     if(memory<=0){
       return;
     }
-    (new ResThread(){
+    ResThread t = new ResThread(){
           public void run(){
             try{
               vmMgr.launchVM(imageName, memory, null);
@@ -129,8 +129,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
               this.requestStop();
             }
           }
-        }
-    ).start();
+        };
+    t.start();
   }
 
   protected void terminateInstances() throws Exception {
