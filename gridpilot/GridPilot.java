@@ -696,11 +696,23 @@ public class GridPilot extends JApplet{
         IS_EXITING = true;
         String text = "Exiting...\n" +
         		"Please wait or click \"Force quit\" (not recommended).";
+        EXIT_PANEL.setText(text);
+        EXIT_PANEL.setPreferredSize(new Dimension(400, 40));
+        EXIT_PANEL.setIgnoreRepaint(true);
+        TOP_EXIT_PANEL.setLayout(new GridBagLayout());
+        TOP_EXIT_PANEL.add(EXIT_PANEL, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+            new Insets(5, 5, 5, 5), 0, 0));
+        JProgressBar jp = new JProgressBar();
+        jp.setIndeterminate(true);
+        TOP_EXIT_PANEL.add(jp, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+            new Insets(5, 5, 5, 5), 0, 0));
         String [] choices = new String [] {"Force quit"};
         ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
         int choice = -1;
         try{
-          choice = confirmBox.getConfirm("Exiting", text, choices);
+          choice = confirmBox.getConfirm("Exiting", TOP_EXIT_PANEL, choices);
         }
         catch(Exception e){
           e.printStackTrace();
