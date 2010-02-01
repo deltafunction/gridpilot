@@ -63,8 +63,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     HashSet<String []> images = new HashSet<String []>();
     String[] imRow;
     // "Image name", "OS", "Services", "Privileges", "Requirements"
-    for(Iterator it=mps.iterator(); it.hasNext();){
-      mp = (MetaPackage) it.next();
+    for(Iterator<MetaPackage> it=mps.iterator(); it.hasNext();){
+      mp = it.next();
       if(mp.virtualMachine!=null){
         imRow = new String[IMAGE_FIELDS.length];
         imRow[0] = mp.name;

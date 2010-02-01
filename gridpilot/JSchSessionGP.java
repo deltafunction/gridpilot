@@ -53,14 +53,18 @@ public class JSchSessionGP extends JSchSession{
       session=sessionFactory.getSession(username, hostname, port);
     }
     session.setTimeout(60000);
-    if(password!=null)
-      session.setPassword(password);
+    Debug.debug("Creating session with "+username+":"+password+":"+port+":"+keyFile+":"+keyPassphrase, 2);
     session.setUserInfo(userinfo);
-    if(proxy!=null)
+    if(password!=null){
+      session.setPassword(password);
+    }
+    if(proxy!=null){
       session.setProxy(proxy);
-    if(keyFile!=null && !keyFile.equals(""))
+    }
+    if(keyFile!=null && !keyFile.trim().equals("")){
       getJSch().addIdentity(keyFile, (keyPassphrase==null?keyPassphrase:""));
-    //KeyPair kp = KeyPair.load(jsch, "private key", "public key");
+      //KeyPair kp = KeyPair.load(jsch, "private key", "public key");
+    }
     session.connect(60000);
     session.setServerAliveInterval(60000);
     return session;

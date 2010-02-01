@@ -145,7 +145,6 @@ public class JCTermSwingFrameGP extends JCTermSwingFrame {
 
         try{
           UserInfo ui=new MyUserInfo();
-          
           jschsession=JSchSessionGP.getSession(user, password, host, port, ui, proxy,
               keyFile, keyPassphrase);
           java.util.Properties config=new java.util.Properties();
