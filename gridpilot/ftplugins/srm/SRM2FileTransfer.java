@@ -484,7 +484,12 @@ public class SRM2FileTransfer implements FileTransfer {
       throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
     }
     File destinationFile = new File((new GlobusURL(destUrl)).getPath());
-    GridPilot.getClassMgr().getFileCacheMgr().writeCacheInfo(destinationFile);
+    try{
+      GridPilot.getClassMgr().getFileCacheMgr().writeCacheInfo(destinationFile);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("Could not write cache information for "+destinationFile);
+    }
   }
   
   /**

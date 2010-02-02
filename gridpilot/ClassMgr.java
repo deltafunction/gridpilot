@@ -581,7 +581,7 @@ public class ClassMgr{
 
   public FileCacheMgr getFileCacheMgr() {
     if(fileCacheMgr==null){
-      fileCacheMgr = new FileCacheMgr(GridPilot.DATE_FORMAT_STRING);
+      fileCacheMgr = new FileCacheMgr(/*GridPilot.DATE_FORMAT_STRING*/);
     }
     return fileCacheMgr;
   }

@@ -992,8 +992,13 @@ public class GSIFTPFileTransfer implements FileTransfer {
     // write the file size and modification date to .cache_info/.<file name>.info
     UrlCopy urlCopy = jobs.get(fileTransferID);
     File destinationFile = new File(urlCopy.getDestinationUrl().getPath());
-    fileCacheMgr.writeCacheInfo(destinationFile);
     jobs.remove(fileTransferID);
+    try{
+      fileCacheMgr.writeCacheInfo(destinationFile);
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("Could not write cache information for "+destinationFile);
+    }
   }
 
   public void deleteFile(GlobusURL destUrl) throws Exception {

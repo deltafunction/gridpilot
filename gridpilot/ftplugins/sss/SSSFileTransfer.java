@@ -547,7 +547,12 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
         File destinationFile;
         for(int i=0; i<ids.length; ++i){
           destinationFile = new File(ids[i].getDestination().getPath());
-          fileCacheMgr.writeCacheInfo(destinationFile);
+          try{
+            fileCacheMgr.writeCacheInfo(destinationFile);
+          }
+          catch(Exception e){
+            logFile.addMessage("Could not write cache information for "+destinationFile);
+          }
         }
       }
       if(status!=null){
