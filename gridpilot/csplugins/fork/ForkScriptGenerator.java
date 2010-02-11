@@ -34,14 +34,18 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private String [] stderrExcludeWords = null;
   private String csName = null;
   private boolean ignoreBaseSystemAndVMRTEs;
+  private boolean writeRTESection = true;
   private long submitTimeout;
   
-  /**
-   * Constructor
-   */
   public ForkScriptGenerator(String _csName, String _workingDir, boolean _ignoreBaseSystemAndVMRTEs,
       boolean _onWindows){
+    this(_csName, _workingDir, _ignoreBaseSystemAndVMRTEs, _onWindows, true);
+  }
+  
+  public ForkScriptGenerator(String _csName, String _workingDir, boolean _ignoreBaseSystemAndVMRTEs,
+      boolean _onWindows, boolean _writeRTESection){
     super(GridPilot.getClassMgr().getLogFile(), _onWindows);
+    writeRTESection = _writeRTESection;
     csName = _csName;
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     String [] rtCpCmds = configFile.getValues(csName, "Remote copy commands");
@@ -141,7 +145,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
     writeHeader(onWindows, buf, commentStart);
 
     // Runtime section
-    writeRuntimeSection(commentStart, buf, dbPluginMgr, jobDefID, onWindows);
+    if(writeRTESection){
+      writeRuntimeSection(commentStart, buf, dbPluginMgr, jobDefID, onWindows);
+    }
     
     // Input files section
     try{

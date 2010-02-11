@@ -372,7 +372,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           }
           info += "Internal status : "+transfer.getInternalStatus()+"<br>\n";
           try{
-            info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID());
+            info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID()).replaceAll("\\n", "<br>\n");
           }
           catch(Exception e){
             info += "ERROR: could not get full status. "+e.getMessage();

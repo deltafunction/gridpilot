@@ -232,7 +232,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
       // Create a standard shell script.
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-          ignoreBaseSystemAndVMRTEs, onWindows);
+          ignoreBaseSystemAndVMRTEs, onWindows, false);
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }

@@ -250,7 +250,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
     String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
     ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-        true, false);
+        true, false, false);
     Shell shell = getShell(job);
     if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, scriptFile)){
       throw new IOException("Could not create wrapper script.");
