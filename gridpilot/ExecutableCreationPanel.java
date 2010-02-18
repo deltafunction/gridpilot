@@ -363,7 +363,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
         pAttributes.add(MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false),
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false, true),
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));

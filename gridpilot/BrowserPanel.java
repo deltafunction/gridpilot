@@ -1651,9 +1651,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
               //}
         //dis.close();
         long size = getFileSize(connection);
-        ep.setText("File found --> "+size+" bytes.");
-        Debug.debug("Setting thisUrl, "+thisUrl, 3);
+        ep.setText(FILE_FOUND_TEXT+size+" bytes.");
+        Debug.debug("Setting thisUrl, "+url, 3);
         thisUrl = url;
+        setUrl(thisUrl);
         lastUrlsList = new String [] {thisUrl};
         lastSizesList = new String [] {Long.toString(size)};
       }

@@ -183,7 +183,8 @@ public class MyUtil extends gridfactory.common.Util{
  
   public static void launchCheckBrowser(final Frame frame, String url,
      final JTextComponent text, final boolean localFS, final boolean oneUrl,
-     final boolean withNavigation, final boolean onlyDirs, boolean waitForThread){
+     final boolean withNavigation, final boolean onlyDirs, boolean waitForThread,
+     final boolean append){
     if(url.equals(CHECK_URL)){
       String httpScript = "";
       httpScript = text.getText();
@@ -217,7 +218,12 @@ public class MyUtil extends gridfactory.common.Util{
             ok = ok && urls[i]!=null;
           }
           if(ok){
-            setText(text, arrayToString(urls));
+            if(append){
+              setText(text, text.getText()+" "+arrayToString(urls));
+            }
+            else{
+              setText(text, arrayToString(urls));
+            }
           }
           if(frame!=null){
             frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -408,7 +414,7 @@ private static String fixUrl(String _url){
       public void hyperlinkUpdate(HyperlinkEvent e){
         if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
           launchCheckBrowser(frame, e.getURL().toExternalForm(), jt, localFS, oneUrl,
-              withNavigation, onlyDirs, false);
+              withNavigation, onlyDirs, false, false);
         }
       }
     });
@@ -418,7 +424,7 @@ private static String fixUrl(String _url){
  /**
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
-  public static JPanel createCheckPanel1(
+ public static JPanel createCheckPanel1(
      final Frame frame,
      final String name,
      final JTextComponent jt,
@@ -426,12 +432,24 @@ private static String fixUrl(String _url){
      final boolean withNavigation,
      final boolean onlyDirs,
      final boolean localFS){
-    JButton bBrowse1 = MyUtil.mkButton1("open_folder.png", "Browse", "Open");
+   return createCheckPanel1(frame, name, jt, oneUrl, withNavigation, onlyDirs, localFS, false);
+ }
+
+ public static JPanel createCheckPanel1(
+     final Frame frame,
+     final String name,
+     final JTextComponent jt,
+     final boolean oneUrl,
+     final boolean withNavigation,
+     final boolean onlyDirs,
+     final boolean localFS,
+     final boolean append){
+    JButton bBrowse1 = MyUtil.mkButton1("open_folder.png", append?"Append":"Browse", "Open");
     bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        launchCheckBrowser(frame, CHECK_URL, jt, localFS, oneUrl, withNavigation, onlyDirs, false);
+        launchCheckBrowser(frame, CHECK_URL, jt, localFS, oneUrl, withNavigation, onlyDirs, false, append);
       }
     });
 
@@ -572,6 +590,12 @@ private static String fixUrl(String _url){
     Debug.debug("Checking for user home: "+str+"<->"+userHome, 2);
     if(str.startsWith(userHome)){
       str = "~"+str.substring(userHome.length());
+    }
+    if(str.matches("file:/*"+userHome+".*")){
+      String prefix = str.replaceFirst("(file:/*)(.+)", "$1");
+      // Path relative to root
+      String path = str.replaceFirst("(file:/*)(.+)", "$2");
+      str = "file:"+"~"+((onWindows()?"":"/")+path).substring(userHome.length());
     }
     if(onWindows()){
       str =str.replaceAll("\\\\", "/");
