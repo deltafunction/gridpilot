@@ -32,11 +32,13 @@ import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
 import gridfactory.common.jobrun.VirtualMachine;
 
+import gridpilot.BrowserPanel;
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyLogFile;
+import gridpilot.MyResThread;
 import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
@@ -193,7 +195,21 @@ public class NGComputingSystem implements MyComputingSystem{
         Debug.debug("--> "+resources[i].getClusterName()+"--> "+resources[i].getQueueName(), 1);
       }
       if(resources.length==0){
-        MyUtil.showMessage("No authorization", "WARNING: You are not not authorized to run jobs on any defined NorduGrid/ARC clusters.");
+        MyResThread rt = new MyResThread(){
+          BrowserPanel wb = null;
+          public void run(){
+            try{
+              MyUtil.showMessage("No authorization", "WARNING: You are not not authorized to run jobs on any defined NorduGrid/ARC clusters.");
+            }
+            catch(Exception e){
+             setException(e);
+            }
+          }
+          public BrowserPanel getBrowserPanelRes(){
+            return wb;
+          }
+        };
+        rt.start();
       }
       ngSubmission = new NGSubmission(csName, resources);
     }

@@ -30,6 +30,8 @@ public class SelectPanel extends JPanel{
   private GridBagConstraints gbcVC;
   private SPanel.ConstraintPanel spcp;
   private SPanel sPanel;
+  private static final int SEARCH_FIELD_SIZE = 20;
+  private KeyAdapter enterKeyAdapter = null;
 
   /**
   * Constructors
@@ -239,8 +241,11 @@ public class SelectPanel extends JPanel{
         cbConstraintRelation.setSelectedIndex(0);
         this.add(cbConstraintRelation);
         // Textfield value
-        tfConstraintValue = new JTextField(12);
+        tfConstraintValue = new JTextField(SEARCH_FIELD_SIZE);
         this.add(tfConstraintValue);
+        if(enterKeyAdapter!=null){
+          this.tfConstraintValue.addKeyListener(enterKeyAdapter);
+        }
       }
     }        
      
@@ -441,6 +446,7 @@ public class SelectPanel extends JPanel{
   }
 
   public void addListenerForEnter(KeyAdapter adapter) {
-    spcp.tfConstraintValue.addKeyListener(adapter);
+    enterKeyAdapter = adapter;
+    spcp.tfConstraintValue.addKeyListener(enterKeyAdapter);
   }
 }

@@ -1484,9 +1484,12 @@ private static String fixUrl(String _url){
 
   private static void showMessage0(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    String confirmString = text;
+    JPanel jp = new JPanel();
+    JTextArea jt = new JTextArea(text);
+    jt.setEditable(false);
+    jp.add(jt);
     try{
-      confirmBox.getConfirm(title, confirmString, new Object[] {mkOkObject(confirmBox.getOptionPane())});
+      confirmBox.getConfirm(title, jp, new Object[] {mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();

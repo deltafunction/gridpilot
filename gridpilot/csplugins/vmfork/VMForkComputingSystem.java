@@ -47,7 +47,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   // Only here to use checkRequirements
   private PullMgr pullMgr;
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
-  private long submitTimeout;
+  private long submitTimeoutSeconds;
   private int mbPerVM = 512;
 
   public VMForkComputingSystem(String _csName) throws Exception {
@@ -135,10 +135,10 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     pullMgr = new MyPullMgr();
     
-    submitTimeout = 700L;
+    submitTimeoutSeconds = 700L;
     String st = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "submit timeout");
     if(st!=null && !st.equals("")){
-      submitTimeout = Long.parseLong(st);
+      submitTimeoutSeconds = Long.parseLong(st);
     }
 
   }
@@ -184,6 +184,10 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   
   public boolean preProcess(JobInfo job) throws Exception {
     
+    if(submitTimeoutSeconds>GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS){
+      GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS = submitTimeoutSeconds;
+    }
+    
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     Debug.debug("Job depends on "+MyUtil.arrayToString(rtes), 2);
@@ -228,14 +232,13 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       throw new Exception("Requirement(s) could not be satisfied. "+job);
     }
     
-    pullMgr.startDownloadInputs(job);
-    
     // Check if any VMs have been launched from VMForkMonitoringPanel
     includeManuallyBootedVMs();
     
-    boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
-    
+    pullMgr.startDownloadInputs(job);
     waitForInputFilesDownload(job);
+    
+    boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
     
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){
@@ -272,7 +275,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         break;
       }
       nowMillis = MyUtil.getDateInMilliSeconds();
-      if(nowMillis-startMillis>submitTimeout*1000L){
+      if(nowMillis-startMillis>submitTimeoutSeconds*1000L){
         throw new IOException();
       }
       Debug.debug("Waiting for download of input file(s) to finish.", 3);

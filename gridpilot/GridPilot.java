@@ -46,7 +46,11 @@ public class GridPilot extends JApplet{
   private static JPanel TOP_EXIT_PANEL = new JPanel();
   /** List of files that will be deleted on exit. */
   private static HashMap<String, File> TMP_FILES = new HashMap<String, File>();
-  
+  /** Number of seconds to wait for the first job to be submitted.
+   * This can be modified by the individual cs plugins. */
+  public static long FIRST_JOB_SUBMITTED_WAIT_SECONDS = 240;
+  /** Before each submission, FIRST_JOB_SUBMITTED_WAIT_SECONDS is reset to this. */
+  public static long DEFAULT_FIRST_JOB_SUBMITTED_WAIT_SECONDS = 240;
   private final static String DEFAULT_APP_STORE_URL = "https://www.gridpilot.dk/apps/";
   public static String APP_STORE_URL;
   protected static String userConfFileName;

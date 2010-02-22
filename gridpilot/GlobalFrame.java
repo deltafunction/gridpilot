@@ -266,6 +266,9 @@ public class GlobalFrame extends GPFrame{
         e.printStackTrace();
       }
     }
+    if(tabbedPane.getTabCount()>0){
+      tabbedPane.setSelectedIndex(0);
+    }
   }
   
   /**

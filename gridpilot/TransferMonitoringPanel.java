@@ -352,27 +352,27 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private void showInfo(){
     final Thread t = new Thread(){
       public void run(){
-        String info = "<html>";
+        String info = "";
         TransferInfo transfer = getTransferAtRow(statusTable.getSelectedRow());
         try{
-          info += "File transfer system : "+transfer.getFTName()+"<br>\n";
+          info += "File transfer system : "+transfer.getFTName()+"\n";
           try{
             info += "User information : "+GridPilot.getClassMgr().getFTPlugin(
-                transfer.getFTName()).getUserInfo()+"<br>\n";
+                transfer.getFTName()).getUserInfo()+"\n";
           }
           catch(Exception e){
           }
           info += "File catalog : "+(transfer.getDBName()==null?
-              "none":transfer.getDBName())+"<br>\n";
-          info += transfer.toString().replaceAll("\\n", "<br>\n")+"<br>\n";
+              "none":transfer.getDBName())+"\n";
+          info += transfer.toString().replaceAll("\\n", "\n")+"\n";
           try{
-            info += "Status : "+transfer.getStatus()+"<br>\n";
+            info += "Status : "+transfer.getStatus()+"\n";
           }
           catch(Exception e){
           }
-          info += "Internal status : "+transfer.getInternalStatus()+"<br>\n";
+          info += "Internal status : "+transfer.getInternalStatus()+"\n";
           try{
-            info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID()).replaceAll("\\n", "<br>\n");
+            info += "Plugin "+transferControl.getFullStatus(transfer.getTransferID()).replaceAll("\\n", "\n");
           }
           catch(Exception e){
             info += "ERROR: could not get full status. "+e.getMessage();
@@ -382,7 +382,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           info += "ERROR: could not get status from plugin. " +
                 "The transfer may not have started yet. "+e.getMessage();
         }
-        info += "</html>";
         statusBar.removeLabel();
         statusBar.stopAnimation();
         //MyUtil.showLongMessage(info, "Transfer info");

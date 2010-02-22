@@ -44,13 +44,13 @@ import java.net.URL;
  */
 public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
-  private static final long serialVersionUID = 1L;
-  
+  private static final long serialVersionUID = 1L; 
   /** Number of seconds between each refresh when processing dataset(s). */
   private static final int AUTO_REFRESH_SECONDS = 20;
-
-  private static final int FIRST_JOB_SUBMITTED_WAIT_MILLIS = 120*1000;
-  
+  private static final String SEARCH_TEXT = "Search";
+  private static final String SEARCH_MOUSEOVER_TEXT = "Search with the chosen constraints";
+  private static final String REFRESH_TEXT = "Refresh";
+  private static final String REFRESH_MOUSEOVER_TEXT = "Refresh search resultss";
   /** Show define, edit and delete buttons on all DB panes. */
   private boolean SHOW_DB_BUTTONS = false;
   
@@ -346,7 +346,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bViewFiles = MyUtil.mkButton("find.png", "Show file(s)", "Show file(s)");
     bDefineJobDefinitions = MyUtil.mkButton("file_new.png", "Create jobDefinition(s)", "Create jobDefinition(s)");
 
-    bSearch =  MyUtil.mkButton("find.png", "Search", "Search");
+    bSearch =  MyUtil.mkButton("find.png", SEARCH_TEXT, SEARCH_MOUSEOVER_TEXT);
     bClear =  MyUtil.mkButton("clear.png", "Clear", "Clear");
     bNext =  MyUtil.mkButton1("next.png", "Next search results", ">>");
     bPrevious =  MyUtil.mkButton1("previous.png", "Previous search results", "<<");
@@ -876,7 +876,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         t.start();
       }
     });
-    bSearch.setToolTipText("Search with this filter");
+    bSearch.setText(SEARCH_TEXT);
+    bSearch.setToolTipText(SEARCH_MOUSEOVER_TEXT);
     bClear.setToolTipText("Clear text field and reset filter");
     bNext.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
@@ -953,6 +954,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void setEnterKeyListener() {
     selectPanel.addListenerForEnter(new KeyAdapter(){
       public void keyPressed(KeyEvent e){
+        // Change the text on the search button
+        bSearch.setText(SEARCH_TEXT);
+        bSearch.setToolTipText(SEARCH_MOUSEOVER_TEXT);
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
             cursor = -1;
@@ -1222,6 +1226,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(SwingUtilities.isEventDispatchThread()){
       setSearchTableResults();
       setSearchTable();
+      bSearch.setText(REFRESH_TEXT);
+      bSearch.setToolTipText(REFRESH_MOUSEOVER_TEXT);
     }
     else{
       SwingUtilities.invokeAndWait(
@@ -1229,6 +1235,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           public void run(){
             setSearchTableResults();
             setSearchTable();
+            bSearch.setText(REFRESH_TEXT);
+            bSearch.setToolTipText(REFRESH_MOUSEOVER_TEXT);
           }
         }
       );
@@ -2681,39 +2689,37 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       MyUtil.showMessage("No jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
       return ok;
     }
-    // First try a test job - DROPPED - the user can do this himself...
-    /*String firstJobDefId = toSubmitJobDefIds.remove(0);
-    String [] remainingJobDefIds = toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]);
     try{
-      doSubmit(csName, new String [] {firstJobDefId});
-      waitForSubmitted(csName, firstJobDefId);
-    }
-    catch(Exception e){
-      ok = false;
-      String error = e.getMessage();
-      MyUtil.showError("Problem submitting first job "+
-          (error!=null||error.equals("")?"See the log for details.":error));
-      return ok;
-    }
-    // Then submit the rest
-    if(toSubmitJobDefIds.size()==0){
-      return ok;
-    }*/
-    try{
-      //doSubmit(csName, remainingJobDefIds);
+      // First try a test job.
+      runFirstJob(toSubmitJobDefIds, csName);
       doSubmit(csName, toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]));
     }
     catch(Exception e){
       ok = false;
-      String error = e.getMessage();
-      MyUtil.showError("Problem submitting job(s) "+
-          (error==null||error.equals("")?"See the log for details.":error));
+      showSubmissionError(e, toSubmitJobDefIds, csName);
       return ok;
     }
     setJobsRefresh();
     return ok;
   }
   
+  private void runFirstJob(Vector<String> toSubmitJobDefIds, String csName) throws Exception {
+    GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS = GridPilot.DEFAULT_FIRST_JOB_SUBMITTED_WAIT_SECONDS;
+    String firstJobDefId = toSubmitJobDefIds.remove(0);
+    doSubmit(csName, new String [] {firstJobDefId});
+    waitForSubmitted(csName, firstJobDefId);
+  }
+
+  private void runFirstJobDefinition(Vector<DBRecord> toSubmitJobDefs, String csName) throws Exception {
+    DBRecord firstJobDef = toSubmitJobDefs.remove(0);
+    Vector<DBRecord> remainingJobDefs = new Vector<DBRecord>();
+    remainingJobDefs.add(firstJobDef);
+    GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(
+        remainingJobDefs, csName, dbPluginMgr);
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    waitForSubmitted(csName, (String) firstJobDef.getValue(idField));
+  }
+
   private void setJobsRefresh() {
     GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
         ).getJobMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
@@ -2741,8 +2747,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
          e.printStackTrace();
          break;
       }
+      if(dbStatus==DBPluginMgr.FAILED){
+        throw new Exception("Job "+firstJobDefId+" failed.");
+      }
       ++i;
-      if(i*sleepMillis>FIRST_JOB_SUBMITTED_WAIT_MILLIS){
+      if(i*sleepMillis>1000L*GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS){
         break;
       }
     }
@@ -3943,8 +3952,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
-   * Called when a computing system in pmSubmitMenu is selected
-   * Submits all selected logicalFiles (partitions) in computing system chosen in the popupMenu
+   * Called when a computing system in pmSubmitMenu is selected.
+   * Submits all selected job definitions to computing system chosen in the popup menu.
    */
   private void submit(final ActionEvent e){
     workThread = new ResThread(){
@@ -3966,7 +3975,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     statusBar.setLabel("Preparing jobs, please wait...");
     setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     statusBar.animateProgressBar();
-    statusBar.setIndeterminateProgressBarToolTip("click here to interrupt");
+    statusBar.setIndeterminateProgressBarToolTip("click here to interrupt job queuing)");
     statusBar.addIndeterminateProgressBarMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -3978,7 +3987,17 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     for(int i=0; i<jobDefIds.length; ++i){
       selectedJobDefinitions.add(dbPluginMgr.getJobDefinition(jobDefIds[i]));
     }
-    // submit the jobs
+    // First try a test job.
+    statusBar.setLabel("Submitting first job. Please wait...");
+    try{
+      runFirstJobDefinition(selectedJobDefinitions, csName);
+    }
+    catch(Exception e){
+      showSubmissionError(e, selectedJobDefinitions, csName);
+      statusBar.stopAnimation();
+      return;
+    }
+    // submit the remaining jobs
     statusBar.setLabel("Submitting. Please wait...");
     GridPilot.getClassMgr().getSubmissionControl().submitJobDefinitions(selectedJobDefinitions, csName, dbPluginMgr);
     statusBar.stopAnimation();
@@ -3987,6 +4006,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     stopWorking();
   }
   
+  private void showSubmissionError(Exception e, Vector<?> selectedJobDefinitions, String csName) {
+    String error = e.getMessage();
+    MyUtil.showMessage("Submission failed", "Submission of the "+
+        (selectedJobDefinitions.isEmpty()?"":"first ")+"job failed." +
+            "Please check that you're allowed to run jobs on "+csName+
+            "\nand that any runtime environments your job's executable is requiring\n" +
+            "are available on the chosen computing system.\n"+
+            (error==null||error.equals("")?"See the log for details.":". "+error));
+  }
+
   public void copy(){
     Debug.debug("Copying!", 3);
     int [] rows = tableResults.getSelectedRows();

@@ -1,6 +1,7 @@
 package gridpilot.csplugins.vmfork;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -15,6 +16,9 @@ import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
 public class MyPullMgr extends PullMgr {
+
+  /** How many seconds to wait for a download to start before giving up. */
+  protected static long WAIT_DOWNLOAD_START_SECONDS = 20L;
 
   public MyPullMgr() {
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -41,13 +45,15 @@ public class MyPullMgr extends PullMgr {
    * Check if input files of a job have finished downloading.
    * @param job the job in question
    * @return true if all input files have been downloaded, false otherwise
+   * @throws IOException 
    */
   // TODO: eliminate code duplication downloadInputsDone() <-> runJob()
-  public boolean downloadInputsDone(JobInfo job){
+  public boolean downloadInputsDone(JobInfo job) throws IOException{
     Vector<TransferInfo> transfers = jobTransfers.get(job);
     boolean ok = true;
     String transferStatus = null;
     int ts;
+    int oldStatus;
     for(Iterator<TransferInfo> itt=transfers.iterator(); itt.hasNext();){
       TransferInfo transfer = itt.next();
       // If a transfer doesn't have an ID yet, give it some time before giving up
@@ -64,20 +70,34 @@ public class MyPullMgr extends PullMgr {
         logFile.addInfo("WARNING: transfer has no ID.");
         continue;
       }
+      oldStatus = transfer.getInternalStatus();
       try{
         transferStatus = transferControl.getStatus(transfer.getTransferID());
         ts = transferControl.getInternalStatus(transfer.getTransferID(), transferStatus);
-        if(ts==FileTransfer.STATUS_RUNNING || ts==FileTransfer.STATUS_WAIT){
-          Debug.debug("Transfer is still running: "+transfer.getTransferID(), 2);
-          ok = false;
-          break;
-        }
       }
       catch(Exception e2){
         Debug.debug("Could not get status of tranfer "+transfer.getTransferID(), 3);
         e2.printStackTrace();
         ok = false;
+        ts = FileTransfer.STATUS_ERROR;
+      }
+      if(ts==FileTransfer.STATUS_RUNNING || ts==FileTransfer.STATUS_WAIT){
+        Debug.debug("Transfer is still running: "+transfer.getTransferID(), 2);
+        ok = false;
         break;
+      }
+      else if(ts==FileTransfer.STATUS_ERROR){
+        ok = false;
+        if(oldStatus==FileTransfer.STATUS_ERROR){
+          throw new IOException("Transfer did not start in "+
+              WAIT_DOWNLOAD_START_SECONDS+" seconds.");
+        }
+        try{
+          Thread.sleep(WAIT_DOWNLOAD_START_SECONDS*1000L);
+        }
+        catch(InterruptedException e){
+          e.printStackTrace();
+        }
       }
     }
     return ok;
