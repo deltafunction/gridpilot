@@ -253,6 +253,7 @@ public class DnDTabbedPane extends JTabbedPane {
       Graphics g = image.getGraphics();
       c.paint(g);
       if(rect.x < 0) rect.x = 0;
+      if(rect.y < 0) rect.y = 0;
       image = image.getSubimage(rect.x,rect.y,rect.width,rect.height);
       glassPane.setImage(image);
     }
