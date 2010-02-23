@@ -96,6 +96,7 @@ public class MyUtil extends gridfactory.common.Util{
   
   /** URL that will cause a blank browser window to be opened. */
   public static final String CHECK_URL = "http://check/";
+  private static final int MESSAGE_COLUMNS = 60;
 
   /**
    * Returns the text of a JComponent.
@@ -1486,6 +1487,14 @@ private static String fixUrl(String _url){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     JPanel jp = new JPanel();
     JTextArea jt = new JTextArea(text);
+    if(text.length()>MESSAGE_COLUMNS){
+      Debug.debug("Fixing columns: "+text.length()+"-->"+MESSAGE_COLUMNS, 3);
+      jt.setColumns(MESSAGE_COLUMNS);
+    }
+    else{
+      jt.setColumns(text.length());
+    }
+    jt.setLineWrap(true);
     jt.setEditable(false);
     jp.add(jt);
     try{
