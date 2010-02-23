@@ -6,6 +6,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 
 import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Vector;
 
@@ -268,12 +269,23 @@ public class ExportImport {
     return value1;
   }
 
-  private static String textToSql(String value){
+  private static String textToSql(String value, boolean excludeIdentifier){
     if(value==null){
       return "";
     }
-    String value1 = value.replaceAll("\\\\quote", "\\\'");
-    return value1;
+    if(excludeIdentifier){
+      //String pattern = "(?i)(?s)(INSERT\\s+INTO\\s+\\w+\\s+\\([^)]+),\\s*identifier(\\)\\s+VALUES\\s+\\([^)]+),\\s*\\S+\\);*$";
+      String pattern = "(?i)(?s),\\s*identifier\\)";
+      Debug.debug("Checking identifier in: "+value, 3);
+      if(value.matches(".*"+pattern+".*")){
+        //value1 = value1.replaceFirst(pattern, "$1$2)");
+        value = value.replaceFirst(pattern, ")");
+        value = value.replaceFirst(",\\s*\\S+\\);*$", ");");
+        Debug.debug("Dropped identifier: "+value, 3);
+      }
+    }
+    //value = value.replaceAll("\\\\quote", "\\\'");
+    return value;
   }
 
   /**
@@ -314,8 +326,8 @@ public class ExportImport {
     // Insert the SQL
     String sqlFile = (new File(tmpDir, "executable.sql")).getAbsolutePath();
     String sql = LocalStaticShell.readFile(sqlFile);
-    sql = textToSql(sql);
-    mgr.executeUpdate(sql);
+    String fixedSql = textToSql(sql, true);
+    mgr.executeUpdate(fixedSql);
     Debug.debug("mgr reports: "+mgr.getError(), 3);
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
@@ -327,7 +339,8 @@ public class ExportImport {
         "");
     sqlFile = (new File(tmpDir, "dataset.sql")).getAbsolutePath();
     sql = LocalStaticShell.readFile(sqlFile);
-    mgr.executeUpdate(sql);
+    fixedSql = textToSql(sql, false);
+    mgr.executeUpdate(fixedSql);
     if(mgr.getError()!=null && !mgr.getError().equals("")){
       throw new SQLException(mgr.getError());
     }
@@ -440,18 +453,21 @@ public class ExportImport {
     }
   }
 
-  private static int moveTransInputs(String tmpDir, File executableDirectory) {
+  private static int moveTransInputs(String tmpDir, File executableDirectory) throws IOException {
     String [] files = LocalStaticShell.listFiles(tmpDir);
     if(files==null){
       return 0;
     }
     String fileName;
+    String dest;
     int ret = files.length;
     for(int i=0; i<ret; ++i){
       if(!files[i].endsWith(".sql")){
         fileName = (new File(files[i])).getName();
-        LocalStaticShell.moveFile(files[i],
-            (new File(executableDirectory, fileName)).getAbsolutePath());
+        dest = (new File(executableDirectory, fileName)).getAbsolutePath();
+        if(!LocalStaticShell.moveFile(files[i], dest)){
+          throw new IOException("Could not move "+files[i]+" to "+dest);
+        }
       }
     }
     return ret;
