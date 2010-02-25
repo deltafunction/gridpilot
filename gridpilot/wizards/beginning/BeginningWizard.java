@@ -1294,9 +1294,11 @@ public class BeginningWizard{
           new String [] {"yes", tfClusters.getText()==null?"":tfClusters.getText().trim()}
           );
       if(tfClusters.getText()==null || tfClusters.getText().trim().equals("")){
-        MyUtil.showMessage("No clusters defined", "WARNING: you have not defined any NorduGrid " +
-        		"clusters. This may causes submission to NorduGrid to be very slow as all clusters will " +
-        		"be queried on each submission. You can change this in the preferences.");
+        MyUtil.showMessage("No clusters defined",
+            "WARNING: you have not defined any NorduGrid  clusters.\n" +
+            "This may causes submission to NorduGrid to be very slow as all clusters\n" +
+            "will be queried on each submission.\n" +
+            "You can change this in the preferences.");
       }
     }
     else{
@@ -1381,8 +1383,10 @@ public class BeginningWizard{
             );
       }
       else{
-        MyUtil.showMessage("WARNING", "You have not given any GridFactory submission URL. " +
-        		"GridFactory will not be enabled. You can change this in the preferences.");
+        MyUtil.showMessage("No submission URL defined",
+            "WARNING: You have not given any GridFactory submission URL.\n" +
+        		"GridFactory will not be enabled.\n" +
+        		"You can change this in the preferences.");
       }
     }
     else{
