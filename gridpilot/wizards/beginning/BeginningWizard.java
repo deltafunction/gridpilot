@@ -1287,12 +1287,17 @@ public class BeginningWizard{
     }
 
     // Set configuration values
-    if(jcbs[0].isSelected() && tfClusters.getText()!=null && !tfClusters.getText().equals("")){
+    if(jcbs[0].isSelected() /*&& tfClusters.getText()!=null && !tfClusters.getText().equals("")*/){
       configFile.setAttributes(
           new String [] {"NG", "NG"},
           new String [] {"Enabled", "Clusters"},
-          new String [] {"yes", tfClusters.getText().trim()}
+          new String [] {"yes", tfClusters.getText()==null?"":tfClusters.getText().trim()}
           );
+      if(tfClusters.getText()==null || tfClusters.getText().trim().equals("")){
+        MyUtil.showMessage("No clusters defined", "WARNING: you have not defined any NorduGrid " +
+        		"clusters. This may causes submission to NorduGrid to be very slow as all clusters will " +
+        		"be queried on each submission. You can change this in the preferences.");
+      }
     }
     else{
       configFile.setAttributes(
@@ -1366,13 +1371,19 @@ public class BeginningWizard{
           new String [] {"no"}
           );
     }
-    if(jcbs[4].isSelected() && MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
-        !MyUtil.getJTextOrEmptyString(tfGfUrl).equals("")){
-      configFile.setAttributes(
-          new String [] {"GridFactory", "GridFactory"},
-          new String [] {"Enabled", "Submission URL"},
-          new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
-          );
+    if(jcbs[4].isSelected()){
+      if(MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
+          !MyUtil.getJTextOrEmptyString(tfGfUrl).equals("")){
+        configFile.setAttributes(
+            new String [] {"GridFactory", "GridFactory"},
+            new String [] {"Enabled", "Submission URL"},
+            new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
+            );
+      }
+      else{
+        MyUtil.showMessage("WARNING", "You have not given any GridFactory submission URL. " +
+        		"GridFactory will not be enabled. You can change this in the preferences.");
+      }
     }
     else{
       configFile.setAttributes(
