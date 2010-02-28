@@ -592,14 +592,15 @@ private static String fixUrl(String _url){
     if(str.startsWith(userHome)){
       str = "~"+str.substring(userHome.length());
     }
-    if(str.matches("file:/*"+userHome+".*")){
+    String userHomePattern = userHome.replaceAll("\\\\", "\\\\\\\\");
+    if(str.matches("file:/*"+userHomePattern+".*")){
       String prefix = str.replaceFirst("(file:/*)(.+)", "$1");
       // Path relative to root
       String path = str.replaceFirst("(file:/*)(.+)", "$2");
       str = "file:"+"~"+((onWindows()?"":"/")+path).substring(userHome.length());
     }
     if(onWindows()){
-      str =str.replaceAll("\\\\", "/");
+      str = str.replaceAll("\\\\", "/");
     }
     return str;
   }
