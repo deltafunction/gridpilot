@@ -343,6 +343,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           initArgsComboBox();
           tcCstAttributes[i] = argsComboBox;
         }
+        tcCstAttributes[i].setToolTipText("Arguments known by GridPilot:\n"+
+            MyUtil.arrayToString(JobCreator.AUTO_FILL_ARGS, "\n"));
       }
       else{
         if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){

@@ -195,7 +195,7 @@ public class ExportImport {
     }
   }
 
-  private static String toSql(DBResult dbResult, String dbName, String table, String [] fileFields){
+  private static String toSql(DBResult dbResult, String dbName, String table, String [] fileFields) throws Exception{
     Debug.debug("Converting DBResult with "+dbResult.values.length+" rows", 2);
     String executableDir = GridPilot.getClassMgr().getConfigFile().getValue(
         "Fork", "executable directory");
@@ -245,8 +245,7 @@ public class ExportImport {
             newValues[i][j]!=null){
           Debug.debug("Replacing in "+newValues[i][j], 2);
           // For executable files, replace URLs with file names in exportImportDir
-          newValues[i][j] = ((String) newValues[i][j]).trim().replaceAll("\\\\", "/"
-              ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+EXE_FILES_DIR+"/"+name+"/$1");
+          newValues[i][j] = fixExportedURLs((String) newValues[i][j], name);
           Debug.debug("--> "+newValues[i][j], 2);
         }
       }
@@ -263,6 +262,15 @@ public class ExportImport {
     return res.toString();
   }
   
+  private static String fixExportedURLs(String urls, String name) throws Exception {
+    String [] newUrls = MyUtil.splitUrls(urls);
+    for(int i=0; i<newUrls.length; ++i){
+      newUrls[i] = newUrls[i].trim().replaceAll("\\\\", "/"
+      ).replaceAll("^.*/([^/]+)$", IMPORT_DIR+"/"+EXE_FILES_DIR+"/"+name+"/$1");
+    }
+    return MyUtil.arrayToString(newUrls);
+  }
+
   private static String sqlToText(String value){
     String value1 = value.replaceAll("\\\\\'", "\\\\quote");
     value1 = value1.replaceAll("\'", "\\\\quote");
