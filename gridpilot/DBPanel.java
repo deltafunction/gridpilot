@@ -2910,9 +2910,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               ee.printStackTrace();
             }
           }
-          MyUtil.showMessage("Cleanup done", "<html>Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
-              ".<br><br>&nbsp;&nbsp;job(s) cleaned: "+jobCount+"<br><br>"+
-              "&nbsp;&nbsp;file(s) cleaned: "+fileCount+"</html>");
+          MyUtil.showMessage("Cleanup done", "Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
+              ".\n\n  job(s) cleaned: "+jobCount+"\n\n"+
+              "  file(s) cleaned: "+fileCount+"");
         }
         catch(Exception e){
           ok = false;
