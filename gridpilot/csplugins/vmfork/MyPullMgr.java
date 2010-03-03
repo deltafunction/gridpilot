@@ -18,7 +18,7 @@ import gridpilot.MyUtil;
 public class MyPullMgr extends PullMgr {
 
   /** How many seconds to wait for a download to start before giving up. */
-  protected static long WAIT_DOWNLOAD_START_SECONDS = 120L;
+  protected static long WAIT_DOWNLOAD_START_SECONDS = 60L;
 
   public MyPullMgr() {
     logFile = GridPilot.getClassMgr().getLogFile();
