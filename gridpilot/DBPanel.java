@@ -2624,9 +2624,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         try{
           // Grab semaphore
           if(!waitForWorking()){
-            GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, monitoring not done");
+            GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, cannot process dataset.");
             return;
           }
+          setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           doProcessDatasets(csName, datasetIds);
           stopWorking();
         }
@@ -2641,6 +2642,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           MyUtil.showError("Problem processing dataset(s). "+
               (error==null||error.equals("")?"See the log for details.":error));
         }
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
     }.start();
   }
@@ -3995,6 +3997,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     catch(Exception e){
       showSubmissionError(e, selectedJobDefinitions, csName);
       statusBar.stopAnimation();
+      setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       return;
     }
     // submit the remaining jobs
