@@ -119,7 +119,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    jbEditExe = MyUtil.mkButton("search.png", "Look up", "Look up executable record");
+    jbEditExe = MyUtil.mkButton("search.png", GridPilot.ADVANCED_MODE?"Look up":"Edit",
+        GridPilot.ADVANCED_MODE?"Look up executable record":"Edit executable record");
   }
 
   /**
@@ -191,17 +192,32 @@ public class DatasetCreationPanel extends CreateEditPanel{
     add(pTop, BorderLayout.NORTH);
     add(spAttributes, BorderLayout.CENTER);
     
-    jbEditExe.addActionListener(new java.awt.event.ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          viewExecutable();
-        }
-        catch(Exception e1){
-          e1.printStackTrace();
+    if(GridPilot.ADVANCED_MODE){
+      jbEditExe.addActionListener(new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            viewExecutable();
+          }
+          catch(Exception e1){
+            e1.printStackTrace();
+          }
         }
       }
+      );
     }
-    );
+    else{
+      jbEditExe.addActionListener(new java.awt.event.ActionListener(){
+        public void actionPerformed(ActionEvent e){
+          try{
+            editExecutable();
+          }
+          catch(Exception e1){
+            e1.printStackTrace();
+          }
+        }
+      }
+      );
+    }
     
     updateUI();
   }
@@ -636,6 +652,20 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     pTop.updateUI();
   }
+  
+  protected void editExecutable(){
+    if(executableName==null || executableName.equals("") ||
+        executableVersion==null || executableVersion.equals("")){
+      return;
+    }
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    String executableID = dbPluginMgr.getExecutableID(executableName, executableVersion);
+    CreateEditDialog pDialog = new CreateEditDialog(
+       new ExecutableCreationPanel(dbPluginMgr, panel, true, executableID),
+       true, false, true, false, true);
+    pDialog.setTitle(GridPilot.getRecordDisplayName("Executable"));
+    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+  }
 
   /**
    * Open new pane with corresponding executables.
@@ -731,8 +761,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     pTop.validate();
   }
 
-  private Vector getFields(){
-    Vector v = new Vector();
+  private Vector<JTextComponent> getFields(){
+    Vector<JTextComponent> v = new Vector<JTextComponent>();
 
     v.addAll(tcConstant);
 
@@ -742,8 +772,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  private Vector getNonIdTextFields(){
-    Vector v = new Vector();
+  private Vector<JTextComponent> getNonIdTextFields(){
+    Vector<JTextComponent> v = new Vector<JTextComponent>();
 
     v.addAll(tcConstant);
 

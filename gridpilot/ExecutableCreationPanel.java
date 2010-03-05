@@ -50,7 +50,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
    * Constructor
    */
   public ExecutableCreationPanel(DBPluginMgr _dbPluginMgr,
-      DBPanel _panel, boolean _editing){
+      DBPanel _panel, boolean _editing, String executableID){
     dbPluginMgr = _dbPluginMgr;
     editing = _editing;
     panel = _panel;
@@ -65,20 +65,23 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         "; "+MyUtil.arrayToString(runtimeEnvironments.fields),3);
     cstAttr = new String[cstAttributesNames.length];
     // Find executable ID from table
-    if(table.getSelectedRow()>-1 && editing){
+    if((executableID!=null && !executableID.equals("") || table.getSelectedRow()>-1) &&
+        editing){
       Debug.debug("Editing...", 3);
       String [] runtimeReference = MyUtil.getExecutableRuntimeReference(dbPluginMgr.getDBName());
-      for(int i=0; i<table.getColumnNames().length; ++i){
-        Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
-        Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(executableIdentifier)){
-          executableID = fieldVal.toString();
-          break;
+      if(executableID==null || executableID.equals("")){
+        for(int i=0; i<table.getColumnNames().length; ++i){
+          Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
+          Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
+          if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(executableIdentifier)){
+            executableID = fieldVal.toString();
+            break;
+          }
         }
       }
       if(executableID==null || executableID.equals("-1") ||
           executableID.equals("")){
-        Debug.debug("ERROR: could not find executableID in table!", 1);
+        Debug.debug("ERROR: could not find executableID.", 1);
       }
       // Fill cstAttr from db
       executable = dbPluginMgr.getExecutable(executableID);

@@ -2286,7 +2286,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
   protected void createExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new ExecutableCreationPanel(dbPluginMgr, this, false),
+       new ExecutableCreationPanel(dbPluginMgr, this, false, null),
        false, false, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
@@ -2302,7 +2302,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   protected void editExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
-       new ExecutableCreationPanel(dbPluginMgr, this, true),
+       new ExecutableCreationPanel(dbPluginMgr, this, true, null),
        true, false, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
