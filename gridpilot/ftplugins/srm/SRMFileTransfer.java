@@ -36,7 +36,7 @@ import gridpilot.MyUtil;
 public class SRMFileTransfer implements FileTransfer {
   
   private String error = "";
-  private Vector pendingIDs = new Vector();
+  private Vector<String> pendingIDs = new Vector<String>();
   private String user = null;
   private MyTransferControl transferControl;
   
@@ -447,9 +447,9 @@ public class SRMFileTransfer implements FileTransfer {
 
   // Wait for all files to be ready on the SRM server before beginning the
   // transfers. This may be reconsidered...
-  private String [] waitForOK(Vector _thesePendingIDs) throws SRMException {
+  private String [] waitForOK(Vector<String> _thesePendingIDs) throws SRMException {
     synchronized(pendingIDs){
-      Vector thesePendingIDs = _thesePendingIDs;
+      Vector<String> thesePendingIDs = _thesePendingIDs;
       String status = null;
       String [] idArray = new String[thesePendingIDs.size()];
       String [] turlArray = new String[thesePendingIDs.size()];
@@ -568,7 +568,7 @@ public class SRMFileTransfer implements FileTransfer {
       }
       
       boolean[] wantPerm = new boolean[srcUrls.length];
-      // Don't request permanency.
+      // Don't request permanence.
       // TODO: make this configurable.
       Arrays.fill(wantPerm, false);
       
@@ -617,7 +617,7 @@ public class SRMFileTransfer implements FileTransfer {
         String [] ids = new String[srcUrls.length];
         String [] assignedTurls = null;
         // First, assign temporary ids (with TURL null) and wait for ready
-        Vector thesePendingIDs = new Vector();
+        Vector<String> thesePendingIDs = new Vector<String>();
         for(int i=0; i<srcUrls.length; ++i){
           thesePendingIDs.add(pluginName+"-get::"+rs.requestId+"::"+i+"::'"+null+"' '"+destUrls[i].getURL()+
           "' '"+srcUrls[0].getURL()+"'");
@@ -737,7 +737,7 @@ public class SRMFileTransfer implements FileTransfer {
         String [] ids = new String[srcUrls.length];
         String [] assignedTurls = null;
         // First, assign temporary ids (with TURL null) and wait for ready
-        Vector thesePendingIDs = new Vector();
+        Vector<String> thesePendingIDs = new Vector<String>();
         for(int i=0; i<srcUrls.length; ++i){
           thesePendingIDs.add(pluginName+"-get::"+rs.requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+null+
           "' '"+destUrls[0].getURL()+"'");
