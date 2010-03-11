@@ -4016,7 +4016,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             "Please check that you're allowed to run jobs on "+csName+
             "\nand that any runtime environments your job's executable is requiring\n" +
             "are available on the chosen computing system.\n"+
-            (error==null||error.equals("")?"See the log for details.":". "+error));
+            (error==null||error.equals("")?"See the log for details.":" "+error));
   }
 
   public void copy(){
