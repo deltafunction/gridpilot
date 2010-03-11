@@ -1037,15 +1037,14 @@ public class GlobalFrame extends GPFrame{
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               activePanel.getDBName(), activePanel.getSelectedIdentifier());
           MyUtil.showMessage("Export successful",
-              "Thanks and congratulations! You've successfully exported your application/dataset, " +
-              "making it available for others to use.");
+              "Thanks and congratulations! You've successfully exported your application/dataset.\n" +
+              "If you haven't already done so, please consider making it available for others to use.");
         }
         else{
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
               null, null);
           MyUtil.showMessage("Export successful",
-              "Thanks and congratulations! You've successfully exported your applications/datasets, " +
-              "making them available for others to use.");
+              "Thanks and congratulations! You've successfully exported your application(s)/dataset(s).");
         }
       }
       else{
@@ -1096,7 +1095,9 @@ public class GlobalFrame extends GPFrame{
         if(MyUtil.isLocalFileName(importUrl)){
           importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
         }
-        String message = ExportImport.importToDB(importUrl);
+        String message = ExportImport.importToDB(importUrl)+"<br><br>\n" +
+        "Refresh your applications tab and right-click on your new applications<br>\n" +
+        "to create and run jobs.";
         activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         MyUtil.showMessage("Import successful", message);
       }
