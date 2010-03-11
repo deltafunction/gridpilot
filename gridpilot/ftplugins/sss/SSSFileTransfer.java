@@ -1109,7 +1109,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           message += "Click \"OK\" to proceed or \"Cancel\" to cancel.";
           ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
           int response = confirmBox.getOkCancelConfirm("File(s) already exist!", message,
-              GridPilot.ICONS_PATH + "ok.png", GridPilot.ICONS_PATH + "cancel.png");
+              GridPilot.ICONS_PATH + "ok.png", GridPilot.ICONS_PATH + "cancel.png", 0);
           if(response!=1){
               return;
           }
@@ -1216,7 +1216,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       message += "Click \"OK\" to proceed or \"Cancel\" to cancel.";
       ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
       int response = confirmBox.getOkCancelConfirm("File(s) already exist!", message,
-          GridPilot.ICONS_PATH + "ok.png", GridPilot.ICONS_PATH + "cancel.png");
+          GridPilot.ICONS_PATH + "ok.png", GridPilot.ICONS_PATH + "cancel.png", 0);
       if(response!=1){
         return;
       }

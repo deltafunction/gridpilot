@@ -44,7 +44,6 @@ import java.net.NetworkInterface;
 import java.net.URL;
 
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -702,7 +701,7 @@ private static String fixUrl(String _url){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     try{
       choice = confirmBox.getConfirm("No response from plugin",
-          msg, new Object[] {"Yes, interrupt", "No, let it run", cbRemember});
+          msg, new Object[] {"Yes, interrupt", "No, let it run", cbRemember}, 1);
     }
     catch(Exception e){
       e.printStackTrace();
