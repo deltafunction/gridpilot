@@ -3399,8 +3399,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           try{
             if(exportDataset(datasetID)){
               MyUtil.showMessage("Export successful",
-                  "Thanks and congratulations! You've successfully exported your application/dataset, " +
-                  "making it available for others to use.");
+                  "Thanks and congratulations! You've successfully exported your application/dataset.\n" +
+                  "If you haven't already done so, please consider making it available for others to use.");
             }
           }
           catch(Exception e){
