@@ -95,7 +95,8 @@ public class MyUtil extends gridfactory.common.Util{
   
   /** URL that will cause a blank browser window to be opened. */
   public static final String CHECK_URL = "http://check/";
-  private static final int MESSAGE_COLUMNS = 60;
+  private static final int MIN_MESSAGE_COLUMNS = 8;
+  private static final int MAX_MESSAGE_COLUMNS = 80;
 
   /**
    * Returns the text of a JComponent.
@@ -1485,24 +1486,67 @@ private static String fixUrl(String _url){
 
   private static void showMessage0(String title, String text){
     ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    JPanel jp = new JPanel();
+    BorderLayout layout = new BorderLayout();
+    JPanel jp = new JPanel(layout);
     JTextArea jt = new JTextArea(text);
-    if(text.length()>MESSAGE_COLUMNS){
-      Debug.debug("Fixing columns: "+text.length()+"-->"+MESSAGE_COLUMNS, 3);
-      jt.setColumns(MESSAGE_COLUMNS);
+    int longestLine = findLongestLine(text);
+    if(2*longestLine>MAX_MESSAGE_COLUMNS){
+      Debug.debug("Fixing columns: "+text.length()+"-->"+MAX_MESSAGE_COLUMNS, 3);
+      jt.setColumns(MAX_MESSAGE_COLUMNS);
     }
     else{
-      jt.setColumns(text.length());
+      Debug.debug("longestLine: "+longestLine, 3);
+      jt.setColumns(longestLine/2);
     }
+    jt.setMinimumSize(new Dimension(MIN_MESSAGE_COLUMNS, 1));
     jt.setLineWrap(true);
+    jt.setWrapStyleWord(true);
     jt.setEditable(false);
     jp.add(jt);
+    //jp.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
+    //    Color.white, new Color(165, 163, 151)), ""));
+    jt.validate();
     try{
       confirmBox.getConfirm(title, jp, new Object[] {mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();
     }
+  }
+  
+  private static int findLongestLine(String text) {
+    int i = -1;
+    int oldI = 0-1;
+    int max = 0;
+    boolean doBreak = false;
+    while(true){
+      oldI = i;
+      if(oldI==text.length()-1){
+        break;
+      }
+      i = text.indexOf("\n", oldI+1);
+      if(i<0){
+        doBreak = true;
+        i = text.length()-1;
+      }
+      if(i-oldI>max){
+        max = i-oldI;
+      }
+      if(doBreak){
+        break;
+      }
+    }
+    return max;
+  }
+
+  public static void main(String[] args){
+    showMessage0("test", 
+        "test\n" +
+    		"test test test test test test test test test test test test test test" +
+    		"test test test test test test test test test" +
+        "test test test test test test test test test\n" +
+        "test test test test test test test test test test test test\n" +
+        "test test test test test test test test test test test test");
   }
 
   public static void showMessage(final String title, final String text){
