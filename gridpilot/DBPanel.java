@@ -2688,7 +2688,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     Debug.debug("Submitting "+jobCount+" job(s)", 3);
     if(jobCount==0){
-      MyUtil.showMessage("No jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
+      MyUtil.showMessage("No submitable jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
       return ok;
     }
     try{
@@ -3962,6 +3962,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void run(){
         String csName = ((JMenuItem)e.getSource()).getText();
         String [] jobDefIds = getSelectedIdentifiers();
+        if(!JobMgr.areSubmitable(tableResults.getSelectedRows())){
+          MyUtil.showMessage("No submitable jobs", "No submitable jobs in selection.");
+          return;
+        }
         doSubmit(csName, jobDefIds);
       }
     };

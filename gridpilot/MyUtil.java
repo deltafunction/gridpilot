@@ -1539,16 +1539,6 @@ private static String fixUrl(String _url){
     return max;
   }
 
-  public static void main(String[] args){
-    showMessage0("test", 
-        "test\n" +
-    		"test test test test test test test test test test test test test test" +
-    		"test test test test test test test test test" +
-        "test test test test test test test test test\n" +
-        "test test test test test test test test test test test test\n" +
-        "test test test test test test test test test test test test");
-  }
-
   public static void showMessage(final String title, final String text){
     if(SwingUtilities.isEventDispatchThread()){
       showMessage0(title, text);

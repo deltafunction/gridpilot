@@ -1021,11 +1021,7 @@ public class BeginningWizard{
 
   --->  configure GRIDFACTORY
 
-        [GRIDFACTORY] allowed subjects =
-        [GRIDFACTORY] runtime catalog URLs = ~/GridPilot/rtes.rdf http://www.gridpilot.dk/rtes.rdf
-
-        ** TODO: We postpone the configuration of this... It should include GUIs for
-          selecting VOMS groups and for editing KnowARC rdf catalogs
+        [GRIDFACTORY] allowed submission URL = https://www.gridfactory.org/gridfactory/jobs/
                       
 */
   private int configureComputingSystems(boolean firstRun) throws Exception{

@@ -815,7 +815,7 @@ public class JobMgr{
   }
 
   /**
-   * Checks if all jobs at these specified rows are re-submitables.
+   * Checks if all jobs at these specified rows are re-submitable.
    * A job is resubmitable is its DB status is Failed, and if it has a
    * attributed computing system.
    */
@@ -829,7 +829,7 @@ public class JobMgr{
   }
 
   /**
-   * Checks if all jobs at these specified rows are submitables.
+   * Checks if all jobs at these specified rows are submitable.
    * A job is submitable iff its DB status is Defined.
    *
    */

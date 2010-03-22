@@ -1383,6 +1383,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   private void setRemoteDirDisplay1(String url, FileTransfer fileTransfer, String string) throws Exception {
     try{
+      bOk.setEnabled(ok && isModal());
       bSave.setEnabled(false);
       bNew.setEnabled(true);
       bUpload.setEnabled(true);
@@ -1770,6 +1771,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     Debug.debug("setLocalDirDisplay "+localPath, 3);
     try{
+      bOk.setEnabled(ok && isModal());
       bSave.setEnabled(false);
       bNew.setEnabled(true);
       bUpload.setEnabled(true);

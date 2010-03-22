@@ -319,7 +319,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
       job = (MyJobInfo) it.next();
       try{
-        getLRMS().kill(MyUtil.getHostFromID(job.getJobId()), new String [] {job.getJobId()});
+        getLRMS().kill(MyUtil.getHostFromID(job.getJobId()), new String [] {job.getJobId()}, null);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -428,7 +428,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     //ret += "DB location: "+job.getDBLocation()+"\n";
     //ret += "Job DB URL: "+job.getDBURL()+"\n";
     try{
-      ret += "Job status: "+JobInfo.getStatusName(getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId()));
+      ret += "Job status: "+JobInfo.getStatusName(getLRMS().getJobStatus(
+          MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null));
     }
     catch(Exception e){
       e.printStackTrace();
@@ -446,7 +447,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     File tmpStderr = new File(job.getErrTmp());   
     String [] res = new String[2];
     try{
-      int st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId());
+      int st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
       if(st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED || st==JobInfo.STATUS_UPLOADED){
         // stdout
         fileTransfer.getFile(new GlobusURL(job.getJobId()+"/stdout"), tmpStdout);
@@ -465,7 +466,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         }
       }
       else if(st==JobInfo.STATUS_RUNNING){
-        res = getLRMS().getOutput(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut);
+        res = getLRMS().getOutput(MyUtil.getHostFromID(job.getJobId()), job.getJobId(),
+            GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut, null);
       }
       else{
         throw new IOException("Job is not in a state that allows getting output - "+JobInfo.getStatusName(st));
@@ -496,7 +498,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
 
   private void updateStatus(MyJobInfo job) throws IOException, GeneralSecurityException,
      GlobusCredentialException, GSSException{
-    int st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId());
+    int st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
     String csStatus = JobInfo.getStatusName(st);
     job.setCSStatus(csStatus);
     job.setStatus(st);
