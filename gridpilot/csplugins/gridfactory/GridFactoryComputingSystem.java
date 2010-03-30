@@ -23,6 +23,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.lrms.LRMS;
 
 import gridpilot.MyComputingSystem;
@@ -31,7 +32,6 @@ import gridpilot.GridPilot;
 import gridpilot.MyJobInfo;
 import gridpilot.MySSL;
 import gridpilot.MyUtil;
-import gridpilot.RteRdfParser;
 import gridpilot.csplugins.fork.ForkComputingSystem;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
 
@@ -171,7 +171,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           job.setOpSys(rtes0[i]);
         }
       }
-      else if(MyUtil.checkOS(rtes0[i]) || rtes0[i].startsWith(RteRdfParser.VM_PREFIX)){
+      else if(MyUtil.checkOS(rtes0[i]) || rtes0[i].startsWith(RTEMgr.VM_PREFIX)){
         if(job.getOpSys()==null || job.getOpSys().equals("")){
           job.setOpSys(rtes0[i]);
         }

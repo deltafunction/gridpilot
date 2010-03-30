@@ -1807,7 +1807,7 @@ private static String fixUrl(String _url){
     for(int i=0; i<rtes.length; ++i){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
-      if(!checkOS(rtes[i]) && !rtes[i].startsWith(RteRdfParser.VM_PREFIX) &&
+      if(!checkOS(rtes[i]) && !rtes[i].startsWith(RTEMgr.VM_PREFIX) &&
           !MyUtil.arrayContains(osProvides, rtes[i])){
         newRTEs.add(rtes[i]);
       }

@@ -17,6 +17,7 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
+import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
@@ -26,7 +27,6 @@ import gridpilot.GridPilot;
 import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.MyUtil;
-import gridpilot.RteRdfParser;
 import gridpilot.csplugins.fork.ForkScriptGenerator;
 
 /**
@@ -328,7 +328,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       //       VM RTE names with VM/
       // Prefer VM that provides as many as the requested rtes as possible,
       // - first try just with no basesystem
-      if(rte.startsWith(RteRdfParser.VM_PREFIX)){
+      if(rte.startsWith(RTEMgr.VM_PREFIX)){
         providesHits = 0;
         try{
           if(Util.arrayContains(rtes, rte)){
