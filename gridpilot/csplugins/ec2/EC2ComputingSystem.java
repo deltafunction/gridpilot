@@ -1054,7 +1054,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
         amiID = findAmiId(job);
         Debug.debug("Booting "+amiID, 2);
-        String type = getInstanceType(job.getMemory());
+        String type = getInstanceType(job.getRamMb());
         ReservationDescription desc = ec2mgr.launchInstances(amiID, 1, type);
         Instance inst = ((Instance) desc.getInstances().get(0));
         // Wait for the machine to boot
