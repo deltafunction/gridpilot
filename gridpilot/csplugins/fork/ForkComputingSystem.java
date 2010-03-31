@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.util.AbstractList;
 import java.util.HashMap;
@@ -303,39 +302,10 @@ public class ForkComputingSystem implements MyComputingSystem{
     String url = null;
     // Get the URL - not used at the moment
     try{
-      hostName = InetAddress.getLocalHost().getCanonicalHostName();
+      hostName = MyUtil.getIPAddress();
     }
     catch(Exception e){
       e.printStackTrace();
-    }
-    // unqualified names are of no use
-    if(hostName.indexOf(".")<0){
-      hostName = null;
-    }
-    if(hostName==null){
-      try{
-        hostName = InetAddress.getLocalHost().getHostAddress();
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    if(hostName==null){
-      try{
-        hostName = MyUtil.getIPNumber();
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
-    }
-    // if we cannot get the host name, try to get the IP address
-    if(hostName==null){
-      try{
-        hostName = MyUtil.getIPAddress();
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
     }
     if(hostName!=null){
       url = "gsiftp://"+hostName+"/";
