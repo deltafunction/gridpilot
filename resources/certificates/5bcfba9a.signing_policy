@@ -1,4 +1,0 @@
-# EACL Sri Lanka Grid Certification Authority
-access_id_CA  X509   '/C=LK/O=Grid/CN=Sri Lanka Grid Certification Authority'
-pos_rights    globus CA:sign
-cond_subjects globus '"/C=LK/O=Grid/*"'

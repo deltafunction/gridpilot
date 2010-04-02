@@ -1,3 +1,0 @@
-access_id_CA            X509    '/C=US/O=Entrust.net/OU=www.entrust.net\/CPS incorp. by ref. (limits liab.)/OU=(c) 1999 Entrust.net Limited/CN=Entrust.net Secure Server Certification Authority'
-pos_rights              globus  CA:sign
-cond_subjects           globus  '/C=DK/O=TDC Internet/*'

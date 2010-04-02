@@ -1,0 +1,10 @@
+#
+# @(#)$Id: CNRS2-Grid-FR.info,v 1.1 2010/04/02 19:15:57 fjob Exp $
+alias = CNRS2-Grid-FR
+url = http://igc.services.cnrs.fr/GRID-FR/
+email = grid-fr@urec.cnrs.fr
+crl_url = http://crls.services.cnrs.fr/GRID2-FR/getpem.crl
+requires = CNRS2-Projets
+status = accredited:classic
+version = 1.34
+sha1fp.0 = 4C:2B:53:7C:FB:00:FC:7A:44:B7:CD:80:73:26:8B:52:BD:5B:B3:0C

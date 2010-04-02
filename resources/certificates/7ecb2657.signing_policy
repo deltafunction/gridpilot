@@ -1,0 +1,6 @@
+# EACL GermanGrid CA operated by FZK
+# @(#)$Id: 7ecb2657.signing_policy,v 1.1 2010/04/02 19:15:57 fjob Exp $
+# 
+access_id_CA  X509   '/C=DE/O=GermanGrid/CN=GridKa-CA'
+pos_rights    globus CA:sign
+cond_subjects globus '"/C=DE/O=GermanGrid/*" "/O=GermanGrid/OU=*"'

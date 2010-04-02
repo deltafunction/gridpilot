@@ -1,0 +1,4 @@
+# @(#)$Id: cc5645bd.signing_policy,v 1.1 2010/04/02 19:15:58 fjob Exp $
+access_id_CA   X509    '/C=RS/O=AEGIS/CN=AEGIS-CA'
+pos_rights     globus  CA:sign
+cond_subjects  globus  '"/C=RS/O=AEGIS/*"'

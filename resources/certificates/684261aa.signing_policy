@@ -1,4 +1,4 @@
-# @(#)$Id: 684261aa.signing_policy,v 1.1 2009/09/28 15:18:20 fjob Exp $
+# @(#)$Id: 684261aa.signing_policy,v 1.2 2010/04/02 19:15:58 fjob Exp $
 # TACC Root CA Signing Policy
 access_id_CA		X509	'/DC=EDU/DC=UTEXAS/DC=TACC/O=UT-AUSTIN/CN=TACC Root CA'
 pos_rights		globus	CA:sign

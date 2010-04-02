@@ -1,0 +1,11 @@
+##############################################################################
+#NAMESPACES-VERSION: 1.0
+#
+# @(#)$Id: b459ca48.namespaces,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# CA alias    : ASGCCA-2007
+#    subord_of: 
+#    subjectDN: /C=TW/O=AS/CN=Academia Sinica Grid Computing Certificate Authority
+#
+TO Issuer "/C=TW/O=AS/CN=Academia Sinica Grid Computing Certification Authority Mercury" \
+  PERMIT Subject "/C=TW/.*"
+

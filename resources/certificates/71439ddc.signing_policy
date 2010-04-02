@@ -1,4 +1,0 @@
-# EACL CSCSGRID CA
-access_id_CA  X509   '/C=CH/ST=Ticino/L=Manno/O=CSCS/OU=CSCSGRID/CN=CA of the LCG Grid project at the CSCS/Email=Frederik.Orellana@cern.ch'
-pos_rights    globus CA:sign
-cond_subjects globus '"/O=Grid/O=CSCSGRID/*"'

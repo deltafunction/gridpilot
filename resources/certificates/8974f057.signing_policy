@@ -1,4 +1,0 @@
-#
-access_id_CA  X509   '/O=Grid/O=ARCDEMO/CN=ARCDEMO CA'
-pos_rights    globus CA:sign
-cond_subjects globus '"/O=Grid/O=ARCDEMO/*"'
