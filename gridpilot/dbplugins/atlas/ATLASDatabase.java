@@ -156,8 +156,8 @@ public class ATLASDatabase extends DBCache implements Database{
       }
     }*/
     // Get and cache the TOA file
-    String toaLocation = configFile.getValue(dbName, "Tiers of atlas");
-    toa = new TiersOfAtlas(toaLocation);
+    String[] toaLocations = configFile.getValues(dbName, "Tiers of atlas");
+    toa = new TiersOfAtlas(toaLocations[0], toaLocations.length>1?toaLocations[1]:null);
     
     // Set the timeout for querying file catalogs
     String timeout = configFile.getValue(dbName, "File catalog timeout");

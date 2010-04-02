@@ -51,7 +51,7 @@ public class JobMgr{
    *     (they are in {@link SubmissionControl#toSubmitJobs})
    * <li>the logicalFile which have been monitored (not submitted) </ul>
    */
-  private Vector monitoredjobs;
+  private Vector<MyJobInfo> monitoredjobs;
 
   /** Index of column of icon in statusTable .*/
   public final static int FIELD_CONTROL = 0;
@@ -418,7 +418,7 @@ public class JobMgr{
    * @see #updateDBCell(MyJobInfo)
    * (From AtCom)
    */
-  public void updateDBCells(Vector jobs){
+  public void updateDBCells(Vector<MyJobInfo> jobs){
     // this works fine, except that the setTable causes the right-click menu to be lost...
     /*Object [][] values = new Object[jobs.size()][GridPilot.jobStatusFields.length];
     for(int i=0; i<jobs.size(); ++i){
@@ -436,9 +436,9 @@ public class JobMgr{
     statusTable.setTable(values, GridPilot.jobStatusFields);
     */
 
-    Enumeration e = jobs.elements();
+    Enumeration<MyJobInfo> e = jobs.elements();
     while(e.hasMoreElements()){
-      updateDBCell((MyJobInfo)e.nextElement());
+      updateDBCell(e.nextElement());
     }
     //updateJobsByStatus();
 
@@ -449,10 +449,10 @@ public class JobMgr{
    * @see #updateJobCell(MyJobInfo)
    * (From AtCom)
    */
-  public void updateJobCells(Vector jobs){
-    Enumeration e = jobs.elements();
+  public void updateJobCells(Vector<MyJobInfo> jobs){
+    Enumeration<MyJobInfo> e = jobs.elements();
     while(e.hasMoreElements()){
-      updateJobCell((MyJobInfo)e.nextElement());
+      updateJobCell(e.nextElement());
     }
   }
 
@@ -552,9 +552,9 @@ public class JobMgr{
   public boolean exists(String jobDefId){
     MyJobInfo job;
     Debug.debug("Checking jobs: "+monitoredjobs.size(), 3);
-    Iterator i = monitoredjobs.iterator();
+    Iterator<MyJobInfo> i = monitoredjobs.iterator();
     while(i.hasNext()){
-      job = ((MyJobInfo) i.next());
+      job = i.next();
       if(job.getIdentifier()==jobDefId){
         return true;
       }
@@ -708,11 +708,11 @@ public class JobMgr{
    * Returns the submitted job with the specified jobDefinition.identifier.
    */
   public static MyJobInfo getJob(String jobDefID){
-    Vector submJobs = GridPilot.getClassMgr().getMonitoredJobs();
-    Enumeration e = submJobs.elements();
+    Vector<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
+    Enumeration<MyJobInfo> e = submJobs.elements();
     MyJobInfo job = null;
     while(e.hasMoreElements()){
-      job = (MyJobInfo) e.nextElement();
+      job = e.nextElement();
       if(job.getIdentifier().equalsIgnoreCase(jobDefID)){
         return job;
       }
@@ -726,7 +726,7 @@ public class JobMgr{
    * @see #getJobsAtRows(int[])
    */
   public static MyJobInfo getJobAtRow(int row){
-    Vector submJobs = GridPilot.getClassMgr().getMonitoredJobs();
+    Vector<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     //Debug.debug("Got jobs at row "+row+". "+submJobs.size(), 3);
     return (MyJobInfo) submJobs.get(row);
   }
@@ -736,7 +736,7 @@ public class JobMgr{
    * @see #getJobAtRow(int)
    */
   public static MyLinkedHashSet<JobInfo> getJobsAtRows(int[] row){
-    MyLinkedHashSet jobs = new MyLinkedHashSet<JobInfo>(row.length);
+    MyLinkedHashSet<JobInfo> jobs = new MyLinkedHashSet<JobInfo>(row.length);
     for(int i=0; i<row.length; ++i){
       jobs.add(getJobAtRow(row[i]));
     }

@@ -1,6 +1,7 @@
 package gridpilot.dbplugins.atlas;
 
 import gridfactory.common.Debug;
+import gridfactory.common.Util;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
 
@@ -22,12 +23,18 @@ public class TiersOfAtlas {
   private HashMap<String, String> fileCatalogs = new HashMap<String, String>();
   private HashMap<String, String> httpFileCatalogs = new HashMap<String, String>();
 
-  public TiersOfAtlas(String _toaLocation) {
+  /**
+   * Create TiersOfAtlas object.
+   * @param _toaLocation URL of the tiers of ATLAS file
+   * @param _localCacheFile local file to use for caching - can be null,
+   *                        in which case caching is not persistent across sessions
+   */
+  public TiersOfAtlas(String _toaLocation, String _localCacheFile) {
     try{
       toaLocation = _toaLocation;
       URL toaURL = null;
-      toaFile = File.createTempFile(/*prefix*/"GridPilot-TOA", /*suffix*/"");
-      toaFile.delete();
+      File tmpFile = File.createTempFile(/*prefix*/"GridPilot-TOA", /*suffix*/"");
+      tmpFile.delete();
       toaLocation = MyUtil.clearFile(toaLocation);
       if(toaLocation.startsWith("~")){
         toaLocation = System.getProperty("user.home") + File.separator +
@@ -39,22 +46,45 @@ public class TiersOfAtlas {
       else{
         toaURL = new URL(toaLocation);
       }
-      BufferedReader in = new BufferedReader(new InputStreamReader(toaURL.openStream()));
-      PrintWriter out = new PrintWriter(new FileWriter(toaFile)); 
-      String line = null;
-      while((line = in.readLine())!=null){
-        out.println(line);
+      // Check if the URL is available - if not, don't overwrite cache.
+      try{
+        BufferedReader in = new BufferedReader(new InputStreamReader(toaURL.openStream()));
+        PrintWriter out = new PrintWriter(new FileWriter(tmpFile)); 
+        String line = null;
+        while((line = in.readLine())!=null){
+          out.println(line);
+        }
+        in.close();
+        out.close();
       }
-      in.close();
-      out.close();
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      if(_localCacheFile==null || _localCacheFile.trim().equals("")){
+        if(!tmpFile.exists() || tmpFile.length()<1000){
+          throw new IOException("ERROR: "+toaURL+" not available.");
+        }
+        toaFile = tmpFile;
+      }
+      else{
+        toaFile = new File(Util.clearTildeLocally(Util.clearFile(_localCacheFile)));
+        if(!tmpFile.exists() || tmpFile.length()<1000){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: "+toaURL+" not available.");
+        }
+        else{
+          toaFile.delete();
+          tmpFile.renameTo(toaFile);
+        }
+      }
       Debug.debug("Wrote cache of TiersOfATLAS in "+toaFile.getAbsolutePath(), 2);
       // have the file deleted on exit
       GridPilot.addTmpFile(toaFile.getName(), toaFile);
     }
     catch(Exception e){
-      String error = "WARNING: could not load tiers of atlas. File catalog lookups " +
-          "are disabled";    
+      String error = "WARNING: could not load tiers of ATLAS file. File catalog lookups " +
+          "will not work.";    
       GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+      MyUtil.showError(error+" "+e.getMessage());
     }
   }
 
