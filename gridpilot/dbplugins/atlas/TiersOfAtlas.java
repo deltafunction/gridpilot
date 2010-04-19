@@ -128,11 +128,12 @@ public class TiersOfAtlas {
       in = new BufferedReader(new InputStreamReader((toaFile.toURI().toURL()).openStream()));
       StringBuffer lb = new StringBuffer();
       while((inLine = in.readLine())!=null){
+        inLine = inLine.trim();
         // take care of "lines" split on multiple lines
         if(inLine.length()==0){
           continue;
         }
-        else if(inLine.endsWith("',")){
+        else if(inLine.endsWith("',") || inLine.endsWith("': [")){
           lb.append(inLine);
           continue;
         }
@@ -151,8 +152,9 @@ public class TiersOfAtlas {
         // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
         // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
         if(parentSite!=null &&
-            line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+parentSite+"'\\W+.*") ||
-            parentSite==null && line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+siteAcronym+"'\\W+.*")){
+           line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+parentSite+"'\\W+.*") ||
+           parentSite==null &&
+           line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+siteAcronym+"'\\W+.*")){
           catalogSite = line.replaceFirst("^\\W*'(\\w*)':.*", "$1");
           Debug.debug("catalogSite --> "+catalogSite, 3);
         }
