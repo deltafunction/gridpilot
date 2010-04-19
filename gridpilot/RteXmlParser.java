@@ -12,16 +12,16 @@ import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 
 /**
- * This class provides methods for parsing the KnowARC RDF/XML format
+ * This class provides methods for parsing the XML format
  * for RTE catalogs.
  */
 
-public class RteRdfParser {
+public class RteXmlParser {
   
   public String [] catalogURLs;
   private RTECatalog rteCatalog;
   
-  public RteRdfParser(String [] _urls){
+  public RteXmlParser(String [] _urls){
     catalogURLs = _urls;
     MyUtil.checkAndActivateSSL(catalogURLs);
     //rteCatalog = new RTECatalog(catalogURLs, null);

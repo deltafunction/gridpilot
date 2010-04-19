@@ -9,7 +9,7 @@ import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridfactory.common.jobrun.RTECatalog.TarPackage;
 import gridpilot.GPFrame;
 import gridpilot.GridPilot;
-import gridpilot.RteRdfParser;
+import gridpilot.RteXmlParser;
 import gridpilot.MyUtil;
 
 import java.awt.Color;
@@ -52,7 +52,7 @@ import org.safehaus.uuid.UUIDGenerator;
  * 1) Setup scripts on the local hard disk.
  * 2) RTE catalog files located either on the local disk or on a web server.
  * 3) The NorduGrid information system (which incidentally may also have its
- *    information from an RDF catalog).
+ *    information from an XML catalog).
  * 4) The EGEE information system.
  * 
  * For all cases, the information is collected on startup by the computing system
@@ -90,7 +90,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   private String baseSystem = null;
   private MultiPicker rteBox = null;
   private MultiPicker bsBox = null;
-  private RteRdfParser rteRdfParser = null;
+  private RteXmlParser rteXmlParser = null;
   private HashMap<String, String> baseSystemMap = null;
 
   private JTextField jtfInstall =  new JTextField(TEXTFIELDWIDTH);
@@ -451,8 +451,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
     RTECatalog rteCatalog;
     try{
       // Add the entry to the catalog: name, url, depends.
-      RteRdfParser rdf = GridPilot.getClassMgr().getRteRdfParser(new String [] {catalogUrl});
-      rteCatalog = rdf.getRteCatalog();
+      RteXmlParser catalogXml = GridPilot.getClassMgr().getRteXmlParser(new String [] {catalogUrl});
+      rteCatalog = catalogXml.getRteCatalog();
       
       if(rteCatalog.getBaseSystems().isEmpty() && rteCatalog.getMetaPackages().isEmpty() && rteCatalog.getTarPackages().isEmpty()){
         ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
@@ -469,8 +469,8 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         }
         
         if(choice==0){
-          rdf = rteRdfParser;
-          rteCatalog = rdf.getRteCatalog();
+          catalogXml = rteXmlParser;
+          rteCatalog = catalogXml.getRteCatalog();
         }
       }
       
@@ -506,7 +506,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       }
       if(baseSystemID.equals("")){
         MyUtil.showMessage("Unresolved dependencies", "WARNING: could not resolve base system \""+
-            system+"\" in catalog(s) "+MyUtil.arrayToString(rdf.catalogURLs)+
+            system+"\" in catalog(s) "+MyUtil.arrayToString(catalogXml.catalogURLs)+
             ". Writing catalog "+catalogUrl+" anyway - with basesystem 0.");
         baseSystemID = "0";
       }
@@ -530,7 +530,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         }
         else{
           MyUtil.showMessage("Unresolved dependencies", "WARNING: could not resolve depencency "+
-              depends[i]+" in catalog(s) "+MyUtil.arrayToString(rdf.catalogURLs)+
+              depends[i]+" in catalog(s) "+MyUtil.arrayToString(catalogXml.catalogURLs)+
               ". Writing catalog "+catalogUrl+" anyway.");
         }
       }
@@ -551,12 +551,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       
       // Generate the new catalog
       String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
-     "<!DOCTYPE rdf:RDF [\n"+
-     "<!ENTITY rdf 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'>\n"+
-     "<!ENTITY kb 'http://knowarc.eu/kb#'>\n"+
-     "<!ENTITY rdfs 'http://www.w3.org/2000/01/rdf-schema#'>]>\n"+
-     "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" " +
-     "xmlns:kb=\"http://knowarc.eu/kb#\" xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\">\n\n";
+     "<?xml-stylesheet type=\"text/xsl\" href=\"rtes.xsl\"?>\n\n";
       
       for(Iterator<BaseSystem> it=rteCatalog.getBaseSystems().iterator(); it.hasNext();){
         bs = it.next();
@@ -571,10 +566,10 @@ public class CreateSoftwarePackageWizard extends GPFrame{
         xml += tp.toXML()+"\n";
       }
       
-      xml += rteCatalog.getUnparsed() + "\n\n</rdf:RDF>";
+      xml += rteCatalog.getUnparsed();
       
       // Upload the catalog
-      File newCatalog = new File(tmpDir, "newCatalog.rdf");
+      File newCatalog = new File(tmpDir, "newCatalog.xml");
       LocalStaticShell.writeFile(newCatalog.getAbsolutePath(), xml, false);
       GridPilot.getClassMgr().getTransferControl().upload(newCatalog, catalogUrl);
       lockFile.delete();
@@ -985,19 +980,19 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       Debug.debug("Adding catalog "+catalogUrls[i], 2);
       ++i;
     }
-    rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(catalogUrls);
+    rteXmlParser = GridPilot.getClassMgr().getRteXmlParser(catalogUrls);
   }
   
   private void refreshBSs(String catalogUrl, boolean forceUpdate){
     int i = 0;
-    if(rteRdfParser==null || forceUpdate){
+    if(rteXmlParser==null || forceUpdate){
       parseCatalogs();
     }
-    String [] listData = new String [rteRdfParser.getRteCatalog().getBaseSystems().size()];
+    String [] listData = new String [rteXmlParser.getRteCatalog().getBaseSystems().size()];
     i = 0;
     BaseSystem bs = null;
     baseSystemMap = new HashMap<String, String>();
-    for(Iterator<BaseSystem> it=rteRdfParser.getRteCatalog().getBaseSystems().iterator(); it.hasNext();){
+    for(Iterator<BaseSystem> it=rteXmlParser.getRteCatalog().getBaseSystems().iterator(); it.hasNext();){
       bs = it.next();
       listData[i] = bs.name;
       baseSystemMap.put(bs.name, bs.id);
@@ -1010,12 +1005,12 @@ public class CreateSoftwarePackageWizard extends GPFrame{
   
   private void refreshRTEs(String catalogUrl, boolean forceUpdate){
     int i = 0;
-    if(rteRdfParser==null || forceUpdate){
+    if(rteXmlParser==null || forceUpdate){
       parseCatalogs();
     }
-    String [] listData = new String [rteRdfParser.getRteCatalog().getMetaPackages().size()];
+    String [] listData = new String [rteXmlParser.getRteCatalog().getMetaPackages().size()];
     i = 0;
-    for(Iterator<MetaPackage> it=rteRdfParser.getRteCatalog().getMetaPackages().iterator(); it.hasNext();){
+    for(Iterator<MetaPackage> it=rteXmlParser.getRteCatalog().getMetaPackages().iterator(); it.hasNext();){
       listData[i] = it.next().name;
       ++i;
     }

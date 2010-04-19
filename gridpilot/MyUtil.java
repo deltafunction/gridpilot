@@ -471,7 +471,7 @@ private static String fixUrl(String _url){
    * 
    * @throws Throwable if an exception or an error occurs during loading
    */
-  public static Object loadClass(String className, Class [] argTypes,
+  public static Object loadClass(String className, Class<?> [] argTypes,
      Object [] args) throws Throwable{
     Debug.debug("Loading plugin: "+" : "+className, 2);
     // Arguments and class name for <DatabaseName>Database
@@ -481,7 +481,7 @@ private static String fixUrl(String _url){
     Debug.debug("arguments: "+arrayToString(args), 3);
     try{
       //Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
-      Class newClass = (new MyClassLoader()).loadClass(className);
+      Class<?> newClass = (new MyClassLoader()).loadClass(className);
       ret = (newClass.getConstructor(argTypes).newInstance(args));
       Debug.debug("plugin " + "(" + className + ") loaded, "+ret.getClass(), 2);
     }
@@ -594,7 +594,6 @@ private static String fixUrl(String _url){
     }
     String userHomePattern = userHome.replaceAll("\\\\", "\\\\\\\\");
     if(str.matches("file:/*"+userHomePattern+".*")){
-      String prefix = str.replaceFirst("(file:/*)(.+)", "$1");
       // Path relative to root
       String path = str.replaceFirst("(file:/*)(.+)", "$2");
       str = "file:"+"~"+((onWindows()?"":"/")+path).substring(userHome.length());
@@ -613,12 +612,12 @@ private static String fixUrl(String _url){
   }
 
   public static String getIPNumber(){ 
-    long [] localip = null; 
+    long [] localip = new long[4]; 
     try{
-      Enumeration e = NetworkInterface.getNetworkInterfaces();
+      Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces();
       while(e.hasMoreElements()){ 
         NetworkInterface netface = (NetworkInterface) e.nextElement(); 
-        Enumeration e2 = netface.getInetAddresses();
+        Enumeration<InetAddress> e2 = netface.getInetAddresses();
         while (e2.hasMoreElements()){
           InetAddress ip = (InetAddress) e2.nextElement(); 
           if(!ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":")==-1){ 
@@ -1077,7 +1076,7 @@ private static String fixUrl(String _url){
     }
     req += " FROM "+table;
     req += " WHERE "+id+" = '"+ idValue+"'";
-    Vector resultVector = new Vector();
+    Vector<String[]> resultVector = new Vector<String[]>();
     String [][] resultArray = null;
     try{
       Debug.debug(dbName+" >> "+req, 2);
@@ -1258,8 +1257,8 @@ private static String fixUrl(String _url){
     }
   }
 
-  public static HashMap parseMetaData(String str){
-    HashMap hm = new HashMap();
+  public static HashMap<String, String> parseMetaData(String str){
+    HashMap<String, String> hm = new HashMap<String, String>();
     if(str==null){
       return hm;
     }
@@ -1313,12 +1312,12 @@ private static String fixUrl(String _url){
     return sb.toString();
   }
   
-  public static String generateMetaDataText(HashMap data){
+  public static String generateMetaDataText(HashMap<String, String> data){
     StringBuffer sb = new StringBuffer();
-    for(Iterator it=data.keySet().iterator(); it.hasNext();){
-      sb.append((String) it.next());
+    for(Iterator<String> it=data.keySet().iterator(); it.hasNext();){
+      sb.append(it.next());
       sb.append(": ");
-      sb.append(data.get((String) it.next()));
+      sb.append(data.get(it.next()));
       sb.append("\n");
     }
     sb.trimToSize();
@@ -1365,7 +1364,7 @@ private static String fixUrl(String _url){
       out = new BufferedWriter(new FileWriter(tmpFile));
     }
     String line = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     while((line=in.readLine())!=null){
       if(line!=null && (commentTag==null || !line.startsWith(commentTag) && !line.equals(""))){
         vec.add(line);
@@ -1379,7 +1378,7 @@ private static String fixUrl(String _url){
       out.close();
     }
     ret = new String[vec.size()];
-    Enumeration en = vec.elements();
+    Enumeration<String> en = vec.elements();
     int i = 0;
     while(en.hasMoreElements()){
       ret[i] = (String) en.nextElement();
@@ -1593,7 +1592,7 @@ private static String fixUrl(String _url){
  * @param toDeleteRtes
  * @param dbMgr
  */
-  private static void createLocalOSRTE(String csName, HashMap toDeleteRtes,
+  private static void createLocalOSRTE(String csName, HashMap<String, String>  toDeleteRtes,
       DBPluginMgr dbMgr){
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     try{
@@ -1621,7 +1620,7 @@ private static String fixUrl(String _url){
    * @param toDeleteRtes
    * @param dbMgr
    */
-  public static void createBasicOSRTEs(String [] oses, String csName, HashMap toDeleteRtes,
+  public static void createBasicOSRTEs(String [] oses, String csName, HashMap<String, String>  toDeleteRtes,
       DBPluginMgr dbMgr){
     if(oses==null){
       return;
@@ -1650,7 +1649,7 @@ private static String fixUrl(String _url){
    * Consolidates and cpies records from catalogs to the 'local' runtime DBs.
     */
   public static void syncRTEsFromCatalogs(String csName, String [] rteCatalogUrls, String [] localRuntimeDBs,
-      HashMap toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses,
+      HashMap<String, String>  toDeleteRtes, boolean mkLocalOS, boolean includeVMs, String [] basicOses,
       boolean createRteForEachProvides){
     
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
@@ -1661,7 +1660,7 @@ private static String fixUrl(String _url){
     
     DBPluginMgr dbMgr = null;
     
-    RteRdfParser rteRdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
+    RteXmlParser rteXmlParser = GridPilot.getClassMgr().getRteXmlParser(rteCatalogUrls);
     DBRecord row;
     Debug.debug("Syncing RTEs from catalogs to DBs: "+arrayToString(localRuntimeDBs), 2);
     
@@ -1669,16 +1668,16 @@ private static String fixUrl(String _url){
     Object providesStr;
     String [] provides;
     DBResult allRtes;
-    HashMap rtesMap = null;
+    HashMap<String, String>  rtesMap = null;
     for(int ii=0; ii<localRuntimeDBs.length; ++ii){
       try{
         
         dbMgr = GridPilot.getClassMgr().getDBPluginMgr(localRuntimeDBs[ii]);  
         nameField = getNameField(dbMgr.getDBName(), "runtimeEnvironment");
         allRtes = dbMgr.getRuntimeEnvironments();
-        rtesMap = new HashMap();
+        rtesMap = new HashMap<String, String> ();
         for(int i=0; i<allRtes.values.length; ++i){
-          rtesMap.put(allRtes.getValue(i, nameField), allRtes.getValue(i, "computingSystem"));
+          rtesMap.put((String) allRtes.getValue(i, nameField), (String) allRtes.getValue(i, "computingSystem"));
         }
         
         if(mkLocalOS){
@@ -1686,7 +1685,7 @@ private static String fixUrl(String _url){
         }
         createBasicOSRTEs(basicOses, csName, toDeleteRtes, dbMgr);
         
-        DBResult rtes = rteRdfParser.getDBResult(dbMgr, csName);
+        DBResult rtes = rteXmlParser.getDBResult(dbMgr, csName);
         Debug.debug("Creating "+rtes.size()+" RTEs in DB "+dbMgr.getDBName(), 2);
         for(int i=0; i<rtes.values.length; ++i){
           row = rtes.get(i);
@@ -1724,7 +1723,7 @@ private static String fixUrl(String _url){
   }
   
   private static void createRte(DBPluginMgr dbMgr, DBRecord row, String csName,
-      HashMap toDeleteRtes){
+      HashMap<String, String>  toDeleteRtes){
     MyLogFile logFile = GridPilot.getClassMgr().getLogFile();
     Debug.debug("Checking RTE "+arrayToString(row.values), 3);
     if(dbMgr.createRuntimeEnvironment(row.values)){

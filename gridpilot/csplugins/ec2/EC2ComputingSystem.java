@@ -90,7 +90,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
     fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
        "Fallback ami id");
-    defaultEc2Catalogs = new String [] {"sss://gridpilot/ec2_rtes.rdf"};
+    defaultEc2Catalogs = new String [] {"sss://gridpilot/ec2_rtes.xml"};
     String [] testEc2Catalogs = GridPilot.getClassMgr().getConfigFile().getValues(csName,
        "Runtime catalog URLs");
     if(testEc2Catalogs!=null && testEc2Catalogs.length>0){
@@ -802,7 +802,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   private File [] getAllTmpCatalogFiles() throws EC2Exception {
     ArrayList<File> files = new ArrayList();
-    // First the default EC2-specific RDF files
+    // First the default EC2-specific XML files
     File tmpCatalogFile;
     for(int i=0; i<defaultEc2Catalogs.length; ++i){
       try{
@@ -832,10 +832,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
         catch(Exception e){
           e.printStackTrace();
-          logFile.addInfo("No RDF file for AMI "+desc.getImageLocation()+". Using defaults.");
+          logFile.addInfo("No XML file for AMI "+desc.getImageLocation()+". Using defaults.");
         }
       }
-      // If no custom RDF file was found, add standard entry to RTE table
+      // If no custom XML file was found, add standard entry to RTE table
       createAmiOsRte(manifestToRTEName(desc.getImageLocation()),
           desc.getImageLocation(),
           desc.getArchitecture()+" "+desc.getImageType()+" "+
@@ -888,7 +888,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   /**
-   * Check if there is an RDF file next to a given AMI manifest and download it
+   * Check if there is an XML file next to a given AMI manifest and download it
    * to a temporary file if there is.
    * @param imageId the manifest location
    * @return the temporary file
@@ -898,12 +898,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    */
   private File getTmpCatalogFile(String imageId) throws NullPointerException, MalformedURLException, Exception{
     String manifest = ec2mgr.getImageDescription(imageId).getImageLocation();
-    String rdfFile = manifestToRTEName(manifest)+".rdf";
-    Debug.debug("RDF file --> "+rdfFile, 2);
-    File tmpCatalogFile = downloadFromSSS(rdfFile);
+    String xmlFile = manifestToRTEName(manifest)+".xml";
+    Debug.debug("XML file --> "+xmlFile, 2);
+    File tmpCatalogFile = downloadFromSSS(xmlFile);
     GridPilot.addTmpFile(tmpCatalogFile.getAbsolutePath(), tmpCatalogFile);
     if(tmpCatalogFile==null || tmpCatalogFile.length()==0){
-      throw new Exception("No RDF file found for "+imageId);
+      throw new Exception("No XML file found for "+imageId);
     }
     return tmpCatalogFile;
   }
@@ -917,7 +917,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception
    */
   private File downloadFromSSS(String path) throws NullPointerException, MalformedURLException, Exception{
-    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".rdf");
+    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), ".xml");
     tmpFile.delete();
     if(path.toLowerCase().startsWith("sss://")){
       GridPilot.getClassMgr().getFTPlugin("sss").getFile(new GlobusURL(path), tmpFile);

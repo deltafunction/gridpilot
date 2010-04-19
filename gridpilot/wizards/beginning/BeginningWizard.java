@@ -455,15 +455,15 @@ public class BeginningWizard{
     URL fileURL = null;
     BufferedReader in = null;
     try{
-      fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+"rtes.rdf");
+      fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+"rtes.xml");
       in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
     }
     catch(Exception e){
-      fileURL = GridPilot.class.getResource("/resources/rtes.rdf");
+      fileURL = GridPilot.class.getResource("/resources/rtes.xml");
       in = new BufferedReader(new InputStreamReader(fileURL.openStream()));
     }
     BufferedWriter out =  new BufferedWriter(new FileWriter(
-        new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])), "rtes.rdf")));
+        new File(MyUtil.clearTildeLocally(MyUtil.clearFile(newDirs[0])), "rtes.xml")));
     int c;
     while((c=in.read())!=-1){
       if(c!='\r'){

@@ -10,7 +10,7 @@ import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridpilot.GridPilot;
 
 import gridpilot.MyUtil;
-import gridpilot.RteRdfParser;
+import gridpilot.RteXmlParser;
 import gridpilot.VMMonitoringPanel;
 
 import java.awt.datatransfer.ClipboardOwner;
@@ -57,8 +57,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
   }
   
   protected String [][] getAvailableImages() throws Exception{
-    RteRdfParser rdfParser = GridPilot.getClassMgr().getRteRdfParser(rteCatalogUrls);
-    Set<MetaPackage> mps = rdfParser.getRteCatalog().getMetaPackages();
+    RteXmlParser xmlParser = GridPilot.getClassMgr().getRteXmlParser(rteCatalogUrls);
+    Set<MetaPackage> mps = xmlParser.getRteCatalog().getMetaPackages();
     MetaPackage mp;
     HashSet<String []> images = new HashSet<String []>();
     String[] imRow;

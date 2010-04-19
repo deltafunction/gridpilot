@@ -58,7 +58,7 @@ public class ClassMgr{
   /** List of urls in db pool */
   private HashSet<String> dbURLs = new HashSet<String>();
   private MySSL ssl = null;
-  private HashMap<String, RteRdfParser> rdfParsers = new HashMap<String, RteRdfParser>();
+  private HashMap<String, RteXmlParser> xmlParsers = new HashMap<String, RteXmlParser>();
   private HashMap<String, RTEMgr> rteMgrs = new HashMap<String, RTEMgr>();
   private Vector<String> urlList = new Vector<String>();
   private FileCacheMgr fileCacheMgr;
@@ -555,16 +555,16 @@ public class ClassMgr{
     dbURLs.add(dbName);
   }
 
-  public RteRdfParser getRteRdfParser(String[] rteCatalogUrls) {
+  public RteXmlParser getRteXmlParser(String[] rteCatalogUrls) {
     String [] sortedUrls = rteCatalogUrls.clone();
     Arrays.sort(sortedUrls);
     String key = MyUtil.arrayToString(sortedUrls);
-    if(!rdfParsers.containsKey(key)){
-      Debug.debug("Creating new RteRdfParser from "+key, 1);
-      RteRdfParser rteRdfParser = new RteRdfParser(rteCatalogUrls);
-      rdfParsers.put(key, rteRdfParser);
+    if(!xmlParsers.containsKey(key)){
+      Debug.debug("Creating new RteXmlParser from "+key, 1);
+      RteXmlParser rteXmlParser = new RteXmlParser(rteCatalogUrls);
+      xmlParsers.put(key, rteXmlParser);
     }
-    return rdfParsers.get(key);
+    return xmlParsers.get(key);
   }
   
   public RTEMgr getRTEMgr(String localRteDir, String[] rteCatalogUrls){
