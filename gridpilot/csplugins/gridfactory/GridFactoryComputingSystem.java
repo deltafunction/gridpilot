@@ -254,7 +254,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       // If this is a resubmit, first delete the old remote jobDefinition
       try{
         if(job.getJobId()!=null && job.getJobId().length()>0){
-          getLRMS().clean(new String [] {job.getJobId()}, null);
+          getLRMS().clean(new String [] {job.getJobId()}, null, null);
         }
       }
       catch(Exception e){
@@ -551,7 +551,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   public boolean cleanup(JobInfo job){
     boolean ret = super.cleanup(job);
     try{
-      getLRMS().clean(new String [] {job.getJobId()}, null);
+      getLRMS().clean(new String [] {job.getJobId()}, null, null);
     }
     catch(Exception e){
       ret = false;
