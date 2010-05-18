@@ -76,7 +76,7 @@ public class EC2SoapMgr {
     // First check if the group "GridPilot" already exists.
     // If not, create it.
     try{
-      List groupList = null;
+      List<SecurityGroupDescription> groupList = null;
       try{
         groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
       }
@@ -139,17 +139,17 @@ public class EC2SoapMgr {
    * If no instances are running, delete keypair.
    */
   public void exit(){
-    List keypairs;
+    List<KeyPairInfo> keypairs;
     try{
       keypairs = listKeyPairs();
     }
-    catch (Exception e1) {
+    catch(Exception e1){
        e1.printStackTrace();
        return;
     }
     KeyPairInfo keyInfo = null;
     KeyPairInfo tmpInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
       tmpInfo = (KeyPairInfo) it.next();
       if(tmpInfo.keyName.equals(KEY_NAME)){
         Debug.debug("Key "+KEY_NAME+" found", 2);
@@ -163,7 +163,7 @@ public class EC2SoapMgr {
     keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.keyFingerprint.replaceAll(":", ""));
     String downloadUrl = GridPilot.GRID_HOME_URL + (GridPilot.GRID_HOME_URL.endsWith("/")?"":"/")+
       keyFile.getName();
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = listReservations();
     }
@@ -174,10 +174,10 @@ public class EC2SoapMgr {
     ReservationDescription res = null;
     Instance inst = null;
     if(reservations!=null){
-      for(Iterator it=reservations.iterator(); it.hasNext();){
-        res = (ReservationDescription) it.next();
-        for(Iterator itt=res.instances.iterator(); itt.hasNext();){
-          inst = (Instance) itt.next();
+      for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+        res = it.next();
+        for(Iterator<Instance> itt=res.instances.iterator(); itt.hasNext();){
+          inst = itt.next();
           if(inst.keyName.equals(KEY_NAME)){
             // The key is used, don't do anything
             return;
@@ -230,11 +230,11 @@ public class EC2SoapMgr {
    * @throws Exception
    */
   public KeyPairInfo getKey() throws Exception{
-    List keypairs = listKeyPairs();
+    List<KeyPairInfo> keypairs = listKeyPairs();
     KeyPairInfo keyInfo = null;
     KeyPairInfo tmpInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
-      tmpInfo = (KeyPairInfo) it.next();
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
+      tmpInfo = it.next();
       if(tmpInfo.keyName.equals(KEY_NAME)){
         Debug.debug("Key "+KEY_NAME+" found", 2);
         keyInfo = tmpInfo;
@@ -270,14 +270,14 @@ public class EC2SoapMgr {
         logFile.addMessage("WARNING: could not download private key from "+downloadUrl, e);
       }
       // OK, no secret key found, check if this key is used
-      List reservations = listReservations();
+      List<ReservationDescription> reservations = listReservations();
       ReservationDescription res = null;
       Instance inst = null;
       if(reservations!=null){
-        for(Iterator it=reservations.iterator(); it.hasNext();){
-          res = (ReservationDescription) it.next();
-          for(Iterator itt=res.instances.iterator(); itt.hasNext();){
-            inst = (Instance) itt.next();
+        for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+          res = it.next();
+          for(Iterator<Instance> itt=res.instances.iterator(); itt.hasNext();){
+            inst = itt.next();
             if((inst.isPending() || inst.isRunning()) && inst.keyName.equals(KEY_NAME)){
               throw new Exception("The keypair "+KEY_NAME+" is in use by the instance "+
                   inst.instanceId+". But the secret key is not available. " +
@@ -315,7 +315,7 @@ public class EC2SoapMgr {
   public ReservationDescription launchInstances(String amiID, int instances) throws Exception{
     KeyPairInfo keypair = getKey();
     createSecurityGroup();
-    List groupList = new ArrayList();
+    List<String> groupList = new ArrayList<String>();
     groupList.add(GROUP_NAME);
     ReservationDescription desc =  ec2.runInstances(amiID, instances, instances, groupList, "",
         keypair.keyName, ServiceUtils.toBase64(owner.getBytes()), null, InstanceType.DEFAULT.name() /*i386*/,
@@ -344,8 +344,8 @@ public class EC2SoapMgr {
    * @throws Exception
    */
   public List<ImageDescription> listAvailableAMIs() throws Exception{
-    List<ImageDescription>  list = new ArrayList();
-    List params = new ArrayList();
+    List<ImageDescription>  list = new ArrayList<ImageDescription>();
+    List<String> params = new ArrayList<String>();
     List<ImageDescription>  images = ec2.describeImages(params);
     if(images==null){
       return null;
@@ -367,18 +367,18 @@ public class EC2SoapMgr {
    * @return a List of elements of type ReservationDescription
    * @throws Exception
    */
-  public List listReservations() throws Exception {
+  public List<ReservationDescription> listReservations() throws Exception {
     GridPilot.getClassMgr().getSSL().activateSSL();
-    List list = new ArrayList();
-    List params = new ArrayList();
-    List reservations = ec2.describeInstances(params);
+    List<ReservationDescription> list = new ArrayList<ReservationDescription>();
+    List<String> params = new ArrayList<String>();
+    List<ReservationDescription> reservations = ec2.describeInstances(params);
     if(reservations==null){
       return null;
     }
     Debug.debug("Finding reservations", 3);
     ReservationDescription res = null;
-    for(Iterator it=reservations.iterator(); it.hasNext();){
-      res = (ReservationDescription) it.next();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+      res = it.next();
       if(res!=null){
         list.add(res);
       }
@@ -392,11 +392,11 @@ public class EC2SoapMgr {
    * @return a List of elements of type Instance
    * @throws Exception
    */
-  public List listInstances(ReservationDescription res) throws Exception{
+  public List<Instance> listInstances(ReservationDescription res) throws Exception{
     Debug.debug("Finding running instances", 3);
-    List instances = new ArrayList();
+    List<Instance> instances = new ArrayList<Instance>();
     Instance inst = null;
-    for(Iterator it=res.instances.iterator(); it.hasNext();){
+    for(Iterator<Instance> it=res.instances.iterator(); it.hasNext();){
       inst = (Instance) it.next();
       // We only consider instances started with GridPilot
       if(inst.keyName.equals(KEY_NAME)){
@@ -412,16 +412,16 @@ public class EC2SoapMgr {
    * @return a List of elements of type KeyPairInfo
    * @throws Exception
    */
-  public List listKeyPairs() throws Exception{
-    List list = new ArrayList();
-    List params = new ArrayList();
-    List keypairs = ec2.describeKeyPairs(params);
+  public List<KeyPairInfo> listKeyPairs() throws Exception{
+    List<KeyPairInfo> list = new ArrayList<KeyPairInfo>();
+    List<String> params = new ArrayList<String>();
+    List<KeyPairInfo> keypairs = ec2.describeKeyPairs(params);
     if(keypairs==null){
       return null;
     }
     Debug.debug("Finding keypairs", 3);
     KeyPairInfo keyInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
       keyInfo = (KeyPairInfo) it.next();
       Debug.debug(keyInfo.keyName+"-->"+keyInfo.keyFingerprint, 3);
       if(keyInfo!=null){

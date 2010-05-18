@@ -83,7 +83,7 @@ public class GridPilot extends JApplet{
   public static Splash SPLASH;
   // Allow plugins to add monitoring panels. Any Component in
   // to extraMonitorTabs will be added by MonitoringPanel (called by initGUI).
-  public static Vector EXTRA_MONITOR_TABS = new Vector();
+  public static Vector<JPanel> EXTRA_MONITOR_TABS = new Vector<JPanel>();
   public static String PROXY_TYPE = "RFC";
   public static int PROXY_TIME_LEFT_LIMIT = 43200;
   public static int PROXY_TIME_VALID = 129600;
@@ -485,7 +485,7 @@ public class GridPilot extends JApplet{
   public static void loadDBs() throws Throwable{
     String tmpDb = null;
     DB_NAMES = getClassMgr().getConfigFile().getValues("Databases", "Systems");
-    Vector dbVector = new Vector();
+    Vector<String> dbVector = new Vector<String>();
     String enabled = "no";
     for(int i=0; i<DB_NAMES.length; ++i){
       enabled = "no";
@@ -504,7 +504,7 @@ public class GridPilot extends JApplet{
     }
     int j = 0;
     DB_NAMES = new String [dbVector.size()];
-    for(Iterator it=dbVector.iterator(); it.hasNext();){
+    for(Iterator<String> it=dbVector.iterator(); it.hasNext();){
       DB_NAMES[j] = (String) it.next();
       ++j;
     }
@@ -943,8 +943,8 @@ public class GridPilot extends JApplet{
     getClassMgr().setConfigFile(confFile);
     
     try{
-      for(Iterator it=TMP_FILES.keySet().iterator(); it.hasNext();){
-        ((File) TMP_FILES.get(it.next())).delete();
+      for(Iterator<String> it=TMP_FILES.keySet().iterator(); it.hasNext();){
+        TMP_FILES.get(it.next()).delete();
       }
     }
     catch(Exception e){

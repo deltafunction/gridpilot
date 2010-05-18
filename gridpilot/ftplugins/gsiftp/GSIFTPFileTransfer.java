@@ -857,33 +857,15 @@ public class GSIFTPFileTransfer implements FileTransfer {
           public void run(){
             boolean cacheOk = false;
             try{
-              // Check if file is cached and the cache is up to date
+              // Local download
               if(urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("gsiftp") &&
                  urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("file")){
-                GridFTPClient checkClient = null;
-                try{
-                  checkClient = connect(urlCopy.getSourceUrl().getHost(), urlCopy.getSourceUrl().getPort());
-                  cacheOk = fileCacheMgr.checkCache(
-                      new File(urlCopy.getDestinationUrl().getPath()),
-                               // This does not work:
-                               //urlCopy.getSourceLength(),
-                              checkClient.getSize((urlCopy.getSourceUrl().getPath())),
-                              checkClient.getLastModified(urlCopy.getSourceUrl().getPath()));
-                  try{
-                    checkClient.close();
-                  }
-                  catch(Exception ce){
-                  }
-                }
-                catch(Exception e){
-                  GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache for "+urlCopy, e);
-                  try{
-                    checkClient.close();
-                  }
-                  catch(Exception ce){
-                  }
-                }
+                // Check if file is cached and the cache is up to date
+                cacheOk = checkCache(urlCopy);
+                // Check if the destination directory exists, create if not
+                createDestDir(urlCopy.getDestinationUrl());
               }
+              // Upload or replication
               else if((urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("gsiftp") ||
                   urlCopy.getSourceUrl().getProtocol().equalsIgnoreCase("file")) &&
                   urlCopy.getDestinationUrl().getProtocol().equalsIgnoreCase("gsiftp")){
@@ -935,6 +917,45 @@ public class GSIFTPFileTransfer implements FileTransfer {
       }
     }
     return ret;
+  }
+  
+  private boolean checkCache(UrlCopy urlCopy) {
+    GridFTPClient checkClient = null;
+    boolean cacheOk = false;
+    try{
+      checkClient = connect(urlCopy.getSourceUrl().getHost(), urlCopy.getSourceUrl().getPort());
+      cacheOk = fileCacheMgr.checkCache(
+          new File(urlCopy.getDestinationUrl().getPath()),
+                   // This does not work:
+                   //urlCopy.getSourceLength(),
+                  checkClient.getSize((urlCopy.getSourceUrl().getPath())),
+                  checkClient.getLastModified(urlCopy.getSourceUrl().getPath()));
+      try{
+        checkClient.close();
+      }
+      catch(Exception ce){
+      }
+    }
+    catch(Exception e){
+      cacheOk = false;
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: problem checking cache for "+urlCopy, e);
+      try{
+        checkClient.close();
+      }
+      catch(Exception ce){
+      }
+    }
+    return cacheOk;
+  }
+  
+  private void createDestDir(GlobusURL destinationUrl) throws IOException {
+    File destFile = new File(destinationUrl.getPath());
+    String destDir = destFile.getParent();
+    if(!LocalStaticShell.existsFile(destDir)){
+      if(!LocalStaticShell.mkdirs(destDir) && !LocalStaticShell.existsFile(destDir)){
+        throw new IOException("Could not create directory "+destDir);
+      }
+    }
   }
 
   public String getStatus(String fileTransferID) throws Exception {

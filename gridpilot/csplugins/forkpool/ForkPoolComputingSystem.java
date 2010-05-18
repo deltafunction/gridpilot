@@ -32,7 +32,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected String [] maxRunningJobs = null;
   protected String [] maxPreprocessingJobs = null;
   // Map of host -> Set of jobs that are being submitted
-  protected HashMap<String, HashSet<String>> preprocessingHostJobs = null;
+  protected HashMap<String, HashSet<JobInfo>> preprocessingHostJobs = null;
   protected String [] users = null;
   protected String [] passwords = null;
   
@@ -51,7 +51,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
    * Sets up a HashMap of hosts -> ShellMgrs.
    */
   protected void setupRemoteShellMgrs(){
-    remoteShellMgrs = new HashMap();
+    remoteShellMgrs = new HashMap<String, Shell>();
     // The host defined by 'host' is *the* host,
     // i.e. used when scanning for RTEs, etc.
     // The hosts defined by 'hosts' are used for running jobs.
@@ -87,9 +87,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         // host null not accepted...
       }
     }
-    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
     for(int i=0; i<hosts.length; ++i){
-      preprocessingHostJobs.put(hosts[i], new HashSet());
+      preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
     }
   }
   
@@ -158,7 +158,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
           maxP = Integer.parseInt(maxPreprocessingJobs[i]);
         }
         preprocessing = (host!=null &&
-            preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0);
+            preprocessingHostJobs.get(host)!=null?preprocessingHostJobs.get(host).size():0);
         if(preprocessing>=maxP){
           continue;
         }
@@ -252,11 +252,11 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       return false;
     }
     finally{
-      ((HashSet) preprocessingHostJobs.get(job.getHost())).remove(job);
+      (preprocessingHostJobs.get(job.getHost())).remove(job);
     }
   }
 
-  public void updateStatus(Vector jobs){
+  public void updateStatus(Vector<JobInfo> jobs){
     for(int i=0; i<jobs.size(); ++i)
       try{
         updateStatus((MyJobInfo) jobs.get(i), getShell(((MyJobInfo) jobs.get(i)).getHost()));
@@ -270,7 +270,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
 
   public boolean killJobs(Set<JobInfo> jobsToKill){
-    Vector errors = new Vector();
+    Vector<String> errors = new Vector<String>();
     MyJobInfo job = null;
     for(Iterator<JobInfo>it=jobsToKill.iterator(); it.hasNext();){
       try{
@@ -403,7 +403,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         Debug.debug("No free slot on any host.", 2);
         return false;
       }
-      ((HashSet) preprocessingHostJobs.get(host)).add(job);
+      (preprocessingHostJobs.get(host)).add(job);
       Debug.debug("Getting ShellMgr for host "+host, 2);
       Shell mgr = getShell(host);
       job.setHost(host);
@@ -423,7 +423,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not prepare job.", e);
-      ((HashSet) preprocessingHostJobs.get(job.getHost())).remove(job);
+      (preprocessingHostJobs.get(job.getHost())).remove(job);
       retE = e;
     }
     if(retE!=null){
@@ -436,8 +436,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
    * The same as setupRuntimeEnvironments, but iterated over all remote ShellMgrs.
    */
   protected void setupRuntimeEnvironmentsSSH(){
-    for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
-      setupRuntimeEnvironmentsSSH((Shell) it.next());
+    for(Iterator<Shell> it=remoteShellMgrs.values().iterator(); it.hasNext();){
+      setupRuntimeEnvironmentsSSH(it.next());
     }
     // Already done by ForkComputingSystem constructor
     //MyUtil.syncRTEsFromCatalogs(csName, rteCatalogUrls, localRuntimeDBs, toDeleteRTEs);
@@ -473,9 +473,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     int jobs = 0;
     String message = "WARNING: You have ";
     boolean oneIterationDone = false;
-    for(Iterator it=remoteShellMgrs.values().iterator(); it.hasNext();){
+    for(Iterator<Shell> it=remoteShellMgrs.values().iterator(); it.hasNext();){
       try{
-        shellMgr = (Shell) it.next();
+        shellMgr = it.next();
         host = shellMgr.getHostName();
         jobs = shellMgr.getJobsNumber();
         if(oneIterationDone){

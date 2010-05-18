@@ -409,7 +409,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     Shell shell = shells.get(job.getHost());
     if(shell.equals(null)){
       return false;
-    }    String hostAndPort;
+    }
     int sJobs;
     int rJobs;
     for(int i=0; i<hosts.length; ++i){

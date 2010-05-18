@@ -87,7 +87,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     maxRunningJobs = new String[maxMachines];
     Arrays.fill(maxRunningJobs, jobsPerMachine);
     
-    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -98,7 +98,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
    * Override in order to postpone setting up shellMgrs till submission time (preProcess).
    */
   protected void setupRemoteShellMgrs(){
-    remoteShellMgrs = new HashMap();
+    remoteShellMgrs = new HashMap<String, Shell>();
   }
   
 
@@ -172,7 +172,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     for(Iterator<RunningInstance> it=instances.iterator(); it.hasNext();){
       hostName = it.next().getPublicDnsName();
       remoteShellMgrs.put(hostName, null);
-      preprocessingHostJobs.put(hostName, new HashSet());
+      preprocessingHostJobs.put(hostName, new HashSet<JobInfo>());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -185,7 +185,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
    * ask for confirmation.
    */
   private void haltNonBusy(){
-    List reservations;
+    List<Reservation> reservations;
     try{
       reservations = ec2mgr.listReservations();
     }
@@ -199,8 +199,8 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     }
     Reservation res = null;
     RunningInstance inst = null;
-    ArrayList passiveInstances = new ArrayList();
-    ArrayList activeInstances = new ArrayList();
+    ArrayList<String> passiveInstances = new ArrayList<String>();
+    ArrayList<String> activeInstances = new ArrayList<String>();
     for(Iterator<Reservation> it=reservations.iterator(); it.hasNext();){
       res = it.next();
       Debug.debug("checking reservation"+res.getReservationId(), 2);
@@ -252,8 +252,8 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     if(choice==1 || choice==2){
       int i = 0;
       String [] termArr = new String [passiveInstances.size()];
-      for(Iterator it=passiveInstances.iterator(); it.hasNext();){
-        termArr[i] = (String) it.next();
+      for(Iterator<String> it=passiveInstances.iterator(); it.hasNext();){
+        termArr[i] = it.next();
         ++i;
       }
       try{
@@ -266,8 +266,8 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
     if(choice==1){
       int i = 0;
       String [] termArr = new String [activeInstances.size()];
-      for(Iterator it=activeInstances.iterator(); it.hasNext();){
-        termArr[i] = (String) it.next();
+      for(Iterator<String> it=activeInstances.iterator(); it.hasNext();){
+        termArr[i] = it.next();
         ++i;
       }
       try{
@@ -379,7 +379,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
         if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
           maxR = Integer.parseInt(maxRunningJobs[i]);
         }
-        submitting = (host!=null&&preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0);
+        submitting = (host!=null&&preprocessingHostJobs.get(host)!=null?((HashSet<JobInfo>)preprocessingHostJobs.get(host)).size():0);
         if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
@@ -397,8 +397,8 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
           // Wait for the machine to boot
           long startMillis = MyUtil.getDateInMilliSeconds(null);
           long nowMillis = MyUtil.getDateInMilliSeconds(null);
-          List reservationList = null;
-          List instanceList = null;
+          List<Reservation> reservationList = null;
+          List<RunningInstance> instanceList = null;
           RunningInstance instance = null;
           while(!inst.getInstanceState().getName().equalsIgnoreCase("running")){
             nowMillis = MyUtil.getDateInMilliSeconds(null);
@@ -432,7 +432,7 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
           }
           hosts[i] = inst.getPublicDnsName();
           Debug.debug("Returning host "+hosts[i]+" "+inst.getInstanceState().getName(), 1);
-          preprocessingHostJobs.put(hosts[i], new HashSet());
+          preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
           return hosts[i];
         }
       }

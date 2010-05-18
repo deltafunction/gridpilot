@@ -97,7 +97,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     maxRunningJobs = new String[maxMachines];
     Arrays.fill(maxRunningJobs, jobsPerMachine);
     
-    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -108,7 +108,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
    * Override in order to postpone setting up shellMgrs till submission time (preProcess).
    */
   protected void setupRemoteShellMgrs(){
-    remoteShellMgrs = new HashMap();
+    remoteShellMgrs = new HashMap<String, Shell>();
   }
   
   /**
@@ -116,7 +116,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
    * included in the pool.
    */
   private void discoverInstances(){
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = ec2mgr.listReservations();
     }
@@ -130,12 +130,12 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList instances = new ArrayList();
-    for(Iterator it=reservations.iterator(); it.hasNext();){
-      res = (ReservationDescription) it.next();
+    ArrayList<Instance> instances = new ArrayList<Instance>();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+      res = it.next();
       Debug.debug("checking reservation"+res.resId, 2);
-      for(Iterator itt=res.instances.iterator(); itt.hasNext();){
-        inst = (Instance) itt.next();
+      for(Iterator<Instance> itt=res.instances.iterator(); itt.hasNext();){
+        inst = itt.next();
         if(inst.isShuttingDown() || inst.isTerminated()){
           continue;
         }
@@ -177,10 +177,10 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     }
     int i = 0;
     String hostName = null;
-    for(Iterator it=instances.iterator(); it.hasNext();){
-      hostName = ((Instance) it.next()).dnsName;
+    for(Iterator<Instance> it=instances.iterator(); it.hasNext();){
+      hostName = it.next().dnsName;
       remoteShellMgrs.put(hostName, null);
-      preprocessingHostJobs.put(hostName, new HashSet());
+      preprocessingHostJobs.put(hostName, new HashSet<JobInfo>());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -194,7 +194,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
    * @throws Exception 
    */
   private void haltNonBusy() throws Exception{
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = ec2mgr.listReservations();
     }
@@ -208,13 +208,13 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList passiveInstances = new ArrayList();
-    ArrayList activeInstances = new ArrayList();
-    for(Iterator it=reservations.iterator(); it.hasNext();){
-      res = (ReservationDescription) it.next();
+    ArrayList<String> passiveInstances = new ArrayList<String>();
+    ArrayList<String> activeInstances = new ArrayList<String>();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+      res = it.next();
       Debug.debug("checking reservation"+res.resId, 2);
-      for(Iterator itt=res.instances.iterator(); itt.hasNext();){
-        inst = (Instance) itt.next();
+      for(Iterator<Instance> itt=res.instances.iterator(); itt.hasNext();){
+        inst = itt.next();
         if(inst.isShuttingDown() || inst.isTerminated()){
           continue;
         }
@@ -260,7 +260,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     if(choice==1 || choice==2){
       int i = 0;
       String [] termArr = new String [passiveInstances.size()];
-      for(Iterator it=passiveInstances.iterator(); it.hasNext();){
+      for(Iterator<String> it=passiveInstances.iterator(); it.hasNext();){
         termArr[i] = (String) it.next();
         ++i;
       }
@@ -274,7 +274,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     if(choice==1){
       int i = 0;
       String [] termArr = new String [activeInstances.size()];
-      for(Iterator it=activeInstances.iterator(); it.hasNext();){
+      for(Iterator<String> it=activeInstances.iterator(); it.hasNext();){
         termArr[i] = (String) it.next();
         ++i;
       }
@@ -392,7 +392,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
         if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
           maxR = Integer.parseInt(maxRunningJobs[i]);
         }
-        submitting = (host!=null&&preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0);
+        submitting = (host!=null&&preprocessingHostJobs.get(host)!=null?((HashSet<JobInfo>)preprocessingHostJobs.get(host)).size():0);
         if(mgr.getJobsNumber()+submitting<maxR){
           return host;
         }
@@ -410,8 +410,8 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
           // Wait for the machine to boot
           long startMillis = MyUtil.getDateInMilliSeconds(null);
           long nowMillis = MyUtil.getDateInMilliSeconds(null);
-          List reservationList = null;
-          List instanceList = null;
+          List<ReservationDescription> reservationList = null;
+          List<Instance> instanceList = null;
           Instance instance = null;
           while(!inst.isRunning()){
             nowMillis = MyUtil.getDateInMilliSeconds(null);
@@ -425,12 +425,12 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
             instance = null;
             ReservationDescription reservation = null;
             Debug.debug("Finding reservations... ", 1);
-            for(Iterator it=reservationList.iterator(); it.hasNext();){
-              reservation = (ReservationDescription) it.next();
+            for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+              reservation = it.next();
               instanceList = ec2mgr.listInstances(reservation);
               // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-              for(Iterator itt=instanceList.iterator(); itt.hasNext();){
-                instance = (Instance) itt.next();
+              for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+                instance = itt.next();
                 if(reservation.resId.equalsIgnoreCase(reservation.resId)){
                   inst = instance;
                 }
@@ -444,7 +444,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
           }
           hosts[i] = inst.dnsName;
           Debug.debug("Returning host "+hosts[i]+" "+inst.state, 1);
-          preprocessingHostJobs.put(hosts[i], new HashSet());
+          preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
           return hosts[i];
         }
       }

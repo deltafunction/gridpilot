@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
 
 import com.xerox.amazonws.ec2.AttachmentInfo;
 import com.xerox.amazonws.ec2.EC2Exception;
+import com.xerox.amazonws.ec2.GroupDescription;
 import com.xerox.amazonws.ec2.InstanceType;
 import com.xerox.amazonws.ec2.Jec2;
 import com.xerox.amazonws.ec2.ImageDescription;
@@ -105,7 +105,7 @@ public class EC2Mgr {
     // First check if the group "GridPilot" already exists.
     // If not, create it.
     try{
-      List groupList = null;
+      List<GroupDescription> groupList = null;
       try{
         groupList = ec2.describeSecurityGroups(new String [] {GROUP_NAME});
       }
@@ -163,7 +163,7 @@ public class EC2Mgr {
    * If no instances are running, delete keypair.
    */
   public void exit(){
-    List keypairs;
+    List<KeyPairInfo> keypairs;
     try{
       keypairs = listKeyPairs();
     }
@@ -173,8 +173,8 @@ public class EC2Mgr {
     }
     KeyPairInfo keyInfo = null;
     KeyPairInfo tmpInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
-      tmpInfo = (KeyPairInfo) it.next();
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
+      tmpInfo = it.next();
       if(tmpInfo.getKeyName().equals(KEY_NAME)){
         Debug.debug("Key "+KEY_NAME+" found", 2);
         keyInfo = tmpInfo;
@@ -187,7 +187,7 @@ public class EC2Mgr {
     keyFile = new File(runDir, KEY_NAME+"-"+keyInfo.getKeyFingerprint().replaceAll(":", ""));
     String downloadUrl = GridPilot.GRID_HOME_URL + (GridPilot.GRID_HOME_URL.endsWith("/")?"":"/")+
       keyFile.getName();
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = listReservations();
     }
@@ -198,10 +198,10 @@ public class EC2Mgr {
     ReservationDescription res = null;
     Instance inst = null;
     if(reservations!=null){
-      for(Iterator it=reservations.iterator(); it.hasNext();){
-        res = (ReservationDescription) it.next();
-        for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
-          inst = (Instance) itt.next();
+      for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+        res = it.next();
+        for(Iterator<Instance> itt=res.getInstances().iterator(); itt.hasNext();){
+          inst = itt.next();
           if(inst.getKeyName().equals(KEY_NAME)){
             // The key is used, don't do anything
             return;
@@ -256,11 +256,11 @@ public class EC2Mgr {
    * @throws FileNotFoundException 
    */
   public KeyPairInfo getKey() throws Exception{
-    List keypairs = listKeyPairs();
+    List<KeyPairInfo> keypairs = listKeyPairs();
     KeyPairInfo keyInfo = null;
     KeyPairInfo tmpInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
-      tmpInfo = (KeyPairInfo) it.next();
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
+      tmpInfo = it.next();
       if(tmpInfo.getKeyName().equals(KEY_NAME)){
         Debug.debug("Key "+KEY_NAME+" found", 2);
         keyInfo = tmpInfo;
@@ -296,14 +296,14 @@ public class EC2Mgr {
         logFile.addMessage("WARNING: could not download private key from "+downloadUrl, e);
       }
       // OK, no secret key found, check if this key is used
-      List reservations = listReservations();
+      List<ReservationDescription> reservations = listReservations();
       ReservationDescription res = null;
       Instance inst = null;
       if(reservations!=null){
-        for(Iterator it=reservations.iterator(); it.hasNext();){
-          res = (ReservationDescription) it.next();
-          for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
-            inst = (Instance) itt.next();
+        for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+          res = it.next();
+          for(Iterator<Instance> itt=res.getInstances().iterator(); itt.hasNext();){
+            inst = itt.next();
             if((inst.isPending() || inst.isRunning()) && inst.getKeyName().equals(KEY_NAME)){
               throw new EC2Exception("The keypair "+KEY_NAME+" is in use by the instance "+
                   inst.getInstanceId()+". But the secret key is not available. " +
@@ -342,7 +342,7 @@ public class EC2Mgr {
   public ReservationDescription launchInstances(String amiID, int instances, String type) throws Exception{
     KeyPairInfo keypair = getKey();
     createSecurityGroup();
-    List groupList = new ArrayList();
+    List<String> groupList = new ArrayList<String>();
     groupList.add(GROUP_NAME);
     LaunchConfiguration lc = new LaunchConfiguration(amiID, instances, instances);
     lc.setSecurityGroup(groupList);
@@ -433,9 +433,9 @@ public class EC2Mgr {
     if(patternToIdCache.containsKey(pattern)){
       return patternToIdCache.get(pattern);
     }
-    List list = new ArrayList();
-    List params = new ArrayList();
-    List images = ec2.describeImages(params);
+    List<ImageDescription> list = new ArrayList<ImageDescription>();
+    List<String> params = new ArrayList<String>();
+    List<ImageDescription> images = ec2.describeImages(params);
     if(images==null){
       return null;
     }
@@ -484,16 +484,16 @@ public class EC2Mgr {
    */
   public List<ReservationDescription> listReservations() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
     GridPilot.getClassMgr().getSSL().activateSSL();
-    List list = new ArrayList();
-    List params = new ArrayList();
-    List reservations = ec2.describeInstances(params);
+    List<ReservationDescription> list = new ArrayList<ReservationDescription>();
+    List<String> params = new ArrayList<String>();
+    List<ReservationDescription> reservations = ec2.describeInstances(params);
     if(reservations==null){
       return null;
     }
     Debug.debug("Finding reservations", 3);
     ReservationDescription res = null;
-    for(Iterator it=reservations.iterator(); it.hasNext();){
-      res = (ReservationDescription) it.next();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
+      res = it.next();
       if(res!=null){
         list.add(res);
       }
@@ -507,12 +507,12 @@ public class EC2Mgr {
    * @return a List of elements of type Instance
    * @throws EC2Exception
    */
-  public List listInstances(ReservationDescription res) throws EC2Exception{
+  public List<Instance> listInstances(ReservationDescription res) throws EC2Exception{
     Debug.debug("Finding running instances", 3);
-    List instances = new ArrayList();
+    List<Instance> instances = new ArrayList<Instance>();
     Instance inst = null;
-    for(Iterator it=res.getInstances().iterator(); it.hasNext();){
-      inst = (Instance) it.next();
+    for(Iterator<Instance> it=res.getInstances().iterator(); it.hasNext();){
+      inst = it.next();
       // We only consider instances started with GridPilot
       if(inst.getKeyName()!=null && inst.getKeyName().equals(KEY_NAME)){
         instances.add(inst);
@@ -527,17 +527,17 @@ public class EC2Mgr {
    * @return a List of elements of type KeyPairInfo
    * @throws EC2Exception
    */
-  public List listKeyPairs() throws EC2Exception{
-    List list = new ArrayList();
-    List params = new ArrayList();
-    List keypairs = ec2.describeKeyPairs(params);
+  public List<KeyPairInfo> listKeyPairs() throws EC2Exception{
+    List<KeyPairInfo> list = new ArrayList<KeyPairInfo>();
+    List<String> params = new ArrayList<String>();
+    List<KeyPairInfo> keypairs = ec2.describeKeyPairs(params);
     if(keypairs==null){
       return null;
     }
     Debug.debug("Finding keypairs", 3);
     KeyPairInfo keyInfo = null;
-    for(Iterator it=keypairs.iterator(); it.hasNext();){
-      keyInfo = (KeyPairInfo) it.next();
+    for(Iterator<KeyPairInfo> it=keypairs.iterator(); it.hasNext();){
+      keyInfo = it.next();
       Debug.debug(keyInfo.getKeyName()+"-->"+keyInfo.getKeyFingerprint(), 3);
       if(keyInfo!=null){
         list.add(keyInfo);

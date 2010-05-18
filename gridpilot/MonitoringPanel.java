@@ -59,8 +59,8 @@ public class MonitoringPanel extends CreateEditPanel {
       new Runnable(){
         public void run(){
           // add any panels added by plugins
-          for(Iterator it=GridPilot.EXTRA_MONITOR_TABS.iterator(); it.hasNext();){
-            JPanel panel = (JPanel) it.next();
+          for(Iterator<JPanel> it=GridPilot.EXTRA_MONITOR_TABS.iterator(); it.hasNext();){
+            JPanel panel = it.next();
             tpStatLog.addTab(panel.getName(), panel);
           }
           tpStatLog.addTab("Log", spLogView);

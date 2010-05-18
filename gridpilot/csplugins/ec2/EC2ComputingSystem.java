@@ -178,7 +178,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     maxRunningJobs = new String[maxMachines];
     Arrays.fill(maxRunningJobs, jobsPerMachine);
     
-    preprocessingHostJobs = new HashMap<String, HashSet<String>>();
+    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
     
     // Reuse running VMs
     discoverInstances();
@@ -242,7 +242,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * Override in order to postpone setting up shellMgrs till submission time (preProcess).
    */
   protected void setupRemoteShellMgrs(){
-    remoteShellMgrs = new HashMap();
+    remoteShellMgrs = new HashMap<String, Shell>();
   }
   
 
@@ -265,7 +265,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList<Instance> instances = new ArrayList();
+    ArrayList<Instance> instances = new ArrayList<Instance>();
     for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
       res = it.next();
       Debug.debug("checking reservation "+res.getReservationId(), 2);
@@ -306,7 +306,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       inst = it.next();
       hostName = inst.getDnsName();
       remoteShellMgrs.put(hostName, null);
-      preprocessingHostJobs.put(hostName, new HashSet());
+      preprocessingHostJobs.put(hostName, new HashSet<JobInfo>());
       if(i<maxMachines && hosts[i]==null){
         hosts[i] = hostName;
         ++i;
@@ -348,7 +348,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * ask for confirmation.
    */
   private void haltNonBusy(){
-    List reservations;
+    List<ReservationDescription> reservations;
     try{
       reservations = ec2mgr.listReservations();
     }
@@ -362,13 +362,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     ReservationDescription res = null;
     Instance inst = null;
-    ArrayList passiveInstances = new ArrayList();
-    ArrayList activeInstances = new ArrayList();
-    for(Iterator it=reservations.iterator(); it.hasNext();){
+    ArrayList<String> passiveInstances = new ArrayList<String>();
+    ArrayList<String> activeInstances = new ArrayList<String>();
+    for(Iterator<ReservationDescription> it=reservations.iterator(); it.hasNext();){
       res = (ReservationDescription) it.next();
       Debug.debug("checking reservation"+res.getReservationId(), 2);
-      for(Iterator itt=res.getInstances().iterator(); itt.hasNext();){
-        inst = (Instance) itt.next();
+      for(Iterator<Instance> itt=res.getInstances().iterator(); itt.hasNext();){
+        inst = itt.next();
         if(!inst.isRunning()){
           continue;
         }
@@ -414,8 +414,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(choice==1 || choice==2){
       int i = 0;
       String [] termArr = new String [passiveInstances.size()];
-      for(Iterator it=passiveInstances.iterator(); it.hasNext();){
-        termArr[i] = (String) it.next();
+      for(Iterator<String> it=passiveInstances.iterator(); it.hasNext();){
+        termArr[i] = it.next();
         ++i;
       }
       try{
@@ -428,8 +428,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     if(choice==1){
       int i = 0;
       String [] termArr = new String [activeInstances.size()];
-      for(Iterator it=activeInstances.iterator(); it.hasNext();){
-        termArr[i] = (String) it.next();
+      for(Iterator<String> it=activeInstances.iterator(); it.hasNext();){
+        termArr[i] = it.next();
         ++i;
       }
       try{
@@ -541,7 +541,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       maxP = Integer.parseInt(maxPreprocessingJobs[i]);
     }
     Debug.debug("Checking host "+host+" for preprocessing jobs - max "+maxP, 2);
-    preprocessing = preprocessingHostJobs.get(host)!=null?((HashSet)preprocessingHostJobs.get(host)).size():0;
+    preprocessing = preprocessingHostJobs.get(host)!=null?((HashSet<JobInfo>)preprocessingHostJobs.get(host)).size():0;
     Debug.debug("--> Preprocessing: "+preprocessing, 2);
     if(preprocessing<maxP){
       Debug.debug("Selecting host "+host+" : "+preprocessing+"<"+maxP, 2);
@@ -704,15 +704,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String amiId = findAmiId(job);
     Debug.debug("Job "+job.getName()+" needs AMI "+amiId, 2);
     
-    List reservationList = ec2mgr.listReservations();
-    List instanceList = null;
+    List<ReservationDescription> reservationList = ec2mgr.listReservations();
+    List<Instance> instanceList = null;
     Instance instance = null;
     ReservationDescription reservation = null;
-    for(Iterator it=reservationList.iterator(); it.hasNext();){
-      reservation = (ReservationDescription) it.next();
+    for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+      reservation = it.next();
       instanceList = ec2mgr.listInstances(reservation);
-      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
-        instance = (Instance) itt.next();
+      for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+        instance = itt.next();
         if(instance.getDnsName().equals(host)){
           Debug.debug("Host "+host+" is running AMI "+instance.getImageId(), 2);
           if(instance.getImageId().equals(amiId)){
@@ -801,7 +801,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
 
   private File [] getAllTmpCatalogFiles() throws EC2Exception {
-    ArrayList<File> files = new ArrayList();
+    ArrayList<File> files = new ArrayList<File>();
     // First the default EC2-specific XML files
     File tmpCatalogFile;
     for(int i=0; i<defaultEc2Catalogs.length; ++i){
@@ -1005,20 +1005,20 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   private boolean hostIsRunning(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
-    List reservationList = ec2mgr.listReservations();
-    List instanceList = null;
+    List<ReservationDescription> reservationList = ec2mgr.listReservations();
+    List<Instance> instanceList = null;
     Instance instance = null;
     ReservationDescription reservation = null;
     reservationList = ec2mgr.listReservations();
     instanceList = null;
     instance = null;
     Debug.debug("Finding reservations. "+reservationList.size(), 1);
-    for(Iterator it=reservationList.iterator(); it.hasNext();){
-      reservation = (ReservationDescription) it.next();
+    for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+      reservation = it.next();
       instanceList = ec2mgr.listInstances(reservation);
       // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
-        instance = (Instance) itt.next();
+      for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+        instance = itt.next();
         if(instance.getDnsName().equals(host)){
           return (instance.isRunning() || instance.getState().equalsIgnoreCase("running"));
         }
@@ -1060,8 +1060,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         // Wait for the machine to boot
         long startMillis = MyUtil.getDateInMilliSeconds(null);
         long nowMillis = MyUtil.getDateInMilliSeconds(null);
-        List reservationList = null;
-        List instanceList = null;
+        List<ReservationDescription> reservationList = null;
+        List<Instance> instanceList = null;
         Instance instance = null;
         Thread.sleep(10000);
         while(!inst.isRunning()){
@@ -1076,12 +1076,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           instance = null;
           ReservationDescription reservation = null;
           Debug.debug("Finding reservations. "+reservationList.size(), 1);
-          for(Iterator it=reservationList.iterator(); it.hasNext();){
-            reservation = (ReservationDescription) it.next();
+          for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+            reservation = it.next();
             instanceList = ec2mgr.listInstances(reservation);
             // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-            for(Iterator itt=instanceList.iterator(); itt.hasNext();){
-              instance = (Instance) itt.next();
+            for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+              instance = itt.next();
               if(reservation.getReservationId().equalsIgnoreCase(desc.getReservationId())){
                 inst = instance;
                 break;
@@ -1104,7 +1104,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         installTarPackages(inst, job.getOpSysRTE(), tarPackages);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
-        preprocessingHostJobs.put(hosts[i], new HashSet());
+        preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
         return hosts[i];
       }
       catch(Exception e){
