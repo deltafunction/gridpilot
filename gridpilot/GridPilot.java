@@ -184,7 +184,7 @@ public class GridPilot extends JApplet{
     }
   }
   
-  private void setConfigFile() throws FileNotFoundException{
+  public static void setConfigFile() throws FileNotFoundException{
     ConfigFile confFile = null;
     confFile = new ConfigFile(USER_CONF_FILE, TOP_CONFIG_SECTION, CONFIG_SECTIONS);
     confFile.excludeItems = MY_EXCLUDE_ITEMS;
@@ -244,6 +244,7 @@ public class GridPilot extends JApplet{
       RESOURCES_PATH = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Resources");
     }
     catch(Throwable e){
+      e.printStackTrace();
     }
     if(RESOURCES_PATH==null){
       RESOURCES_PATH = "/resources/";
@@ -285,7 +286,9 @@ public class GridPilot extends JApplet{
     DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Debug");
     setButtonDefaults();
     RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Runtime directory");
-    SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
+    if(!IS_FIRST_RUN){
+      SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
+    }
     JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Job color mapping");  
     /** Job status table header*/
     JOB_STATUS_FIELDS = new String [] {
@@ -553,7 +556,7 @@ public class GridPilot extends JApplet{
         continue;
       }
       try{
-        if(!GridPilot.IS_FIRST_RUN){
+        if(!IS_FIRST_RUN){
           splashShow("Loading file transfer system: "+FT_NAMES[i]);
         }
       }
@@ -567,7 +570,7 @@ public class GridPilot extends JApplet{
       }
       catch(Exception e){
         // load as many FTS as possible
-        if(!GridPilot.IS_FIRST_RUN){
+        if(!IS_FIRST_RUN){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not load file transfer system "+
               FT_NAMES[i], e);
         }

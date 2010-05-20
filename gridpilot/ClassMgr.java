@@ -67,7 +67,7 @@ public class ClassMgr{
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   
-  public Vector getBrowserHistoryList(){
+  public Vector<String> getBrowserHistoryList(){
     return urlList;
   }
   

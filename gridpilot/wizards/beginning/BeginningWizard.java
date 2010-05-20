@@ -11,13 +11,9 @@ import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.security.Security;
 
@@ -323,6 +319,9 @@ public class BeginningWizard{
       // Copy over temporary to real config file
       LocalStaticShell.copyFile(tmpConfigFile.getFile().getAbsolutePath(),
            GridPilot.USER_CONF_FILE.getAbsolutePath());
+      GridPilot.setConfigFile();
+      // Read in global variables
+      GridPilot.loadConfigValues();
       // Clean up
       tmpConfigFile.getFile().delete();
       // Construct ConfigFile object from the new file
@@ -451,8 +450,8 @@ public class BeginningWizard{
       newDirs[i] = MyUtil.replaceWithTildeLocally(MyUtil.clearFile(newDirs[i]));
     }
     
-    // Now copy over the software catalog
-    URL fileURL = null;
+    // Now copy over the software catalog - NOT needed
+    /*URL fileURL = null;
     BufferedReader in = null;
     try{
       fileURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH+"rtes.xml");
@@ -471,7 +470,7 @@ public class BeginningWizard{
       }
     }
     in.close();
-    out.close();
+    out.close();*/
     
     // Set config entries
     boolean diff = false;
