@@ -64,7 +64,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private Timer timerRefresh = new Timer(0, new ActionListener (){
     public void actionPerformed(ActionEvent e){
       Debug.debug("Refreshing download status", 3);
-      statusUpdateControl.updateStatus(null);
+      statusUpdateControl.updateRows(null);
     }
   });
 
@@ -178,7 +178,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     bRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        statusUpdateControl.updateStatus(null);
+        statusUpdateControl.updateRows(null);
       }
     });
     cbAutoRefresh.addActionListener(new ActionListener(){
@@ -208,6 +208,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     pButtons.add(cbAutoRefresh);
     pButtons.add(sAutoRefresh);
     pButtons.add(cbRefreshUnits);
+    cbAutoRefresh.setEnabled(true);
+    cbAutoRefresh_clicked();
 
     mainPanel.add(pOptions, BorderLayout.EAST);
     mainPanel.add(pButtons, BorderLayout.SOUTH);
@@ -231,7 +233,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miRefresh.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        statusUpdateControl.updateStatus(statusTable.getSelectedRows());
+        statusUpdateControl.updateRows(statusTable.getSelectedRows());
       }
     });
 
@@ -537,7 +539,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
     GridPilot.getClassMgr().getTransferControl().clearTableRows(runningRows);
 
-    statusUpdateControl.updateStatus(null);
+    statusUpdateControl.updateRows(null);
     statusUpdateControl.updateTransfersByStatus();
     
     statusTable.tableModel.fireTableDataChanged();
@@ -610,7 +612,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     }
     GridPilot.getClassMgr().getTransferControl().clearTableRows(notRunningRows);
     
-    statusUpdateControl.updateStatus(null);
+    statusUpdateControl.updateRows(null);
     statusUpdateControl.updateTransfersByStatus();
     
     statusTable.tableModel.fireTableDataChanged();

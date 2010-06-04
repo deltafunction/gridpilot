@@ -243,7 +243,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
    * If timer <code>timerChecking</code> was not running, restarts it. <p>
    *
    */
-  public void updateStatus(int [] _rows){
+  public void updateRows(int [] _rows){
     Debug.debug("updateStatus", 1);
     
     // get transfer vector

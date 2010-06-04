@@ -59,7 +59,7 @@ public class MyPullMgr extends PullMgr {
       // If a transfer doesn't have an ID yet, give it some time before giving up
       if(transfer==null || transfer.getTransferID()==null){
         try{
-          transferStatusUpdateControl.updateStatus(null, null);
+          transferStatusUpdateControl.updateStatus(null);
           Thread.sleep(10000L);
         }
         catch(InterruptedException e){
