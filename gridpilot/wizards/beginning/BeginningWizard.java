@@ -54,6 +54,7 @@ public class BeginningWizard{
   private boolean certAndKeyOk = true;
   private Dimension catalogPanelSize = null;
   private Dimension gridsPanelSize = null;
+	private String TOA_URL = "http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py";
 
   private static int TEXTFIELDWIDTH = 32;
   private static String HOME_URL = "https://www.gridfactory.org/";
@@ -482,9 +483,12 @@ public class BeginningWizard{
     }
     if(doCreate && diff){
       configFile.setAttributes(
-          new String [] {"My_DB_local", "Fork", "Fork", "Fork"},
-          new String [] {"database", "working directory",
-              "runtime directory", "executable directory"},
+          new String [] {"My_DB_Local", GridPilot.TOP_CONFIG_SECTION, "Fork",
+          		"GridFactory", "NG", "GLite",
+          		"Fork"},
+          new String [] {"database", "runtime directory", "working directory",
+          		"working directory", "working directory", "working directory",
+          		"executable directory"},
           new String [] {
               "hsql://localhost"+
                  (MyUtil.clearFile(newDirs[0]).startsWith("/")?"":"/")+
@@ -492,6 +496,9 @@ public class BeginningWizard{
                  (MyUtil.clearFile(newDirs[0]).endsWith("/")?"":"/")+
                  "My_DB",
               newDirs[1],
+              newDirs[2],
+              newDirs[2],
+              newDirs[2],
               newDirs[2],
               newDirs[3]}
       );
@@ -677,8 +684,9 @@ public class BeginningWizard{
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
     host = host.replaceFirst("(.*):\\d+", "$1");
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
-    lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1");
+    lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1").replaceAll(" ", "_");
     String lfcPath = "/users/"+lfcUser+"/";
+    String toaPath = "~/GridPilot/TiersOfATLASCache.txt";
     String [] defDirs = new String [] {"",
                                        "www.gridpilot.dk",
                                        host};
@@ -777,6 +785,16 @@ public class BeginningWizard{
     row.add(tfLfcPath, BorderLayout.CENTER);
     atlasDetails.add(row,
         new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("TiersOfATLAS local cache file: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
+    JTextField tfTOAPath = new JTextField(TEXTFIELDWIDTH);
+    tfTOAPath.setText(toaPath);
+    row.add(tfTOAPath, BorderLayout.CENTER);
+    atlasDetails.add(row,
+        new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     
@@ -916,13 +934,19 @@ public class BeginningWizard{
           new String [] {"Initial panels", "Enabled"},
           new String [] {initalPanels+" ATLAS:dataset", "yes"}
           );
-      if(tfHomeSite.getText()!=null && !tfHomeSite.getText().equals("")){
+      if(tfHomeSite.getText()!=null && !tfHomeSite.getText().trim().equals("")){
         configFile.setAttributes(
-            new String [] {"ATLAS", "ATLAS"},
-            new String [] {"Home site", "User path"},
-            new String [] {tfHomeSite.getText().trim(), lfcPath.replaceFirst("^/grid/atlas", "")}
+            new String [] {"ATLAS"},
+            new String [] {"Home site"},
+            new String [] {tfHomeSite.getText().trim()}
             );
       }
+      configFile.setAttributes(
+          new String [] {"ATLAS", "ATLAS"},
+          new String [] {"User path", "Tiers of atlas"},
+          new String [] {tfLfcPath.getText().trim().replaceFirst("^/grid/atlas", ""),
+          		 TOA_URL+" "+tfTOAPath.getText().trim()}
+          );
     }
       
     return choice;
