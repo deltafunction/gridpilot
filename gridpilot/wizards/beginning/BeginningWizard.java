@@ -495,11 +495,11 @@ public class BeginningWizard{
                  MyUtil.clearFile(newDirs[0])+
                  (MyUtil.clearFile(newDirs[0]).endsWith("/")?"":"/")+
                  "My_DB",
+              newDirs[2],
               newDirs[1],
-              newDirs[2],
-              newDirs[2],
-              newDirs[2],
-              newDirs[2],
+              newDirs[1],
+              newDirs[1],
+              newDirs[1],
               newDirs[3]}
       );
       changes = true;
