@@ -734,22 +734,31 @@ public class GSIFTPFileTransfer implements FileTransfer {
     String [] entryArr = MyUtil.split(line);
     String fileName = entryArr[entryArr.length-1];
     String bytes = null;
-    // Really ugly: we cannot know how the server chooses to display the information.
-    // E.g.
-    // NorduGrid ARC:
-    // -------   1 user     group  Mon Oct 13 11:20:41 2008       1912035286  data1.txt
-    // gLite
-    // -rw-rw----    1 glite           9 Oct 13 11:21 data1.txt
-    // TODO: Find some way to improve this wild guessing...
+    /*
+       Really ugly: we cannot know how the server chooses to display the information.
+       E.g.
+       NorduGrid ARC:
+       -------   1 user     group  Mon Oct 13 11:20:41 2008       1912035286  data1.txt
+       gLite:
+       -rw-rw----    1 glite           9 Oct 13 11:21 data1.txt
+       dCache:
+       -r--------  1 atlas-user atlas-user           12 Jun  8 14:48 hello.txt
+       
+       TODO: Find some way to improve this wild guessing...
+     */
     bytes = entryArr[entryArr.length-2];
     try{
       Integer.parseInt(bytes);
     }
     catch(NumberFormatException e){
-      if(entryArr.length==8){
+      try{
         bytes = entryArr[entryArr.length-5];
+        Integer.parseInt(bytes);
       }
-      e.printStackTrace();
+      catch(Exception ee){
+        e.printStackTrace();
+        ee.printStackTrace();
+      }
     }
     Debug.debug("bytes: "+bytes, 3);
     // If server is nice enough to provide file information, use it
