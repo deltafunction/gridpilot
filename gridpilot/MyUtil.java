@@ -1834,7 +1834,8 @@ private static String fixUrl(String _url){
       }
       rtes.add(rteNames[i]);
     }
-    HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(rtes, job.getOpSys(), ignoreCatalogInconsistencies);
+    HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(
+       rtes, job.getOpSys(), shell==null?null:shell.getOS(), ignoreCatalogInconsistencies);
     String vmOs = depsMap.keySet().iterator().next();
     Vector<String> deps = depsMap.get(vmOs);
     InstancePackage ip = null;

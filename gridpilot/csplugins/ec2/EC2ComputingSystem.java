@@ -1180,7 +1180,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       if(job.getRTEs()!=null && job.getRTEs().length>0){
         Vector<String> rtesVec = new Vector<String>();
         Collections.addAll(rtesVec, job.getRTEs());
-        depsMap = rteMgr.getRteDepends(rtesVec, job.getOpSys(), true);
+        depsMap = rteMgr.getRteDepends(rtesVec, job.getOpSys(), null, true);
         String vmOs = depsMap.keySet().iterator().next();
         Vector<String> depsVec = depsMap.get(vmOs);
         // Just in case the OS is listed as a dependence
