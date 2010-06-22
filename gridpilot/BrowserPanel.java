@@ -1611,7 +1611,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
       // This is necessary. If not done, ep thinks
       // this is a reload and does nothing...
-      ep.setPage("file:///");
+      //ep.setPage("file:///");
+      // Update: see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4412125
+      //ep.getEditorKit().createDefaultDocument();
+      //ep.getDocument().putProperty(Document.StreamDescriptionProperty, null)
       //
       ep.setPage(url);
       
