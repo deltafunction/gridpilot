@@ -274,7 +274,7 @@ public class GlobalFrame extends GPFrame{
   /**
    * Add a new panel.
    */
-  public void addPanel(ListPanel newPanel, String title){
+  public void addPanel(DBPanel newPanel, String title){
     Debug.debug("Adding panel "+newPanel.getTitle(), 3);
     addPanel(newPanel);
     this.setTitle("GridPilot - "+title);
@@ -290,7 +290,7 @@ public class GlobalFrame extends GPFrame{
     panel.initDB(panel.getDBName(), panel.getTableName());
   }
 
-  public void addPanel(ListPanel newPanel){
+  public void addPanel(DBPanel newPanel){
     
     URL imgURL = null;
     Dimension size = this.getSize();
@@ -321,15 +321,20 @@ public class GlobalFrame extends GPFrame{
         (JPanel) newPanel);
     Debug.debug("Added tab "+allPanels.size(), 3);
     // focus on new panel
-    ((ListPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
     int newSelIndex = tabbedPane.getTabCount()-1;
+    setSelectedPanel(newSelIndex);
+    setTitle("GridPilot - "+title);
+    setSize(size);
+    newPanel.refresh();
+  }
+  
+  private void setSelectedPanel(int newSelIndex) {
+    ((ListPanel) tabbedPane.getComponentAt(tabbedPane.getSelectedIndex())).panelHidden();
     ((ListPanel) tabbedPane.getComponentAt(newSelIndex)).panelShown();
     Debug.debug("Setting selected index "+newSelIndex, 3);
     tabbedPane.setSelectedIndex(newSelIndex);
-    setTitle("GridPilot - "+title);
-    setSize(size);
   }
-  
+
   /**
    * Get active panel
    */
@@ -501,7 +506,6 @@ public class GlobalFrame extends GPFrame{
     miImport.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         DBPanel activePanel = getActiveDBPanel();
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));       
         importToDB(activePanel);
       }
     });
@@ -1060,7 +1064,8 @@ public class GlobalFrame extends GPFrame{
     activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
   }
     
-  protected void importToDB(final DBPanel activePanel) {
+  public void importToDB(final DBPanel activePanel) {
+    activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     ResThread t = new ResThread(){
       public void run(){
         try{
@@ -1095,8 +1100,11 @@ public class GlobalFrame extends GPFrame{
         if(MyUtil.isLocalFileName(importUrl)){
           importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
         }
-        String message = ExportImport.importToDB(importUrl)+"\n\n" +
-        "Refresh your applications tab and right-click on your new application to create and run jobs.";
+        String [] res = ExportImport.importToDB(importUrl);
+        refreshTab(res[0]);
+        String message = res[1]+"\n\n" +
+           "You may right-click on your new application to create and run job(s)\n" +
+           " - or just select and click on the \"Run\" button if you feel lucky :-)";
         activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         MyUtil.showMessage("Import successful", message);
       }
@@ -1113,6 +1121,35 @@ public class GlobalFrame extends GPFrame{
     }
   }
   
+  private void refreshTab(String dbName) {
+    DBPanel panel;
+    int i = 0;
+    boolean ok = false;
+    for(Iterator<ListPanel> it=allPanels.iterator(); it.hasNext();){
+      panel = (DBPanel) it.next();
+      if(panel.getDBName().equalsIgnoreCase(dbName) && panel.getTableName().equalsIgnoreCase("dataset")){
+        panel.refresh();
+        setSelectedPanel(i);
+        ok = true;
+      }
+      ++i;
+    }
+    if(!ok){
+      try{
+        DBPanel newPanel = new DBPanel();
+        newPanel.initDB(dbName, "dataset");
+        newPanel.initGUI();
+        addPanel(newPanel);
+        newPanel.refresh();
+      }
+      catch(Exception e){
+        Debug.debug("ERROR: could not load database panel for "+
+            dbName + " : " + "dataset", 1);
+        e.printStackTrace();
+      }
+    }
+  }
+
   public void toggleMonitoringPanel(){
     try{
       if(pDialog.isShowing()){

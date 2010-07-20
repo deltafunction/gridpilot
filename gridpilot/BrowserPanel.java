@@ -124,7 +124,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
     urlList = GridPilot.getClassMgr().getBrowserHistoryList();
     init(parent, title, url, _baseUrl, modal, _withFilter, _withNavigation, _jBox, _filter,
         _localFS, cancelEnabled, registrationEnabled);
-    Debug.debug("Setting default cursor", 2);
   }
 
   private void init(Window parent, String title, String url, 
@@ -708,12 +707,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
          
     dt.start();
     
-    if(withNavigation){
+    if(withNavigation && url==null || url.trim().equals("")){
       statusBar.setLabel("Type in URL and hit return");
     }
     
     // Fix up things if this was e.g. called from a wizard.
-    if(parent!=null){
+    if(parent!=null && url==null || url.trim().equals("")){
       Debug.debug("Resetting cursor", 2);
       parent.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
@@ -1193,6 +1192,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
       }
     };
+    ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     t.start();
     //SwingUtilities.invokeLater(t);
     if(!MyUtil.myWaitForThread(t, "setDisplay0", OPEN_TIMEOUT, "list", true) ||

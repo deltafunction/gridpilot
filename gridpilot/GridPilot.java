@@ -124,6 +124,7 @@ public class GridPilot extends JApplet{
     /** This will test for GUI events launched outside of the event dispatching thread. */
     //CheckThreadViolationRepaintManager.initMonitoring();
     
+    boolean askImport = false;
     try{
       getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
@@ -150,6 +151,7 @@ public class GridPilot extends JApplet{
         }
         IS_FIRST_RUN = true;
         new BeginningWizard(IS_FIRST_RUN);
+        askImport = true;
         IS_FIRST_RUN = false;
         setConfigFile();
       }      
@@ -172,8 +174,12 @@ public class GridPilot extends JApplet{
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
       /** This will test for GUI hanging threads and report on stderr. */
       //EventDispatchThreadHangMonitor.initMonitoring();
+      if(askImport){
+        askForImport();
+      }
     }
     catch(Throwable e){
+      e.printStackTrace();
       if(e instanceof Error){
         getClassMgr().getLogFile().addMessage("Error during gridpilot loading", e);
       }
@@ -181,6 +187,39 @@ public class GridPilot extends JApplet{
         getClassMgr().getLogFile().addMessage("Exception during gridpilot loading", e);
         exit(-1);
       }
+    }
+  }
+  
+  private void askForImport() throws Exception{
+    ImageIcon icon = null;
+    URL imgURL = null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur-32x32.png");
+      icon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      try{
+        imgURL = GridPilot.class.getResource("/resources/aviateur-32x32.png");
+        icon = new ImageIcon(imgURL);
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+        Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur-32x32.png", 3);
+        icon = null;
+      }
+    }
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String confirmString =
+        "Now would be a good time to import an example application from the\n" +
+        "GridPilot app store and try running a few jobs.\n\n" +
+        "Would you like to do this?\n";
+    int choice = -1;
+    choice = confirmBox.getConfirmPlainText("Import apps?", confirmString,
+        new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()), MyUtil.mkCancelObject(confirmBox.getOptionPane())},
+        icon, Color.WHITE, true, false);
+    if(choice==0){
+      GridPilot.getClassMgr().getGlobalFrame().importToDB(
+          GridPilot.getClassMgr().getGlobalFrame().getActiveDBPanel());
     }
   }
   
@@ -805,7 +844,6 @@ public class GridPilot extends JApplet{
     catch(Exception e){
       e.printStackTrace();
     }
-
   }
   
   private static void jobManagerPanelExit() {

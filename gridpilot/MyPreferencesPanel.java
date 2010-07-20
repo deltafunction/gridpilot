@@ -18,6 +18,9 @@ public class MyPreferencesPanel extends PreferencesPanel {
   public void savePrefs(){
     super.savePrefs();
     GridPilot.reloadConfigValues();
+    if(isChanged()){
+      MyUtil.showMessage("Restart recommended", "To use your new configuration, it is recomended to restart GridPilot.");
+    }
   }
 
 }

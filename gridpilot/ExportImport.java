@@ -297,9 +297,9 @@ public class ExportImport {
   }
 
   /**
-   * Returns import report text.
+   * Returns {db name, import report text}.
    */
-  public static String importToDB(String importFile) throws Exception{
+  public static String [] importToDB(String importFile) throws Exception{
     String executableDir = GridPilot.getClassMgr().getConfigFile().getValue(
         "Fork", "executable directory");
     File executableDirectory = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(
@@ -366,7 +366,7 @@ public class ExportImport {
     ret += "\ninto database "+dbName+"";
     ret +=(numFiles>0? "\n\nand\n\n - "+numFiles+ " application file(s)\n\ninto directory "+executableDirectory+".":
         ".");
-    return ret;
+    return new String[] {dbName, ret};
   }
   
   private static File downloadAndUnpack(String importFile) throws Exception{
