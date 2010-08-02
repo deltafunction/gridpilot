@@ -90,31 +90,6 @@ public class CSPluginMgr implements MyComputingSystem{
     csNames = GridPilot.CS_NAMES;
     cs = new HashMap<String, Object>(csNames.length);
     
-    // Cleanup RTEs
-    for(int i=0; i<csNames.length; ++i){
-      if(!MyUtil.checkCSEnabled(csNames[i])){
-        continue;
-      }
-      final int k = i;
-      ResThread t = new ResThread(){
-        public void run(){
-          try{
-            ((MyComputingSystem) cs.get(csNames[k])).cleanupRuntimeEnvironments(csNames[k]);
-          }
-          catch(Throwable t){
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               "Exception from plugin " + csNames[k] +
-                               " during exit", t);
-          }
-        }
-      };
-
-      t.start();
-
-      MyUtil.myWaitForThread(t, csNames[k], exitTimeOut, "exit");
-
-    }
-
     try{
       loadClasses();
     }
@@ -151,7 +126,7 @@ public class CSPluginMgr implements MyComputingSystem{
                             configFile.getMissingMessage(csNames[i], "class"));
       }
 
-      Class [] csArgsType = {String.class};
+      Class<?> [] csArgsType = {String.class};
       Object [] csArgs = {csNames[i]};
       
       Debug.debug("class: "+csClass, 3);

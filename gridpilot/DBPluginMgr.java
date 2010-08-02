@@ -3,6 +3,7 @@ package gridpilot;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
@@ -89,6 +90,24 @@ public class DBPluginMgr extends DBCache implements Database{
     }
 
     db = (Database) MyUtil.loadClass(dbClass, dbArgsType, dbArgs);
+    
+    // Clean all RTEs
+    try{
+      if(GridPilot.CLEAN_ALL_RTES_ON_START){
+        DBResult allRTEs = db.getRuntimeEnvironments();
+        String idField = MyUtil.getIdentifierField(dbName, "runtimeEnvironment");
+        DBRecord rec;
+        if(allRTEs!=null){
+          for(Iterator<DBRecord>it=allRTEs.iterator(); it.hasNext();){
+            rec = it.next();
+            db.deleteRuntimeEnvironment((String) rec.getValue(idField));
+          }
+        }
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("WARNING: problem cleaning runtimeEnvironments.", e);
+    }
 
   }
 

@@ -89,6 +89,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     remoteRteDir = localRteDir;
     String workingDir = configFile.getValue(csName, "working directory");
     workingDirs.put("localhost", workingDir);
+    // Hard-code this - don't use workingDir - workingDir could be a local
+    // dir that is not writable on the guest machine.
+    remoteWorkingDir = "~/GridPilot/jobs";
     logFile = GridPilot.getClassMgr().getLogFile();
     rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
@@ -223,6 +226,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       job.setRTEs(rtes);
     }
     job.setRamMb(defaultJobMB);
+    job.setUserInfo(user);
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
     job.setStdoutDest(finalStdOut);

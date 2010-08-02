@@ -52,6 +52,9 @@ public class GridPilot extends JApplet{
   /** Before each submission, FIRST_JOB_SUBMITTED_WAIT_SECONDS is reset to this. */
   public static long DEFAULT_FIRST_JOB_SUBMITTED_WAIT_SECONDS = 240;
   private final static String DEFAULT_APP_STORE_URL = "https://www.gridpilot.dk/apps/";
+  /** If set, all runtimeEnvironment records are deleted on startup (and then populated
+   * computing systems). */
+  public static final boolean CLEAN_ALL_RTES_ON_START = true;
   public static String APP_STORE_URL;
   protected static String userConfFileName;
   /**

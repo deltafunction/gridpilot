@@ -33,6 +33,7 @@ public class MyPullMgr extends PullMgr {
       logFile.addMessage("WARNING: 'File cache directory not' set in configuration file. " +
           "You will not be able to run jobs requiring input files from file servers.");
     }
+    myMaxRunningSeconds = -1;
   }
   
   public void deleteInputs(JobInfo job){

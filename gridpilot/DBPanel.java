@@ -1631,7 +1631,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     if(GridPilot.ADVANCED_MODE){
       tableResults.addMenuSeparator();
-      tableResults.addMenuItem(miImportFiles);
+    }
+    tableResults.addMenuItem(miImportFiles);
+    if(GridPilot.ADVANCED_MODE){
       tableResults.addMenuSeparator();
       tableResults.addMenuItem(miExportDataset);
       tableResults.addMenuSeparator();
@@ -3923,14 +3925,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void bSubmit_mousePressed(){
     // check if selected jobs are submittable
-    String [] selectedJobIdentifiers = getSelectedIdentifiers();
-    for(int i=0; i<selectedJobIdentifiers.length; ++i){
-      if(DBPluginMgr.getStatusId(
-          dbPluginMgr.getJobDefStatus(selectedJobIdentifiers[i]))!=DBPluginMgr.DEFINED){
-        statusBar.setLabel("ERROR: all selected jobs must be submittable.");
-        return;
-      }
-    }
+    /*String [] selectedJobIdentifiers = getSelectedIdentifiers();
+    if(!areSubmitable(selectedJobIdentifiers)){
+      statusBar.setLabel("ERROR: all selected jobs must be submittable.");
+      return;
+    }*/ // Done later.
     // if a jobDefinition is selected, show the menu with computing systems
     if(getSelectedIdentifiers().length!=0){
       pmSubmitMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
@@ -3962,15 +3961,32 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       public void run(){
         String csName = ((JMenuItem)e.getSource()).getText();
         String [] jobDefIds = getSelectedIdentifiers();
-        if(!JobMgr.areSubmitable(tableResults.getSelectedRows())){
-          MyUtil.showMessage("No submitable jobs", "No submitable jobs in selection.");
+        if(!areSubmitable(jobDefIds)){
+          MyUtil.showMessage("Job(s) not submitable", "Not all job(s) in selection are submitable.");
           return;
         }
         doSubmit(csName, jobDefIds);
       }
     };
-
     workThread.start();
+  }
+  
+  private boolean areSubmitable(String[] jobDefIds) {
+    for(int i=0; i<jobDefIds.length; ++i){
+      if(!isSubmitable(jobDefIds[i])){
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean isSubmitable(String jobDefId) {
+    String status;
+    status = dbPluginMgr.getJobDefStatus(jobDefId);
+    if(DBPluginMgr.getStatusId(status)!=DBPluginMgr.DEFINED){
+      return false;
+    }
+    return true;
   }
   
   private void doSubmit(String csName, String [] jobDefIds){
