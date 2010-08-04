@@ -1103,8 +1103,7 @@ public class GlobalFrame extends GPFrame{
         String [] res = ExportImport.importToDB(importUrl);
         refreshTab(res[0]);
         String message = res[1]+"\n\n" +
-           "You may right-click on your new application to create and run job(s)\n" +
-           " - or just select and click on the \"Run\" button if you feel lucky :-)";
+           "Right-click on your new application to add files or create and run jobs.";
         activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         MyUtil.showMessage("Import successful", message);
       }

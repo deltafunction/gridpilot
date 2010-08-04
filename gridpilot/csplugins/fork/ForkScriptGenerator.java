@@ -194,11 +194,12 @@ public class ForkScriptGenerator extends ScriptGenerator{
         if(stderr!=null && stderr.length()!=0){
           throw new FileNotFoundException(stderr.toString());
         }
+        // TODO: this does not appear to be necessary...
         shell.exec("chmod +x "+MyUtil.clearFile(scriptDest), stdout, stderr);
-        if(stderr!=null && stderr.length()!=0){
+        /*if(stderr!=null && stderr.length()!=0){
           Debug.debug("Could not set executable permission. "+stderr, 2);
           throw new FileNotFoundException(stderr.toString());
-        }
+        }*/
       }
       catch(Exception e){
         logFile.addInfo("Warning: NOT setting files executable. " +

@@ -165,6 +165,9 @@ public class GridPilot extends JApplet{
       Debug.debug("Grid home URL: "+GridPilot.GRID_HOME_URL, 2);
       mkGridHomeDirIfNotThere();
       setLookAndFeel();
+      if(IS_FIRST_RUN){
+        getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
+      }
       initGUI();
       try{
         (new TestDatasets()).createAll();

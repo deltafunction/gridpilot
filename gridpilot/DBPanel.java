@@ -3150,6 +3150,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void importFiles(){
     if(!getSelectedIdentifier().equals("-1") && !importingFiles){
+      setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       MyResThread rt = new MyResThread(){
         public void run(){
           importingFiles = true;
@@ -3223,17 +3224,21 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               }
               catch(Exception e){
                 ok = false;
-                GridPilot.getClassMgr().getLogFile().addMessage(
-                    "ERROR: could not register "+pfn+" for file "+
-                    lfn+" in dataset "+datasetName, e);
+                String msg = "ERROR: could not register "+pfn+" for file "+lfn+" in dataset "+datasetName;
+                GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
                 //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
+                MyUtil.showError(msg);
+                setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
               }
             }
             if(ok){
               //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
+              MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset "+datasetName+
+                  ". Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s).");
             }
           }
           importingFiles = false;
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
       };
       SwingUtilities.invokeLater(rt);
@@ -4012,6 +4017,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     // First try a test job.
     statusBar.setLabel("Submitting first job. Please wait...");
     try{
+      if(!GridPilot.ADVANCED_MODE){
+        MyUtil.showMessage("Submitting job(s)",
+            "Your job(s) will be prepared and submitted.  This may involve downloading\n" +
+            "and booting a virtual machine and downloading input file(s), so please\n" +
+            "have patience. You can follow the progress on the various monitor tabs.");
+      }
       runFirstJobDefinition(selectedJobDefinitions, csName);
     }
     catch(Exception e){
