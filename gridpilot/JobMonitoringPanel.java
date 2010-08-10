@@ -558,6 +558,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         if(job.getDBStatus()!=dbChoices[i]){
           jobMgr = getJobMgr(job);
           jobMgr.updateDBStatus(job, dbChoices[i]);
+          if(dbChoices[i] != DBPluginMgr.UNDECIDED){
+            job.setNeedsUpdate(false);
+          }
         }
         ++i;
       }

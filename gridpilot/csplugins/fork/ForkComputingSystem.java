@@ -455,7 +455,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     return true;
   }
 
-  public void updateStatus(Vector<JobInfo> jobs){
+  public void updateStatus(Vector<JobInfo> jobs) throws Exception{
     for(int i=0; i<jobs.size(); ++i)
       updateStatus((MyJobInfo) jobs.get(i), shell);
   }
@@ -476,7 +476,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         job.getIdentifier(),
         new String []{"host"},
         new String []{job.getHost()})){
-      logFile.addMessage("DB update of job" + job.getIdentifier()+" failed");    
+      logFile.addMessage("DB update of job " + job.getIdentifier()+" failed");    
     }
 
     if(shellMgr.isRunning(job.getJobId())/*stdOut.length()!=0 &&

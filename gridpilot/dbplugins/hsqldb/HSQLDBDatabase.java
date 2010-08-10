@@ -2950,6 +2950,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         GridPilot.getClassMgr().getLogFile().addInfo("Created new file "+lfn+
             ". Please add some metadata if needed.");
         fileExists = true;
+        GridPilot.getClassMgr().getStatusBar().setLabel("Created new file "+lfn);
       }
       catch(Exception e){
         error = "ERROR: could not create file "+lfn;

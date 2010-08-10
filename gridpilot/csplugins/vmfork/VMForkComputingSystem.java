@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
@@ -49,6 +50,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   private long submitTimeoutSeconds;
   private int mbPerVM = 512;
+  private HashSet<JobInfo> downloadedJobs;
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -143,6 +145,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     if(st!=null && !st.equals("")){
       submitTimeoutSeconds = Long.parseLong(st);
     }
+    
+    downloadedJobs = new HashSet<JobInfo>();
 
   }
   
@@ -171,10 +175,21 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir, false);
   }
   
-  protected void updateStatus(JobInfo job, Shell shell){
+  protected void updateStatus(JobInfo job, Shell shell) throws Exception{
     super.updateStatus(job, shell);
     // TODO: eliminate MyJobInfo
     ((MyJobInfo) job).setCSStatus(JobInfo.getStatusName(job.getStatus()));
+    // Host.
+    if(job.getHost()!=null/*shell!=null && (job.getHost()==null || !job.getHost().equals(shell.getHostName()))*/){
+      //job.setHost(shell.getHostName());
+      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+      if(!dbPluginMgr.updateJobDefinition(
+          job.getIdentifier(),
+          new String []{"host"},
+          new String []{job.getHost()})){
+        logFile.addMessage("DB update of job " + job.getIdentifier()+" failed");    
+      }
+    }
   }
   
   public void cleanupRuntimeEnvironments(String csName) {
@@ -232,17 +247,21 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     job.setStdoutDest(finalStdOut);
     job.setStderrDest(finalStdErr);
     
-    if(!pullMgr.checkRequirements(job, virtEnforce)){
-      throw new Exception("Requirement(s) could not be satisfied. "+job);
+    boolean ok = true;
+    
+    if(!downloadedJobs.contains(job)){
+      if(!pullMgr.checkRequirements(job, virtEnforce)){
+        throw new Exception("Requirement(s) could not be satisfied. "+job);
+      }
+      // Check if any VMs have been launched from VMForkMonitoringPanel
+      includeManuallyBootedVMs();
+      Debug.debug("Will download input files for job "+job.getName()+" / "+job.getIdentifier(), 3);
+      pullMgr.startDownloadInputs(job);
+      waitForInputFilesDownload(job);
+      downloadedJobs.add(job);
     }
     
-    // Check if any VMs have been launched from VMForkMonitoringPanel
-    includeManuallyBootedVMs();
-    
-    pullMgr.startDownloadInputs(job);
-    waitForInputFilesDownload(job);
-    
-    boolean ok = gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
+    ok = ok && gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
     
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){
@@ -250,6 +269,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       // - SubmissionControl will check and fail job if necessary.
       Debug.debug("super.preProcess() failed, returning false", 2);
       return false;
+    }
+    else{
+      downloadedJobs.remove(job);
     }
 
     String commandSuffix = ".sh";
@@ -274,6 +296,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     long startMillis = MyUtil.getDateInMilliSeconds();
     long nowMillis;
     while(true){
+      transferStatusUpdateControl.updateStatus(null);
       if(((MyPullMgr) pullMgr).downloadInputsDone(job)){
         Debug.debug("Download of input file(s) done.", 3);
         break;
@@ -282,13 +305,15 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       if(nowMillis-startMillis>submitTimeoutSeconds*1000L){
         throw new IOException();
       }
-      Debug.debug("Waiting for download of input file(s) to finish.", 3);
+      Debug.debug("Waiting for download of input file(s) to finish for job "+job.getName()+" / "+job.getIdentifier(), 2);
       Thread.sleep(10000L);
     }
   }
+  
   public boolean cleanup(JobInfo job){
     // Delete any downloaded input files.
     ((MyPullMgr) pullMgr).deleteInputs(job);
+    downloadedJobs.remove(job);
     return super.cleanup(job);
   }
 

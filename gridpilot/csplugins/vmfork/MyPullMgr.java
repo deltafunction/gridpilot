@@ -69,7 +69,8 @@ public class MyPullMgr extends PullMgr {
       }
       if(transfer==null || transfer.getTransferID()==null){
         logFile.addInfo("WARNING: transfer has no ID.");
-        continue;
+        ok = false;
+        break;
       }
       oldStatus = transfer.getInternalStatus();
       try{

@@ -564,7 +564,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
     this.getContentPane().add(panel, BorderLayout.CENTER);
 
-    panel.setPreferredSize(new Dimension(520+MyUtil.BUTTON_DISPLAY*60, 400));
+    panel.setPreferredSize(new Dimension(580+MyUtil.BUTTON_DISPLAY*60, 400));
     setResizable(true);
     
     JPanel topPanel = new JPanel(new GridBagLayout()); 
@@ -2431,7 +2431,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   /**
-   * Download a single file.
+   * Upload a single file.
    */
   private void uploadFile(File file, final String url){
     Debug.debug("Putting file : "+file.getAbsolutePath()+" -> "+url, 3);

@@ -392,8 +392,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
     String [] outputDestinations = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    Vector<String> outNamesVec = new Vector();
-    Vector<String> outDestsVec = new Vector();
+    Vector<String> outNamesVec = new Vector<String>();
+    Vector<String> outDestsVec = new Vector<String>();
     if(outputFiles!=null && outputFiles.length>0){
       for(int i=0; i<outputFiles.length; ++i){
         // Files that have remote destinations will have been uploaded by GridFactory.
@@ -483,16 +483,22 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   /**
    * Finds requested jobs, checks if provider is allowed to run them;
    * if so, sets permissions on input files accordingly.
+   * @throws Exception 
    */
-  public void updateStatus(Vector<JobInfo> jobs){
+  public void updateStatus(Vector<JobInfo> jobs) throws Exception{
+    Exception ee = null;
     for(int i=0; i<jobs.size(); ++i)
       try{
         updateStatus((MyJobInfo) jobs.get(i));
       }
       catch(Exception e){
-        e.printStackTrace();
+        ee = e;
+        /*e.printStackTrace();
         logFile.addMessage("WARNING: could not update status of job "+((MyJobInfo) jobs.get(i)).getIdentifier()+
-            " : "+((MyJobInfo) jobs.get(i)).getJobId(), e);
+            " : "+((MyJobInfo) jobs.get(i)).getJobId(), e);*/
+      }
+      if(ee!=null){
+        throw ee;
       }
   }
 
@@ -505,9 +511,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     if(st==JobInfo.STATUS_DONE){
       // This is to make sure we have something to validate
       getCurrentOutput(job);
-      DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-      String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
-      String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
+      //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+      //String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+      //String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
       // TODO: Now upload to final destination. - first check if this is not done somewhere else
     }
     Debug.debug("Updated status of job "+job.getName()+" : "+job.getCSStatus()+" : "+csStatus, 2);

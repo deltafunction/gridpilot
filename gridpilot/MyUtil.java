@@ -44,8 +44,10 @@ import java.net.NetworkInterface;
 import java.net.URL;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
 import java.util.Vector;
@@ -1489,13 +1491,13 @@ private static String fixUrl(String _url){
     JPanel jp = new JPanel(layout);
     JTextArea jt = new JTextArea(text);
     int longestLine = findLongestLine(text);
-    if(longestLine>MAX_MESSAGE_COLUMNS){
+    if(1.1*longestLine/2>MAX_MESSAGE_COLUMNS){
       Debug.debug("Fixing columns: "+text.length()+"-->"+MAX_MESSAGE_COLUMNS, 3);
       jt.setColumns(MAX_MESSAGE_COLUMNS);
     }
     else{
       Debug.debug("longestLine: "+longestLine, 3);
-      jt.setColumns((int) (1.5*longestLine/2));
+      jt.setColumns((int) (1.1*longestLine/2));
     }
     jt.setMinimumSize(new Dimension(MIN_MESSAGE_COLUMNS, 1));
     jt.setLineWrap(true);
@@ -1523,7 +1525,8 @@ private static String fixUrl(String _url){
       if(oldI==text.length()-1){
         break;
       }
-      i = text.indexOf("\n", oldI+1);
+      i = Math.max(text.indexOf("\n", oldI+1), text.indexOf("\r", oldI+1));
+      i = Math.max(i, text.indexOf("<br>", oldI+1));
       if(i<0){
         doBreak = true;
         i = text.length()-1;
@@ -1842,26 +1845,50 @@ private static String fixUrl(String _url){
     String name = null;
     String os = null;
     Debug.debug("Setting up RTEs "+deps, 2);
+    HashSet<String> providedRtes = new HashSet<String>();
     for(Iterator<String> it=deps.iterator(); it.hasNext();){
       name = it.next();
       // Check if installation was already done.
       // This we need, because GridPilot's HTTPSFileTransfer does not cache.
       // GridFactory's does.
       //if(shell.existsFile(remoteRteDir+"/"+name+"/"+RTEInstaller.INSTALL_OK_FILE)){
-      if(rteMgr.getRTEInstaller().isInstalled(name, shell)){
-        GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
-        return;
-      }
       try{
-        ip = rteMgr.getRteInstancePackage(name, os);
+        if(rteMgr.getRTEInstaller().isInstalled(name, shell)){
+          GridPilot.getClassMgr().getLogFile().addInfo("Reusing existing installation of "+name);
+          providedRtes.add(name);
+          continue;
+        }
       }
       catch(Exception e){
-        Debug.debug("MetaPackage "+name+" has no instances. Assuming it is provided by the VM.", 2);
+        Debug.debug("Could not check if "+name+" is installed - assuming it's not.", 2);
         e.printStackTrace();
         continue;
       }
-      rteMgr.getRTEInstaller().install(name, ip, shell);
+      try{
+        ip = rteMgr.getRteInstancePackage(name, os);
+        providedRtes.add(name);
+      }
+      catch(Exception e){
+        Debug.debug("MetaPackage "+name+" has no instances. Assuming it is provided by the VM.", 2);
+        providedRtes.add(name);
+        e.printStackTrace();
+        continue;
+      }
+      try{
+        rteMgr.getRTEInstaller().install(name, ip, shell);
+        providedRtes.add(name);
+      }
+      catch(Exception e){
+        Debug.debug("Could not install "+name+" - ignoring.", 2);
+        e.printStackTrace();
+        continue;
+      }
     }
+    // Add provided RTEs
+    if(shell.getProvides()!=null &&  shell.getProvides().length!=0){
+      Collections.addAll(providedRtes, shell.getProvides());
+    }
+    shell.setProvides(providedRtes.toArray(new String[providedRtes.size()]));
   }
 
   public static void checkAndActivateSSL(String[] urls){

@@ -1135,6 +1135,9 @@ public class SubmissionControl{
     Debug.debug("Checking if we can still preprocess this job, "+
         job.getName()+":"+retr+">"+preprocessRetries, 2);
     if(retr>preprocessRetries){
+      logFile.addInfo("WARNING: timed out waiting for free slot for job "+job.getName()+" / "+job.getIdentifier()+
+          ". To increase the timeout, modify " +
+          "\"Computing systems\" -> \"Submit retries\" and/or \"Computing systems\" -> \"Time between submissions\"");
       preprocessRetryJobs.remove(job);
       return false;
     }

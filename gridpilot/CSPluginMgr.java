@@ -69,6 +69,9 @@ public class CSPluginMgr implements MyComputingSystem{
   private HashMap<String, Object> cs;
   private int threadI;
   private String [] enabledCSs;
+  private HashMap<String, Integer> notUpdatableJobs = new HashMap<String, Integer>();
+
+  private Integer MAX_UPDATE_ATTEMPTS = 5;
 
   public CSPluginMgr() throws Throwable{
     init();
@@ -318,9 +321,7 @@ public class CSPluginMgr implements MyComputingSystem{
           ((MyComputingSystem) cs.get(csName)).updateStatus(jobs);
         }
         catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during updateStatus", t);
+          handleUpdateException(jobs, t);
         }
       }
     };
@@ -331,6 +332,30 @@ public class CSPluginMgr implements MyComputingSystem{
   }
 
 
+  protected void handleUpdateException(Vector<JobInfo> jobs, Throwable t) {
+    JobInfo job;
+    Integer oldValue;
+    for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
+      job = it.next();
+      if(!notUpdatableJobs.containsKey(job.getIdentifier())){
+        notUpdatableJobs.put(job.getIdentifier(), new Integer(0));
+      }
+      else{
+        oldValue = notUpdatableJobs.get(job.getIdentifier());
+        notUpdatableJobs.put(job.getIdentifier(), oldValue+1);
+        Debug.debug("Increased update error count for job "+job.getIdentifier()+" / "+job.getName()+" to "+
+            notUpdatableJobs.get(job.getIdentifier()), 2);
+      }
+      if(notUpdatableJobs.get(job.getIdentifier())>MAX_UPDATE_ATTEMPTS ){
+        String csName = ((MyJobInfo) jobs.get(0)).getCSName();
+        logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+            " from plugin " + csName +
+            " during updateStatus. Tried "+MAX_UPDATE_ATTEMPTS+" times. Setting job as failed.", t);
+        job.setStatus(JobInfo.STATUS_FAILED);
+        notUpdatableJobs.remove(job.getIdentifier());
+      }
+    }
+  }
   /**
    * Kills these jobs
    * @see MyComputingSystem#killJobs(Vector)

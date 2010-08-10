@@ -633,7 +633,7 @@ public class MyTransferControl extends TransferControl {
     }
 
     for(int i=toClearTransfers.length-1; i>-1; --i){
-      GridPilot.getClassMgr().getSubmittedTransfers().remove(toClearTransfers[i]);
+      getSubmittedTransfers().remove(toClearTransfers[i]);
       statusTable.removeRow(toClearTransfers[i].getTableRow());
     }
 
@@ -676,10 +676,10 @@ public class MyTransferControl extends TransferControl {
       resubmit = (transfers[i].getInternalStatus()>-1);
       
       if(!resubmit){
-        transfers[i].setTableRow(GridPilot.getClassMgr().getSubmittedTransfers().size());
-        GridPilot.getClassMgr().getSubmittedTransfers().add(transfers[i]);
+        transfers[i].setTableRow(getSubmittedTransfers().size());
+        getSubmittedTransfers().add(transfers[i]);
         // add to status table
-        statusTable.createRows(GridPilot.getClassMgr().getSubmittedTransfers().size());
+        statusTable.createRows(getSubmittedTransfers().size());
         
         for(int j=1; j<GridPilot.TRANSFER_STATUS_FIELDS.length; ++j){
           appendTablevalues[i][j] = statusTable.getValueAt(startRow+i, j);
@@ -1031,7 +1031,7 @@ public class MyTransferControl extends TransferControl {
         animateStatus();
         setMonitorStatus("Cancelling...");
         Debug.debug("Cancelling "+transfers.size()+" transfers", 2);
-        Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+        Vector<TransferInfo> submittedTransfers = getSubmittedTransfers();
         try{
           for(int i=0; i<transfers.size(); ++i){
             try{             
@@ -1098,7 +1098,7 @@ public class MyTransferControl extends TransferControl {
       public void run(){
         animateStatus();
         setMonitorStatus("Cancelling...");
-        Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+        Vector<TransferInfo> submittedTransfers = getSubmittedTransfers();
         try{
           GlobusURL [] srcUrls = new GlobusURL [transfers.size()];
           GlobusURL [] destUrls = new GlobusURL [transfers.size()];
@@ -1265,7 +1265,7 @@ public class MyTransferControl extends TransferControl {
    * transfers should be cancelled before exiting.
    */
   public void exit(){
-    Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    Vector<TransferInfo> submittedTransfers = getSubmittedTransfers();
     for(int i=0; i<submittedTransfers.size(); ++i){
       try{
         String id = (submittedTransfers.get(i)).getTransferID();
@@ -1276,6 +1276,10 @@ public class MyTransferControl extends TransferControl {
         continue;
       }
     }
+  }
+  
+  public Vector<TransferInfo> getSubmittedTransfers(){
+    return GridPilot.getClassMgr().getSubmittedTransfers();
   }
 
   /**

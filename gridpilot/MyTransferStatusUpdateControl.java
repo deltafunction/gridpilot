@@ -56,15 +56,6 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
   private int[] transfersByFTStatus = new int[ftStatusNames.length];
 
   /**
-   * Contains all transfers which should be updated. <p>
-   * All these transfers should be "needed to be refreshed" (otherwise, they are not
-   * put in this transfer vector, and a transfer cannot become "not needed to be refreshed"
-   * when it is in this transfer vector) and should belong to submittedTransfers. <br>
-   * Each transfer in toCheckTransfers is going to be put in {@link #checkingTransfers}
-   */
-  private Vector<TransferInfo> toCheckTransfers = new Vector<TransferInfo>();
-
-  /**
    * Contains all transfers for which update is processing. <p>
    * Each transfer in this transfer vector : <ul>
    * <li> corresponds to one and only one thread in {@link #checkingThreads}

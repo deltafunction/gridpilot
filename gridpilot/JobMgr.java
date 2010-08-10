@@ -257,7 +257,7 @@ public class JobMgr{
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            job.setNeedsUpdate(false);
+            setUpdateNeeded(job);
             // ! no break
           case DBPluginMgr.UNEXPECTED:
             Debug.debug(job.getName()+" ran with unexpected errors",3);
@@ -268,7 +268,7 @@ public class JobMgr{
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            job.setNeedsUpdate(false);
+            setUpdateNeeded(job);
             // ! no break
           case DBPluginMgr.SUBMITTED:
             stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
@@ -280,12 +280,7 @@ public class JobMgr{
             job.setOutputs(stdOut, stdErr);
             String jobId = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobId");
             job.setJobId(jobId);
-            String csName = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
-            if(csName==null || csName.equals("")){
-              logFile.addMessage("this job (" + job.getIdentifier() + ") doesn't have a CS defined");
-              job.setNeedsUpdate(false);
-            }
-            job.setCSName(csName);
+            setUpdateNeeded(job);
             break;
           default:
             logFile.addMessage("This status (" + dbStatus +
@@ -332,6 +327,15 @@ public class JobMgr{
     updateJobCells(monitoredjobs);
     
     //updateJobsByStatus();
+  }
+
+  private void setUpdateNeeded(MyJobInfo job) {
+    String csName = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
+    if(csName==null || csName.equals("")){
+      logFile.addMessage("this job (" + job.getIdentifier() + ") doesn't have a CS defined");
+      job.setNeedsUpdate(false);
+    }
+    job.setCSName(csName);
   }
 
   public void initChanges(){
