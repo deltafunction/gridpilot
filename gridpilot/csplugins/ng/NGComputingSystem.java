@@ -81,7 +81,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private String [] giises;
   private ARCResource [] resources;
   private String [] runtimeDBs = null;
-  private HashSet finalRuntimes = null;
+  private HashSet<String> finalRuntimes = null;
   private int submissionNumber = 1;
   private MyTransferControl transferControl;
   
@@ -132,7 +132,7 @@ public class NGComputingSystem implements MyComputingSystem{
     // restrict to these clusters
     if(clusters!=null && clusters.length!=0){
       String cluster = null;
-      Set clusterSet = new HashSet();
+      Set<String> clusterSet = new HashSet<String>();
       for(int i=0; i<clusters.length; ++i){
         if(!clusters[i].startsWith("ldap://")){
           cluster = "ldap://"+clusters[i]+
@@ -177,7 +177,7 @@ public class NGComputingSystem implements MyComputingSystem{
       // Use information system
       GridPilot.splashShow("Discovering NG ARC resources...");
       arcDiscovery.discoverAll();
-      Set clusterSet = arcDiscovery.getClusters();
+      Set<String> clusterSet = arcDiscovery.getClusters();
       clusters = new String[clusterSet.size()];
       for(int i=0; i<clusterSet.size(); ++i){
         try{
@@ -236,7 +236,7 @@ public class NGComputingSystem implements MyComputingSystem{
     if(runtimeDBs==null || runtimeDBs.length==0){
       return;
     }    
-    Set runtimes = null;
+    Set<String> runtimes = null;
     DBPluginMgr dbPluginMgr = null;
     for(int ii=0; ii<runtimeDBs.length; ++ii){
       try{
@@ -247,15 +247,15 @@ public class NGComputingSystem implements MyComputingSystem{
         Debug.debug("WARNING: could not load runtime DB "+runtimeDBs[ii], 1);
         continue;
       }
-      finalRuntimes = new HashSet();
+      finalRuntimes = new HashSet<String>();
       // At least for now, we only have Linux resources on NorduGrid
       finalRuntimes.add(OS);
       if(useInfoSystem){
-        Object rte = null;
+        String rte = null;
         for(int i=0; i<resources.length; ++i){
           try{
             runtimes = resources[i].getRuntimeenvironment();
-            for(Iterator it=runtimes.iterator(); it.hasNext();){
+            for(Iterator<String> it=runtimes.iterator(); it.hasNext();){
               rte = it.next();
               Debug.debug("Adding runtime environment: "+rte.toString()+":"+rte.getClass(), 3);
               finalRuntimes.add(rte);
@@ -269,8 +269,8 @@ public class NGComputingSystem implements MyComputingSystem{
           dbPluginMgr.getFieldNames("runtimeEnvironment");
         String [] rtVals = new String [runtimeEnvironmentFields.length];
         String name = null;
-        for(Iterator it=finalRuntimes.iterator(); it.hasNext();){       
-          name = (String) it.next();
+        for(Iterator<String> it=finalRuntimes.iterator(); it.hasNext();){       
+          name = it.next();
           for(int i=0; i<runtimeEnvironmentFields.length; ++i){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
               rtVals[i] = name;
@@ -347,7 +347,7 @@ public class NGComputingSystem implements MyComputingSystem{
     }
   }
 
-  public void updateStatus(Vector jobs){
+  public void updateStatus(Vector<JobInfo> jobs){
     for(int i=0; i<jobs.size(); ++i){
       updateStatus((MyJobInfo) jobs.get(i));
     }
@@ -450,10 +450,10 @@ public class NGComputingSystem implements MyComputingSystem{
     return gridJob;
   }
   
-  public boolean killJobs(Set jobsToKill){
+  public boolean killJobs(Set<JobInfo> jobsToKill){
     MyJobInfo job = null;
-    Vector errors = new Vector();
-    for(Iterator it=jobsToKill.iterator(); it.hasNext();){
+    Vector<String> errors = new Vector<String>();
+    for(Iterator<JobInfo> it=jobsToKill.iterator(); it.hasNext();){
       try{
         job = (MyJobInfo) it.next();
         Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
@@ -529,9 +529,9 @@ public class NGComputingSystem implements MyComputingSystem{
       try{
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
             runtimeDBs[ii]);
-        for(Iterator it=finalRuntimes.iterator(); it.hasNext();){
+        for(Iterator<String> it=finalRuntimes.iterator(); it.hasNext();){
           ok = true;
-          runtimeName = (String )it.next();
+          runtimeName = it.next();
           // Don't delete records with a non-empty initText.
           // These can only have been created by hand.
           initText = dbPluginMgr.getRuntimeInitText(runtimeName, csName);
@@ -893,8 +893,8 @@ public class NGComputingSystem implements MyComputingSystem{
   }
   
   public ARCJob getJobFromIS(JobInfo job) throws ARCGridFTPJobException{
-    Set tmpClusters = arcDiscovery.getClusters();
-    Set jobClusters = new HashSet();
+    Set<String> tmpClusters = arcDiscovery.getClusters();
+    Set<String> jobClusters = new HashSet<String>();
     String submissionHost;
     try{
       submissionHost = (new GlobusURL(job.getJobId())).getHost();
@@ -915,7 +915,7 @@ public class NGComputingSystem implements MyComputingSystem{
     // restrict to the one cluster holding the job
     arcDiscovery.setClusters(jobClusters);
     ARCJob [] allJobs = findCurrentJobsFromIS();
-    HashSet allJobIds = new HashSet();
+    HashSet<String> allJobIds = new HashSet<String>();
     // return to including all clusters
     arcDiscovery.setClusters(tmpClusters);
     for(int i=0; i<allJobs.length; ++i){
@@ -936,15 +936,15 @@ public class NGComputingSystem implements MyComputingSystem{
     long start = System.currentTimeMillis();
     long limit = 30000;//10000;
     long offset = 2000; // some +- coefficient
-    Collection foundJobs = null;
-    HashSet foundJobIDs = new HashSet();
+    Collection<Object> foundJobs = null;
+    HashSet<ARCJob> foundJobIDs = new HashSet<ARCJob>();
     try{
       statusBar.setLabel("Finding jobs for "+getUserInfo(csName)+ ", please wait...");
       Debug.debug("Finding jobs for "+getUserInfo(csName)+ ", please wait...", 3);
       foundJobs = arcDiscovery.findUserJobs(getUserInfo(csName), 20, limit);
-      HashSet result = null;
+      HashSet<ARCJob> result = null;
       Object itObj = null;
-      for(Iterator it=foundJobs.iterator(); it.hasNext(); ){
+      for(Iterator<Object> it=foundJobs.iterator(); it.hasNext(); ){
         itObj = it.next();
         if(((TaskResult) itObj).getResult()==null){
           continue;
@@ -953,7 +953,7 @@ public class NGComputingSystem implements MyComputingSystem{
           // Failed to connect to server message. Just ignore.
           continue;
         }
-        result = (HashSet) ((TaskResult) itObj).getResult();
+        result = (HashSet<ARCJob>) ((TaskResult) itObj).getResult();
         foundJobIDs.addAll(result);
       }
       statusBar.setLabel("Finding jobs done");
@@ -974,10 +974,10 @@ public class NGComputingSystem implements MyComputingSystem{
     }
     ARCJob [] returnArray = new ARCJob [foundJobIDs.size()];
     int i = 0;
-    Object itObj;
-    for(Iterator it=foundJobIDs.iterator(); it.hasNext(); ){
+    ARCJob itObj;
+    for(Iterator<ARCJob> it=foundJobIDs.iterator(); it.hasNext(); ){
       itObj = it.next();
-      returnArray[i] = ((ARCJob) itObj);
+      returnArray[i] = itObj;
       ++i;
     }
     return returnArray;
@@ -987,7 +987,7 @@ public class NGComputingSystem implements MyComputingSystem{
     long start = System.currentTimeMillis();
     long limit = 30000;//10000;
     long offset = 2000; // some +- coefficient
-    Collection foundResources = null;
+    Collection<ARCResource> foundResources = null;
     ARCResource [] resourcesArray = null;
     try{
       logFile.addInfo("Finding resources, please wait...");
@@ -995,22 +995,22 @@ public class NGComputingSystem implements MyComputingSystem{
       foundResources = arcDiscovery.findAuthorizedResources(
           getUserInfo(csName), 3, limit);
       Object itObj = null;
-      HashSet tmpRes = null;
-      HashSet resourcesSet = new HashSet();
+      HashSet<ARCResource> tmpRes = null;
+      HashSet<ARCResource> resourcesSet = new HashSet<ARCResource>();
       boolean clusterOK = false;
-      for(Iterator it=foundResources.iterator(); it.hasNext(); ){
+      for(Iterator<ARCResource> it=foundResources.iterator(); it.hasNext(); ){
         itObj = it.next();
         if((((TaskResult) itObj).getResult())!=null &&
             (((TaskResult) itObj).getResult()).getClass().equals(HashSet.class)){
-          tmpRes = (HashSet) ((TaskResult) itObj).getResult();
+          tmpRes = (HashSet<ARCResource>) ((TaskResult) itObj).getResult();
           if(tmpRes.size()>0){
             Debug.debug("Found resource : " +
                 ((TaskResult) itObj).getWorkDescription() + " : " +
                 ((TaskResult) itObj).getComment(), 3);
             // tmpRes is a set of ARCResources
             ARCResource res = null;
-            for(Iterator ita=tmpRes.iterator(); ita.hasNext();){
-              res = (ARCResource) ita.next();
+            for(Iterator<ARCResource> ita=tmpRes.iterator(); ita.hasNext();){
+              res = ita.next();
               Debug.debug("resource: "+res, 3);
               clusterOK = false;
               for(int cl=0; cl<clusters.length; ++cl){
@@ -1021,7 +1021,7 @@ public class NGComputingSystem implements MyComputingSystem{
               }
               if(clusterOK){
                 resourcesSet.add(res);
-                for(Iterator ite=res.getRuntimeenvironment().iterator(); ite.hasNext();){
+                for(Iterator<String> ite=res.getRuntimeenvironment().iterator(); ite.hasNext();){
                   Debug.debug("runtime environment: "+ite.next(), 3);
                 }
               }
@@ -1034,8 +1034,8 @@ public class NGComputingSystem implements MyComputingSystem{
       }
       resourcesArray = new ARCResource[resourcesSet.size()];
       int i = 0;
-      for(Iterator it=resourcesSet.iterator(); it.hasNext(); ){
-        resourcesArray[i] = (ARCResource) it.next();
+      for(Iterator<ARCResource> it=resourcesSet.iterator(); it.hasNext(); ){
+        resourcesArray[i] = it.next();
         ++i;
       }
       logFile.addInfo("Finding resources done");

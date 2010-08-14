@@ -39,6 +39,8 @@ public class GlobalFrame extends GPFrame{
   private static final int MAX_TAB_TITLE_LENGTH = 24;
 
   private static final String GridPilotURL = "http://www.gridpilot.dk/";
+
+  public static final String GPA_FILTER = "*.gpa|*.html";
   
   private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
@@ -1084,7 +1086,7 @@ public class GlobalFrame extends GPFrame{
     String url = null;
     try{
       //url = MyUtil.getURL("file:~/", null, false, "Choose *.gpa file to import from.");
-      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose *.gpa file to import from.");
+      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose *.gpa file to import from.", GPA_FILTER);
     }
     catch(IOException e){
       activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));

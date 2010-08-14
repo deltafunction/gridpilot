@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -15,6 +16,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.security.GeneralSecurityException;
 import java.security.Security;
 
 import gridfactory.common.ConfigFile;
@@ -59,8 +61,8 @@ public class BeginningWizard{
   private static int TEXTFIELDWIDTH = 32;
   private static String HOME_URL = "https://www.gridfactory.org/";
   private static String DOC_ROOT_URL = "http://www.gridfactory.org/";
-  private static String MYSQL_HOWTO_URL = DOC_ROOT_URL+"documentation/";
-  private static String HTTPS_HOWTO_URL = DOC_ROOT_URL+"documentation/";
+  private static String MYSQL_HOWTO_URL = DOC_ROOT_URL+"documentation/#Using_MySQL_as_a_secure_file_catalog";
+  private static String HTTPS_HOWTO_URL = DOC_ROOT_URL+"documentation/#Using_Apache_httpd_as_a_secure_file_server";
  
   public BeginningWizard(boolean firstRun){
     
@@ -134,8 +136,7 @@ public class BeginningWizard{
           // No grid credentials
           certAndKeyOk = false;
           MyUtil.showError(
-              "<html>WARNING: without a key and a certificate you will<br>" +
-                    "not be able to authenticate with grid resources.</html>");
+              "WARNING: without a key and a certificate you will not be able to authenticate with remote resources.");
         }
       }
       catch(FileNotFoundException ee){
@@ -232,21 +233,80 @@ public class BeginningWizard{
     }    
   }
   
-  private void setupCertAndKey() throws IOException{
+  private void setupCertAndKey(boolean firstRun) throws IOException, GeneralSecurityException{
     String certPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Certificate file");
     String keyPath = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Key file");
     String certDir = (new File(certPath)).getParent();
-    if(!LocalStaticShell.existsFile(certPath) && !LocalStaticShell.existsFile(keyPath)){
-      // Set up key and cert.
-      // If setupTestCredentials returns false, test credentials are used.
-      if(!MySSL.setupTestCredentials(certDir, false, GridPilot.class)){
-        GridPilot.KEY_PASSWORD = MySSL.TEST_KEY_PASSWORD;
+    boolean useTestCreds = false;
+    if(LocalStaticShell.existsFile(certPath) && LocalStaticShell.existsFile(keyPath)){
+      if(firstRun){
+        String dn = MyUtil.getDN(certPath);
+        if(!MySSL.TEST_CERTIFICATE_DN.equals(dn)){
+          useTestCreds = askToUseTestCreds(dn);
+          if(useTestCreds){
+            moveCertAndKey(certPath, keyPath, dn);
+          }
+          else{
+            return;
+          }
+        }
+        else{
+          return;
+        }
       }
+    }
+    else if(LocalStaticShell.existsFile(certPath) || LocalStaticShell.existsFile(keyPath)){
+      throw new IOException("You must have BOTH a certificate and a key file or none of the two.\n\n" +
+      		"Please fix this and rerun this wizard.");
+    }
+    // Set up key and cert.
+    // If setupTestCredentials returns false, test credentials are used.
+    if(!MySSL.setupTestCredentials(certDir, useTestCreds, GridPilot.class)){
+      GridPilot.KEY_PASSWORD = MySSL.TEST_KEY_PASSWORD;
+      // Disable any VOMS server that may have been set in the preferences
+      GridPilot.VOMS_SERVER_URL = null;
     }
   }
   
+  private void moveCertAndKey(String certPath, String keyPath, String dn) {
+    String bkExtension = "."+Long.toString(MyUtil.getDateInMilliSeconds());
+    LocalStaticShell.moveFile(certPath, certPath+bkExtension);
+    LocalStaticShell.moveFile(keyPath, keyPath+bkExtension);
+    MyUtil.showMessage("Credentials moved", "I've moved "+certPath+" to "+certPath+bkExtension+
+        " and "+keyPath+" to "+keyPath+bkExtension+".\n\n" +
+        "Once you've joined a VO as "+dn+" you should move them back.");
+  }
+
+  private static boolean askToUseTestCreds(String dn) {
+    ConfirmBox confirmBox = new ConfirmBox();
+    String msg = "You have credentials installed with DN\n\n"+
+         dn+"\n\n" +
+    		"Please confirm that these credentials permit you to use at least some computing resource(s) and file server(s).\n\n" +
+    		"Such permission is usually granted by way of virtual organization (VO) membership.\n\n" +
+    		"For more on this, see http://www.gridfactory.org/services/.\n\n" +
+    		"If you haven't joined any VO(s) you can let me move your credential files temporarily out of the way.\n" +
+    		"Then you will use the default test credentials, allowing you to try out some GridFactory test resources.\n\n" +
+    		"What do you want to do?\n\n";
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Use test credentials?",
+          msg, new Object[] {
+          MyUtil.mkButton("cancel.png", "I'll use your test credentials", "Move installed credentials to [file].bk"),
+          MyUtil.mkButton("ok.png", "My credentials are fine, just use them", "Leave my credentials untouched")}, 1);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+        
+    if(choice==JOptionPane.YES_OPTION){
+      return true;
+    }
+    
+    return false;
+  }
+
   private int welcome(boolean firstRun) throws Exception{
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     String confirmString = "Welcome!\n\n" +
             (firstRun?"This appears to be the first time you run GridPilot.\n":"") +
             "On the next windows you will be guided through 6 steps to set up GridPilot.\n" +
@@ -265,7 +325,7 @@ public class BeginningWizard{
   }
   
   private int endGreeting(boolean firstRun) throws Exception{
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     String confirmString = "Configuring GridPilot is now done.\n" +
         "Your settings have been saved in\n"+
         configFile.getFile().getAbsolutePath()+
@@ -275,7 +335,7 @@ public class BeginningWizard{
             "You can modify these and many others in\n" +
             "\"Edit\" - \"Preferences\"." +
             (firstRun?"\n\nGridPilot will now initialize - this may take a while.\n\n" +
-            		"Thanks for using GridPilot and have fun!":"");
+            		"Have fun!":"");
     int choice = -1;
     confirmBox.getConfirmPlainText("Setup completed!",
         confirmString, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())},
@@ -284,7 +344,7 @@ public class BeginningWizard{
   }
   
   private int partialSetupMessage(boolean firstRun) throws Exception{
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     String confirmString =
         "Configuring GridPilot is only partially done.\n" +
         "Your settings have been saved in\n"+
@@ -387,11 +447,12 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
     JPanel subRow = null;
+    ConfirmBox confirmBox = new ConfirmBox();
     for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel1((Frame)confirmBox.getOwner(),
           names[i], jtFields[i], true, false, true, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -405,7 +466,6 @@ public class BeginningWizard{
     }
     jPanel.validate();
     
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
       choice = confirmBox.getConfirmPlainText("Step 1/6: Setting up GridPilot directories",
@@ -544,11 +604,12 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     JPanel row = null;
     JPanel subRow = null;
+    ConfirmBox confirmBox = new ConfirmBox();
     for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
       row = new JPanel(new BorderLayout(8, 0));
-      row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
+      row.add(MyUtil.createCheckPanel1((Frame)confirmBox.getOwner(),
           names[i], jtFields[i], true, false, false, true), BorderLayout.WEST);
       subRow = new JPanel(new BorderLayout(8, 0));
       subRow.add(jtFields[i], BorderLayout.CENTER);
@@ -562,7 +623,6 @@ public class BeginningWizard{
     }
     jPanel.validate();
     
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
       choice = confirmBox.getConfirmPlainText("Step 2/6: Setting up grid credentials",
@@ -600,7 +660,7 @@ public class BeginningWizard{
     try{
       // setupTestCredentials throws an exception if the user clicks cancel.
       // We treat as if skipping this step.
-      setupCertAndKey();
+      setupCertAndKey(firstRun);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -613,6 +673,8 @@ public class BeginningWizard{
     if(GridPilot.KEY_PASSWORD==MySSL.TEST_KEY_PASSWORD){
       // With test credentials, most likely only standard https will be used.
       GridPilot.getClassMgr().getSSL().activateSSL();
+      // Disable any VOMS server that may have been set in the preferences
+      GridPilot.VOMS_SERVER_URL = null;
     }
     else{
       // If a the user has a certificate, chances are he will use grid stuff.
@@ -686,7 +748,10 @@ public class BeginningWizard{
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
     lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1").replaceAll(" ", "_");
     String lfcPath = "/users/"+lfcUser+"/";
+    JTextField tfLfcPath = new JTextField(TEXTFIELDWIDTH);
     String toaPath = "~/GridPilot/TiersOfATLASCache.txt";
+    JTextField tfHomeSite = new JTextField(TEXTFIELDWIDTH);
+    JTextField tfTOAPath = new JTextField(TEXTFIELDWIDTH);
     String [] defDirs = new String [] {"",
                                        "www.gridpilot.dk",
                                        host};
@@ -729,115 +794,28 @@ public class BeginningWizard{
     }
     jrbs[0].setSelected(true);
     
-    final JCheckBox cbAtlas = new JCheckBox();
-    JPanel atlasRow = new JPanel(new BorderLayout(8, 0));
-    atlasRow.add(cbAtlas, BorderLayout.WEST);
-    atlasRow.add(new JLabel("Enable ATLAS dataset/file catalogs"), BorderLayout.CENTER);
-    jPanel.add(new JLabel(" "), new GridBagConstraints(0, i+5, 1, 1, 0.0, 0.0,
-        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-        new Insets(0, 0, 0, 0), 0, 0));
-    jPanel.add(atlasRow, new GridBagConstraints(0, i+6, 1, 1, 0.0, 0.0,
-        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-        new Insets(0, 0, 0, 0), 0, 0));
-    
-    final ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
-    
-    final JPanel atlasDetails = new JPanel(new GridBagLayout());
-    String atlasString = "\n" +
-    "When looking up files, in principle all ATLAS file catalogs may be queried. In order to always give\n" +
-    "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
-    "site acronyms from the file " +
-    "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
-    " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
-    "or CERNPROD.\n\n" +
-    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified\n" +
-    "where you have write access, either via a user name and password given in the URL, like e.g.\n" +
-    "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
-    "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
-    "mysql://my.regional.server:3306/localreplicas.\n" +
-    "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
-    "you want to save your datasets.\n\n" +
-    "If you don't understand the above or don't have write access to a remote file catalog, you can\n" +
-    "safely leave the fields empty. Then you will have only read access.\n";
-    JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
-    atlasLabel.setEditable(false);
-    atlasLabel.setOpaque(false);
-    addHyperLinkListener(atlasLabel, jPanel);
-    atlasDetails.add(atlasLabel,
-        new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
-    row.add(new JLabel("   "), BorderLayout.EAST);
-    JTextField tfHomeSite = new JTextField(TEXTFIELDWIDTH);
-    tfHomeSite.setText("");
-    row.add(tfHomeSite, BorderLayout.CENTER);
-    atlasDetails.add(row,
-        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("LFC path: "), BorderLayout.WEST);
-    row.add(new JLabel("   "), BorderLayout.EAST);
-    JTextField tfLfcPath = new JTextField(TEXTFIELDWIDTH);
-    tfLfcPath.setText(lfcPath);
-    row.add(tfLfcPath, BorderLayout.CENTER);
-    atlasDetails.add(row,
-        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("TiersOfATLAS local cache file: "), BorderLayout.WEST);
-    row.add(new JLabel("   "), BorderLayout.EAST);
-    JTextField tfTOAPath = new JTextField(TEXTFIELDWIDTH);
-    tfTOAPath.setText(toaPath);
-    row.add(tfTOAPath, BorderLayout.CENTER);
-    atlasDetails.add(row,
-        new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
-            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-            new Insets(5, 5, 5, 5), 0, 0));
-    
-    cbAtlas.addActionListener(new ActionListener(){
-      public void actionPerformed(ActionEvent e){
-        try{
-          if(catalogPanelSize==null){
-            catalogPanelSize = confirmBox.getDialog().getSize();
-          }
-          int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-100;
-          int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-100;
-          confirmBox.getDialog().getContentPane().setMaximumSize(
-              new Dimension(maxWidth, maxHeight));
-          Dimension currentSize = confirmBox.getDialog().getSize();
-          if(cbAtlas.isSelected()){
-            atlasDetails.setVisible(true);            
-            int newHeight = currentSize.height+300;
-            int newWidth = currentSize.width+100;
-            confirmBox.getDialog().setSize(
-                newWidth>maxWidth?maxWidth:newWidth,
-                newHeight>maxHeight?maxHeight:newHeight);
-          }
-          else{
-            int newHeight = currentSize.height-200;
-            int newWidth = currentSize.width-100;
-            atlasDetails.setVisible(false);
-            confirmBox.getDialog().setSize(
-                newWidth<catalogPanelSize.width?catalogPanelSize.width:newWidth,
-                newHeight<catalogPanelSize.height?catalogPanelSize.height:newHeight);
-          }
-          //confirmBox.getDialog().pack();
-        }
-        catch(Exception ex){
-          Debug.debug("Could not show details", 2);
-          ex.printStackTrace();
-        }
-      }
-    });
-    
-    jPanel.add(atlasDetails, new GridBagConstraints(0, i+7, 1, 1, 0.0, 0.0,
-        GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
-        new Insets(0, 0, 0, 0), 0, 0));
-    atlasDetails.setVisible(false);
+    final ConfirmBox confirmBox = new ConfirmBox();
+
+    // Only add ATLAS options if we're using VOMS proxies
+    // (VOMS_SERVER_URL is set to null if we're using test credentials).
+    JCheckBox cbAtlas = new JCheckBox();
+    cbAtlas.setSelected(false);
+    if(GridPilot.VOMS_SERVER_URL!=null && !GridPilot.VOMS_SERVER_URL.equals("")){
+      JPanel atlasRow = new JPanel(new BorderLayout(8, 0));
+      atlasRow.add(cbAtlas, BorderLayout.WEST);
+      atlasRow.add(new JLabel("Enable ATLAS dataset/file catalogs"), BorderLayout.CENTER);
+      jPanel.add(new JLabel(" "), new GridBagConstraints(0, i+5, 1, 1, 0.0, 0.0,
+          GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 0, 0, 0), 0, 0));
+      jPanel.add(atlasRow, new GridBagConstraints(0, i+6, 1, 1, 0.0, 0.0,
+          GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 0, 0, 0), 0, 0));
+      final JPanel atlasDetails = createAtlasPanel(jPanel, tfHomeSite, tfLfcPath, lfcPath, tfTOAPath, toaPath, cbAtlas, confirmBox);
+      jPanel.add(atlasDetails, new GridBagConstraints(0, i+7, 1, 1, 0.0, 0.0,
+          GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+          new Insets(0, 0, 0, 0), 0, 0));
+      atlasDetails.setVisible(false);
+    }
             
     jPanel.validate();
     
@@ -952,6 +930,100 @@ public class BeginningWizard{
     return choice;
   }
 
+  private JPanel createAtlasPanel(JPanel jPanel, JTextField tfHomeSite, JTextField tfLfcPath,
+      String lfcPath, JTextField tfTOAPath, String toaPath, final JCheckBox cbAtlas, final ConfirmBox confirmBox) {
+    JPanel row = null;
+    final JPanel atlasDetails = new JPanel(new GridBagLayout());
+    String atlasString = "\n" +
+    "When looking up files, in principle all ATLAS file catalogs may be queried. In order to always give\n" +
+    "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
+    "site acronyms from the file " +
+    "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
+    " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
+    "or CERNPROD.\n\n" +
+    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified\n" +
+    "where you have write access, either via a user name and password given in the URL, like e.g.\n" +
+    "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
+    "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
+    "mysql://my.regional.server:3306/localreplicas.\n" +
+    "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
+    "you want to save your datasets.\n\n" +
+    "If you don't understand the above or don't have write access to a remote file catalog, you can\n" +
+    "safely leave the fields empty. Then you will have only read access.\n";
+    JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
+    atlasLabel.setEditable(false);
+    atlasLabel.setOpaque(false);
+    addHyperLinkListener(atlasLabel, jPanel);
+    atlasDetails.add(atlasLabel,
+        new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
+    tfHomeSite.setText("");
+    row.add(tfHomeSite, BorderLayout.CENTER);
+    atlasDetails.add(row,
+        new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("LFC path: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
+    tfLfcPath.setText(lfcPath);
+    row.add(tfLfcPath, BorderLayout.CENTER);
+    atlasDetails.add(row,
+        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("TiersOfATLAS local cache file: "), BorderLayout.WEST);
+    row.add(new JLabel("   "), BorderLayout.EAST);
+    tfTOAPath.setText(toaPath);
+    row.add(tfTOAPath, BorderLayout.CENTER);
+    atlasDetails.add(row,
+        new GridBagConstraints(0, 3, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    
+    cbAtlas.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        try{
+          if(catalogPanelSize==null){
+            catalogPanelSize = confirmBox.getDialog().getSize();
+          }
+          int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-100;
+          int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-100;
+          confirmBox.getDialog().getContentPane().setMaximumSize(
+              new Dimension(maxWidth, maxHeight));
+          Dimension currentSize = confirmBox.getDialog().getSize();
+          if(cbAtlas.isSelected()){
+            atlasDetails.setVisible(true);            
+            int newHeight = currentSize.height+300;
+            int newWidth = currentSize.width+100;
+            confirmBox.getDialog().setSize(
+                newWidth>maxWidth?maxWidth:newWidth,
+                newHeight>maxHeight?maxHeight:newHeight);
+          }
+          else{
+            int newHeight = currentSize.height-200;
+            int newWidth = currentSize.width-100;
+            atlasDetails.setVisible(false);
+            confirmBox.getDialog().setSize(
+                newWidth<catalogPanelSize.width?catalogPanelSize.width:newWidth,
+                newHeight<catalogPanelSize.height?catalogPanelSize.height:newHeight);
+          }
+          //confirmBox.getDialog().pack();
+        }
+        catch(Exception ex){
+          Debug.debug("Could not show details", 2);
+          ex.printStackTrace();
+        }
+      }
+    });
+    return atlasDetails;
+  }
+
   private void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
     pane.addHyperlinkListener(
         new HyperlinkListener(){
@@ -1049,7 +1121,7 @@ public class BeginningWizard{
 */
   private int configureComputingSystems(boolean firstRun) throws Exception{
     String confirmString =
-      "GridPilot can run jobs on a variety of backend systems. Here you can configure the systems you would like to use.\n\n" +
+      "GridPilot can run jobs on a number of remote backend systems. Here you can configure the systems you would like to use.\n\n" +
       "NG is an abbreviation for NorduGrid, which is a grid initiated and driven by universitites and computing centers\n" +
       "in the Nordic countries. This grid uses the middleware called ARC. If you're not yourself a member of the nordugrid\n" +
       "virtual organization or another virtual organization affiliated with one of the institutes participating in NorduGrid\n" +
@@ -1058,8 +1130,8 @@ public class BeginningWizard{
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
       "a very simplistic FIFO algorithm.\n\n" +
-      "GridFactory is the native batch system of GridPilot. It is still experimental, but it should be possible to try\n" +
-      "it out. The submission is done by writing job definitions in another database from where they will then be\n" +
+      "GridFactory is the native batch system of GridPilot. It is still experimental, but you're welcome to try\n" +
+      "it out. The submission is done by uploading jobs scripts and input file(s) to a server from where they will be\n" +
       "picked up and run by GridWorkers.\n\n";
     JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
@@ -1072,7 +1144,7 @@ public class BeginningWizard{
     final JPanel [] csPanels = new JPanel [names.length];
     jcbs = new JCheckBox[names.length];
     int i = 0;
-    final ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    final ConfirmBox confirmBox = new ConfirmBox();
     
     // NorduGrid
     csPanels[0] = new JPanel(new GridBagLayout());
@@ -1297,7 +1369,7 @@ public class BeginningWizard{
         
     // Get confirmation
     int choice = -1;
-    String title = "Step 6/6: Setting up computing systems";
+    String title = "Step 6/6: Setting up remote computing systems";
     choice = confirmBox.getConfirmPlainText(title, jPanel,
         new Object[] {"Continue", "Skip", "Cancel"}, icon, Color.WHITE, true, true);
 
@@ -1488,7 +1560,7 @@ public class BeginningWizard{
     jrbs[0].setSelected(true);
     jPanel.validate();
     
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     int choice = -1;
     boolean goOn = false;
     int sel = -1;
@@ -1608,7 +1680,7 @@ public class BeginningWizard{
         "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
         "that's always on-line.\n\n" +
         "For this to be possible GridPilot needs to know a URL on a " +
-        "<a href=\""+HTTPS_HOWTO_URL+"\">grid-enabled ftp or http server</a> where you have\n" +
+        "<a href=\""+HTTPS_HOWTO_URL+"\">gridftp or https server</a> where you have\n" +
         "read/write permission with the grid certificate you specified previously.\n\n" +
         "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
         "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
@@ -1653,6 +1725,7 @@ public class BeginningWizard{
     JPanel subRow = null;
     jrbs = new JRadioButton[defDirs.length];
     RadioListener myListener = new RadioListener();
+    ConfirmBox confirmBox = new ConfirmBox();
     for(int i=0; i<defDirs.length; ++i){
       jtFields[i] = new JTextField(TEXTFIELDWIDTH);
       jtFields[i].setText(defDirs[i]);
@@ -1663,7 +1736,7 @@ public class BeginningWizard{
         row.add(jrbs[i], BorderLayout.WEST);
       }
       if(i==0){
-        row.add(MyUtil.createCheckPanel1(JOptionPane.getRootFrame(),
+        row.add(MyUtil.createCheckPanel1((Frame)confirmBox.getOwner(),
             names[i], jtFields[i], true, true, true, !certAndKeyOk), BorderLayout.CENTER);
       }
       else{
@@ -1683,7 +1756,6 @@ public class BeginningWizard{
     jrbs[0].setSelected(true);
     jPanel.validate();
     
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
     int choice = -1;
     try{
       choice = confirmBox.getConfirmPlainText("Step 3/6: Setting up grid home directory",

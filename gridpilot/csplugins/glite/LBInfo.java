@@ -41,7 +41,7 @@ public class LBInfo {
     parseURL();
   }
   private void parseURL() throws Exception{
-    MyUtil.checkAndActivateSSL(new String[]{url});
+    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), new String[]{url});
     File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
     GridPilot.getClassMgr().getTransferControl().httpsDownload(url, tmpFile);
     String str = LocalStaticShell.readFile(tmpFile.getAbsolutePath());

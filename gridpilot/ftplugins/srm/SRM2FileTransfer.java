@@ -34,7 +34,7 @@ import gridpilot.MyUtil;
  */
 public class SRM2FileTransfer implements FileTransfer {
   
-  private Vector pendingIDs = new Vector();
+  private Vector<String> pendingIDs = new Vector<String> ();
   private String user = null;
   private MyTransferControl transferControl;
   
@@ -114,7 +114,7 @@ public class SRM2FileTransfer implements FileTransfer {
   
   /**
    * Connect to the SRM server.
-   * @param   srmUrl    URL of the SRM server.
+   * @param srmUrl URL of the SRM server.
    */
   private ISRM connect(GlobusURL srmUrl) throws Exception {
     ISRM srm = null;

@@ -49,6 +49,11 @@ public class HTTPSFileTransfer extends
     return fileName;
   }
   
+  public long getFileBytes(GlobusURL globusUrl) throws Exception {
+    MyUtil.checkAndActivateSSL(new String[] {globusUrl.getURL()});
+    return super.getFileBytes(globusUrl);
+  }
+  
   protected synchronized MyUrlCopy myConnect(GlobusURL srcUrl) throws IOException{
     MyUtil.checkAndActivateSSL(new String[] {srcUrl.getURL()});
     return super.myConnect(srcUrl);

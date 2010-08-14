@@ -1719,8 +1719,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
           throw new IOException("File is empty");
         }
         ep.setContentType("text/html");
-        ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br>" +
-        		"<a href=\""+url+"\">Click here to download</a>.</html>");
+        String filter = jtFilter.getText();
+        Debug.debug("Remote file: "+url+" > "+withFilter+" > "+filter+" > "+GlobalFrame.GPA_FILTER, 2);
+        if(url.endsWith(".gpa") && !withFilter && filter!=null && filter.equals(GlobalFrame.GPA_FILTER)){
+          String fileName = url.replaceFirst("^.*/([^/]+)$", "$1");
+          ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br><br>" +
+              "<i>Click on the \"OK\" button to import the application</i> <b>"+fileName+".</b></html>");
+        }
+        else{
+          ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br>" +
+              "<a href=\""+url+"\">Click here to download</a>.</html>");
+        }
         Debug.debug("Setting thisUrl, "+url, 3);
         thisUrl = url;
         setUrl(thisUrl);
@@ -1796,27 +1805,31 @@ public class BrowserPanel extends JDialog implements ActionListener{
         Vector<String> lastSizesVector = new Vector<String>();
         String bytes;
         for(int j=0; j<text.length; ++j){
-          if((jcbFilter.isSelected() ||
-              !text[j].substring(localPath.length()).matches("^\\.[^\\.].+")) &&
-              MyUtil.filterMatches(text[j].substring(localPath.length()), filter)){
-            if(LocalStaticShell.isDirectory(text[j])){
-              ++directories;
-            }
-            else{
-              ++files;
-            }
-            bytes = Long.toString(LocalStaticShell.getSize(text[j]));
-            textVector.add("<a href=\"file:"+text[j]+"\">" + 
-                (((text[j].matches("(\\w:\\\\).*") ||
-                    text[j].matches("\\w:/.*")) &&
-                    !localPath.matches("(\\w:\\\\).*") &&
-                    !localPath.matches("\\w:/.*")) ? 
-                    text[j].substring(localPath.length()+2) :
-                      text[j].substring(localPath.length())) +  "</a> "+
-                      bytes);
-            lastUrlVector.add("file:"+text[j]);
-            lastSizesVector.add(bytes);
+          if(!jcbFilter.isSelected() &&
+              text[j].substring(localPath.length()).matches("^\\.[^\\.].+")){
+            continue;
           }
+          if(!LocalStaticShell.isDirectory(text[j]) &&
+              !MyUtil.filterMatches(text[j].substring(localPath.length()), filter)){
+            continue;
+          }
+          if(LocalStaticShell.isDirectory(text[j])){
+            ++directories;
+          }
+          else{
+            ++files;
+          }
+          bytes = Long.toString(LocalStaticShell.getSize(text[j]));
+          textVector.add("<a href=\"file:"+text[j]+"\">" + 
+              (((text[j].matches("(\\w:\\\\).*") ||
+                  text[j].matches("\\w:/.*")) &&
+                  !localPath.matches("(\\w:\\\\).*") &&
+                  !localPath.matches("\\w:/.*")) ? 
+                  text[j].substring(localPath.length()+2) :
+                    text[j].substring(localPath.length())) +  "</a> "+
+                    bytes);
+          lastUrlVector.add("file:"+text[j]);
+          lastSizesVector.add(bytes);
         }
         lastUrlsList = new String [lastUrlVector.size()];
         lastSizesList = new String [lastUrlVector.size()];
@@ -1896,7 +1909,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       host = "";
     }
-    Vector<String> textVector = ft.list(globusUrl, filter);
+    Vector<String> textVector = ft.list(globusUrl, /*always list directories*/"^*/$|"+filter);
 
     String text = "";
     // TODO: reconsider max entries and why listing more is so slow...
@@ -2100,10 +2113,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
   //Set lastURL and close the dialog
   void exit(){
     //GridPilot.lastURL = ep.getPage();
-    if(currentUrlBox.getSelectedItem()!=null && (
+    Object currentUrl;
+    if(withNavigation){
+      currentUrl = currentUrlBox.getSelectedItem();
+    }
+    else{
+      currentUrl = currentUrlLabel.getText();
+    }
+    if(currentUrl!=null && (
         thisUrl==null || thisUrl.equals("") || 
-        !currentUrlBox.getSelectedItem().toString().equals(thisUrl))){
-      thisUrl = currentUrlBox.getSelectedItem().toString();
+        !currentUrl.toString().equals(thisUrl))){
+      thisUrl = currentUrl.toString();
     }
     Debug.debug("Setting lastURL, "+thisUrl, 2);
     lastURL = MyUtil.urlDecode(thisUrl);
