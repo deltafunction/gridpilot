@@ -293,7 +293,7 @@ public class MyUtil extends gridfactory.common.Util{
     }
     catch(Exception eee){
       url = null;
-      handleCheckPanelException(eee, finBaseUrl);
+      handleCheckPanelException(frame, eee, finBaseUrl);
     }
                     
     if(wb!=null && wb.getLastURL()!=null && wb.getLastURL().startsWith(finBaseUrl)){
@@ -378,13 +378,13 @@ private static String fixUrl(String _url){
    return url;
  }
  
- private static void handleCheckPanelException(Exception eee, String finBaseUrl){
+ private static void handleCheckPanelException(Frame frame, Exception eee, String finBaseUrl){
    eee.printStackTrace();
    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
    if(!GridPilot.IS_FIRST_RUN){
      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
    }
-   ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+   ConfirmBox confirmBox = new ConfirmBox(frame); 
    try{
      confirmBox.getConfirm("URL could not be opened",
                           "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
@@ -1497,7 +1497,7 @@ private static String fixUrl(String _url){
     }
     else{
       Debug.debug("longestLine: "+longestLine, 3);
-      jt.setColumns((int) (1.1*longestLine/2));
+      jt.setColumns((int) (1.15*longestLine/2));
     }
     jt.setMinimumSize(new Dimension(MIN_MESSAGE_COLUMNS, 1));
     jt.setLineWrap(true);
@@ -1892,10 +1892,14 @@ private static String fixUrl(String _url){
   }
 
   public static void checkAndActivateSSL(String[] urls){
+    checkAndActivateSSL(null, urls);
+  }
+  
+  public static void checkAndActivateSSL(Frame frame, String[] urls){
     for(int i=0; i<urls.length; ++i){
       if(urls[i].toLowerCase().startsWith("https://")){
         try{
-          GridPilot.getClassMgr().getSSL().activateSSL();
+          GridPilot.getClassMgr().getSSL().activateSSL(frame);
         }
         catch(Exception e){
           e.printStackTrace();
@@ -1987,6 +1991,11 @@ private static String fixUrl(String _url){
   
   public static String getURL(String url, JComponent jcb, boolean onlyDirs,
       String message) throws IOException{
+    return getURL(url, jcb, onlyDirs, message, null);
+  }
+  
+  public static String getURL(String url, JComponent jcb, boolean onlyDirs,
+      String message, String filter) throws IOException{
     Debug.debug("URL: "+url, 3);
     JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
@@ -2003,7 +2012,7 @@ private static String fixUrl(String _url){
                       false,
                       true,
                       jcb,
-                      onlyDirs?"*/":"",
+                      filter!=null?filter:(onlyDirs?"*/":""),
                       false);
     }
     catch(Exception eee){

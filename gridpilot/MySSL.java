@@ -10,6 +10,7 @@ import gridfactory.common.SSL;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -89,6 +90,10 @@ public class MySSL extends SSL{
   }
   
   public void activateSSL() throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
+    activateSSL(null);
+  }
+
+  public void activateSSL(Frame frame) throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
     if(sslOk){
       return;
     }
@@ -99,7 +104,7 @@ public class MySSL extends SSL{
       //getProxyFile().delete();
       //getGridCredential();
       synchronized(sslInitialized){
-        decryptPrivateKey();
+        decryptPrivateKey(frame);
         sslInitialized = true;
       }
     }
@@ -110,6 +115,9 @@ public class MySSL extends SSL{
   }
 
   public void activateProxySSL() throws IOException, GeneralSecurityException {
+    activateProxySSL(null);
+  }
+  public void activateProxySSL(Frame frame) throws IOException, GeneralSecurityException {
     if(proxyOk){
       Debug.debug("Proxy already ok", 3);
       return;
@@ -117,7 +125,7 @@ public class MySSL extends SSL{
     Debug.debug("Activating proxy SSL with password "+GridPilot.KEY_PASSWORD, 2);
     initalizeCACertsDir();
     initalizeVomsDir();
-    getGridCredential();
+    getGridCredential(frame);
     //super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
   }
@@ -166,7 +174,11 @@ public class MySSL extends SSL{
     return getGridSubject0();
   }
   
-  public /*synchronized*/ GSSCredential getGridCredential(){
+  public GSSCredential getGridCredential(){
+    return getGridCredential(null);
+  }
+  
+  public /*synchronized*/ GSSCredential getGridCredential(Frame frame){
     if(gridProxyInitialized){
       Debug.debug("Grid proxy already initialized. "+credential, 2);
       return credential;
@@ -176,7 +188,7 @@ public class MySSL extends SSL{
       // you submit dozen of jobs and proxy not initialized
       try{
         Debug.debug("Initializing credential", 3);
-        initGridProxy();
+        initGridProxy(frame);
         Debug.debug("Initialized credential", 3);
         gridProxyInitialized = Boolean.TRUE;
         if(credential!=null){
@@ -285,6 +297,8 @@ public class MySSL extends SSL{
     if(dn!=null && dn.equals(TEST_CERTIFICATE_DN)){
       // Override anything that might have been set
       password = TEST_KEY_PASSWORD;
+      // Disable any VOMS server that may have been set in the preferences
+      GridPilot.VOMS_SERVER_URL = null;
     }
     credentials = new String [] {
         password,
@@ -294,7 +308,7 @@ public class MySSL extends SSL{
     return credentials;
   }
   
-  private void decryptPrivateKey() throws IOException {
+  private void decryptPrivateKey(Frame frame) throws IOException {
     Exception ee = null;
     if(sslInitialized){
       Debug.debug("SSL already initialized. "+credential, 2);
@@ -312,7 +326,7 @@ public class MySSL extends SSL{
       else{
         try{
           Debug.debug("Asking for private key password", 2);
-          credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
+          credentials = askForPassword(frame, GridPilot.KEY_FILE, GridPilot.CERT_FILE,
               GridPilot.KEY_PASSWORD);
           Debug.debug("Got password", 2);
         }
@@ -384,7 +398,7 @@ public class MySSL extends SSL{
    * @throws IOException
    * @throws GSSException
    */
-  private void initGridProxy() throws IOException, GSSException{
+  private void initGridProxy(Frame frame) throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
     File proxy = getProxyFile();
@@ -416,10 +430,10 @@ public class MySSL extends SSL{
     }
     
     // if no valid proxy, init
-    doInitGridProxy();
+    doInitGridProxy(frame);
   }
 
-  private void doInitGridProxy() throws GSSException, IOException {
+  private void doInitGridProxy(Frame frame) throws GSSException, IOException {
     File proxy = getProxyFile();
     Debug.debug("proxy not ok: "+credential+": "+
         (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
@@ -444,7 +458,7 @@ public class MySSL extends SSL{
       // Otherwise, ask for password
       else{
         try{
-          credentials = askForPassword(GridPilot.KEY_FILE, GridPilot.CERT_FILE,
+          credentials = askForPassword(frame, GridPilot.KEY_FILE, GridPilot.CERT_FILE,
               GridPilot.KEY_PASSWORD);
         }
         catch(IllegalArgumentException e){
@@ -497,9 +511,14 @@ public class MySSL extends SSL{
               new String [] {GridPilot.CERT_FILE, GridPilot.KEY_FILE}
           );
         }
-
       }
       catch(Exception e){
+        if(GridPilot.VOMS_SERVER_URL!=null && keyFile!=null && LocalStaticShell.existsFile(keyFile)){
+          MyUtil.showError("Could not create VOMS proxy. Please check that you're member of a VO on "+
+              GridPilot.VOMS_SERVER_URL+" and, if not, unset \"voms server\" in your preferences.\n\n" +
+                  "I will now attempt to create a normal proxy.");
+          GridPilot.VOMS_SERVER_URL = null;
+        }
         e.printStackTrace();
         continue;
       }
@@ -522,19 +541,20 @@ public class MySSL extends SSL{
   /**
    * Puts up a password dialog, asking for the key and certificate locations and
    * the password to decrypt the key.
+   * @param frame
    * @param keyFile
    * @param certFile
    * @param password
    * @return password, key location, certificate location.
    * @throws Exception 
    */
-  private static String [] askForPassword(
+  private static String [] askForPassword(final Frame frame,
       final String keyFile, final String certFile, final String password) throws IOException{
     MyResThread t = new MyResThread(){
       String [] res = null;
       public void run(){
         try{
-          res = doAskForPassword(keyFile, certFile, password);
+          res = doAskForPassword(frame, keyFile, certFile, password);
         }
         catch(Exception e){
           setException(e);
@@ -565,7 +585,7 @@ public class MySSL extends SSL{
     return t.getString2Res();
   }
   
-  private static String [] doAskForPassword(String keyFile, String certFile, String password)
+  private static String [] doAskForPassword(final Frame frame, String keyFile, String certFile, String password)
      throws IllegalArgumentException{
     
     if(keyFile.startsWith("~")){
@@ -633,12 +653,12 @@ public class MySSL extends SSL{
     
     bBrowse1.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, keyField, true, true, false, false, false, false);
+        MyUtil.launchCheckBrowser(frame, MyUtil.CHECK_URL, keyField, true, true, false, false, false, false);
       }
     });
     bBrowse2.addMouseListener(new MouseAdapter(){
       public void mouseClicked(MouseEvent me){
-        MyUtil.launchCheckBrowser(null, MyUtil.CHECK_URL, certField, true, true, false, false, false, false);
+        MyUtil.launchCheckBrowser(frame, MyUtil.CHECK_URL, certField, true, true, false, false, false, false);
       }
     });
     
@@ -882,12 +902,12 @@ public class MySSL extends SSL{
    * The same method as above, except for using getGridSubject0 instead
    * of getGridSubject.
    */
-  public String getGridDatabaseUser0(){
+  public String getGridDatabaseUser0(Frame frame){
     String user = null;
     try{
       
       // Make sure a proxy exists
-      getGridCredential();
+      getGridCredential(frame);
       // Get the DN from this proxy
       String subject = getGridSubject0();
       AbstractChecksum checksum = null;
