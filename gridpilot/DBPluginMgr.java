@@ -80,7 +80,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
 
     String [] parameters = configFile.getValues(dbName, "parameters");
-    Class [] dbArgsType = new Class[parameters.length+1];
+    Class<?> [] dbArgsType = new Class[parameters.length+1];
     Object [] dbArgs = new String[parameters.length+1];
     dbArgsType[0] = String.class;
     dbArgs[0] = dbName;
@@ -3234,7 +3234,7 @@ public class DBPluginMgr extends DBCache implements Database{
   }
   
   public String [] getDBHiddenFields(String tableName){
-    HashMap dbDefFields = new HashMap();
+    HashMap<String, String[]> dbDefFields = new HashMap<String, String[]>();
     String [] ret;
     try{
       ret =

@@ -66,6 +66,10 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
     catch(Exception e){
       e.printStackTrace();
     }
+    
+    cbShowResults.setToolTipText("Show pop-up with what will be written before writing to the DB.");
+    
+    pack();
   }
   
   private void initButtons(){
@@ -108,9 +112,11 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
     pCreateEdit.add(createEditPanel, BorderLayout.CENTER);
 
+    Debug.debug("-->"+showButtons+"/"+showDetailsCheckBox+": Adding cbShowDetails, "+cbShowDetails+", to buttonPanel, " +buttonPanel, 2);
     if(showButtons){
       if(showDetailsCheckBox){
         cbShowDetails = new JCheckBox("Show details", false);
+        cbShowDetails.setToolTipText("Show non-essential fields.");
         cbShowDetails.addActionListener(new ActionListener(){
           public void actionPerformed(ActionEvent e){
             try{
@@ -122,7 +128,7 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
               ex.printStackTrace();
             }
           }
-        });    
+        });
         buttonPanel.add(cbShowDetails);
       }
       buttonPanel.add(cbShowResults);
@@ -145,7 +151,9 @@ public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
 
     // Initialize CreateEditPanel
     createEditPanel.initGUI();
-    
+    //setMinimumSize(new Dimension(400, 270));
+    setMinimumSize(new Dimension(createEditPanel.getPreferredSize().width+40, createEditPanel.getPreferredSize().height+40));
+    createEditPanel.validate();
     pack();
   }
   

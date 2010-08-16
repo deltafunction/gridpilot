@@ -170,10 +170,7 @@ public class MyUtil extends gridfactory.common.Util{
       //((JComboBox) comp).setEnabled(edi);
     }
     if(!edi){
-      comp.setBackground(Color.lightGray);
-    }
-    else{
-      comp.setBackground(Color.white);
+      comp.setForeground(Color.GRAY);
     }
   }
 

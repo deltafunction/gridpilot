@@ -44,6 +44,12 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private int comboBoxIndex;
   private JComboBox argsComboBox;
 
+  private ArrayList<JComponent> detailFields = new ArrayList<JComponent>();
+  private HashMap<String, JComponent> labels = new HashMap<String, JComponent>();
+  private HashMap<String, JComponent> textFields = new HashMap<String, JComponent>();
+  private String[] detailFieldNames;
+  private HashMap<String, String> descriptions;
+
   public JComponent [] tcCstAttributes;
 
   /**
@@ -325,7 +331,38 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         runtimeEnvironmentName);
   }
   
+  private void initVars() {
+    detailFieldNames = new String [] {"identifier", datasetExecutableReference[1], datasetExecutableVersionReference[1],
+        "created", "lastModified", "metaData", "runNumber", "totalEvents", "inputDataset", "inputDB", "totalFiles"};
+    descriptions = new HashMap<String, String>();
+    descriptions.put("name", "Name of this application/dataset");
+    descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
+    descriptions.put("identifier", "Unique identifier");
+    descriptions.put(datasetExecutableReference[1], "Optional: Executable used by this application/dataset");
+    descriptions.put(datasetExecutableVersionReference[1], "Optional: Version of the executable");
+    descriptions.put("created", "Creation date of this record");
+    descriptions.put("lastModified", "Last modification date of this record");
+    descriptions.put("metaData", "Optional: data describing the application/dataset");
+    descriptions.put("runNumber", "Optional: number used to keep track of datasets");
+    descriptions.put("totalEvents", "Optional: number of events of this dataset");
+    descriptions.put("inputDataset", "Optional: input dataset");
+    descriptions.put("inputDB", "Optional: name of database holding the input dataset");
+    descriptions.put("totalFiles", "Optional: total number of files. If not given, inferred from number of physical files");
+    String key;
+    HashMap<String, String> locaseDescriptions = new HashMap<String, String>();
+    for(Iterator<String>it=descriptions.keySet().iterator(); it.hasNext();){
+      key = it.next();
+      locaseDescriptions.put(key.toLowerCase(), descriptions.get(key));
+    }
+    for(Iterator<String>it=locaseDescriptions.keySet().iterator(); it.hasNext();){
+      key = it.next();
+      descriptions.put(key, locaseDescriptions.get(key));
+    }
+  }
+
   private void initAttributePanel(){
+    
+    initVars();
     
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length!=cstAttributesNames.length){

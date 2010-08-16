@@ -34,8 +34,8 @@ public class JobCreationPanel extends CreateEditPanel{
   private Vector<JComponent> tcConstant = new Vector<JComponent>(); // contains all text components
   private String dbName = null;
   private ArrayList<JComponent> detailFields = new ArrayList<JComponent>();
-  private ArrayList<JComponent> datasetFields = null;
-  private HashMap metaData = null;
+  private ArrayList<String> datasetFields = null;
+  private HashMap<String, String> metaData = null;
   // TODO: make this configurable?
   private String [] stdOutputNames = {"stdout", "stderr"};
   
@@ -63,7 +63,7 @@ public class JobCreationPanel extends CreateEditPanel{
     for(int i=0; i<datasetFieldArray.length; ++i){
       datasetFieldArray[i] = datasetFieldArray[i].toLowerCase();
     }
-    datasetFields = new ArrayList(Arrays.asList(datasetFieldArray));        
+    datasetFields = new ArrayList<String>(Arrays.asList(datasetFieldArray));        
     // Find identifier index
     int identifierIndex = -1;
     for(int i=0; i<columnNames.length; ++i){
@@ -171,7 +171,7 @@ public class JobCreationPanel extends CreateEditPanel{
   private void initAttributePanel(){
     
     cstAttributesNames = GridPilot.FIXED_JOB_ATTRIBUTES;
-    ArrayList jobDefinitionFields = new ArrayList(Arrays.asList(dbPluginMgr.getFieldnames("jobDefinition")));    
+    ArrayList<String> jobDefinitionFields = new ArrayList<String>(Arrays.asList(dbPluginMgr.getFieldnames("jobDefinition")));    
     
     String executableID = dbPluginMgr.getExecutableID(
         dbPluginMgr.getDatasetExecutableName(datasetIDs[0]),
@@ -207,7 +207,7 @@ public class JobCreationPanel extends CreateEditPanel{
     ++row;
     
     // take out attributes that are not in the schema and issue a warning
-    ArrayList realAttributes = new ArrayList();
+    ArrayList<String> realAttributes = new ArrayList<String>();
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       if(jobDefinitionFields.contains(cstAttributesNames[i].toLowerCase())){
         realAttributes.add(cstAttributesNames[i]);
@@ -277,7 +277,7 @@ public class JobCreationPanel extends CreateEditPanel{
       
       // Override field values by metadata settings
       if(isInMetadata){
-        tcCstAttributes[i].setText((String) metaData.get(cstAttributesNames[i].toLowerCase()));
+        tcCstAttributes[i].setText(metaData.get(cstAttributesNames[i].toLowerCase()));
       }
 
       pAttributes.add(tcCstAttributes[i], new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
@@ -328,7 +328,7 @@ public class JobCreationPanel extends CreateEditPanel{
         tcJobParam[i].setText("");
         // Override field values by metadata settings
         if(isInMetadata){
-          tcJobParam[i].setText((String) metaData.get(jobParamNames[i].toLowerCase()));
+          tcJobParam[i].setText(metaData.get(jobParamNames[i].toLowerCase()));
         }
       }
       // The metaData field of the job definition can be used to store
@@ -336,7 +336,7 @@ public class JobCreationPanel extends CreateEditPanel{
       else if(metaData!=null && metaData.containsKey(jobParamNames[i].toLowerCase())){
         detailFields.add(jobAttributeLabels[i]);
         detailFields.add(tcJobParam[i]);
-        tcJobParam[i].setText((String) metaData.get(jobParamNames[i].toLowerCase()));
+        tcJobParam[i].setText(metaData.get(jobParamNames[i].toLowerCase()));
       }
       else if(jobParamNames[i].equalsIgnoreCase("castorInput")){
         detailFields.add(jobAttributeLabels[i]);
@@ -485,7 +485,7 @@ public class JobCreationPanel extends CreateEditPanel{
       }
 
       if(metaData!=null && metaData.containsKey(stdOutputNames[i])){
-        tcStdOutput[i].setText((String) metaData.get(stdOutputNames[i]));
+        tcStdOutput[i].setText(metaData.get(stdOutputNames[i]));
       }
       else{
         tcStdOutput[i].setText("$o/$n.${i:5}."+stdOutputNames[i]);
@@ -503,9 +503,9 @@ public class JobCreationPanel extends CreateEditPanel{
   }
 
   public void clear(){
-    Vector textFields = getTextFields();
+    Vector<JComponent> textFields = getTextFields();
     for(int i =0; i<textFields.size(); ++i){
-      ((JTextComponent) textFields.get(i)).setText("");
+      MyUtil.setJText(textFields.get(i), "");
     }
   }
 
@@ -561,8 +561,8 @@ public class JobCreationPanel extends CreateEditPanel{
                    SwingUtilities.getWindowAncestor(this));
   }
 
-  private Vector getTextFields(){
-    Vector v = new Vector();
+  private Vector<JComponent> getTextFields(){
+    Vector<JComponent> v = new Vector<JComponent>();
     v.addAll(tcConstant);
     for(int i=0; i<tcCstAttributes.length; ++i){
       v.add(tcCstAttributes[i]);
@@ -582,8 +582,8 @@ public class JobCreationPanel extends CreateEditPanel{
   }
   
   public void showDetails(boolean show){
-    for(Iterator it=detailFields.iterator(); it.hasNext(); ){
-      ((JComponent) it.next()).setVisible(show);
+    for(Iterator<JComponent> it=detailFields.iterator(); it.hasNext(); ){
+      it.next().setVisible(show);
     }
     for(int i=0; i<tcOutputMap.length; ++i){
       tcOutputMap[i][1].setEnabled(show);
@@ -594,11 +594,11 @@ public class JobCreationPanel extends CreateEditPanel{
   }
   
   public void saveSettings(){
-    HashMap settings = new HashMap();
+    HashMap<String, String> settings = new HashMap<String, String>();
     // get all field:values from the form
     String field = null;
     String value = null;
-    Vector outMapping = new Vector();
+    Vector<String> outMapping = new Vector<String>();
     for(int i=0; i<pAttributes.getComponentCount()-1; ++i){
       field = null;
       value = null;
@@ -638,8 +638,8 @@ public class JobCreationPanel extends CreateEditPanel{
     String nonFieldValueMetadata = MyUtil.getMetadataComments(origMetadata);
     String newMetadata = nonFieldValueMetadata;
     String key = null;
-    for(Iterator it=settings.keySet().iterator(); it.hasNext();){
-      key = (String) it.next();
+    for(Iterator<String> it=settings.keySet().iterator(); it.hasNext();){
+      key = it.next();
       newMetadata += key + ": " + settings.get(key) + "\n";
     }
     Debug.debug("Saving jobDefinition defaults in dataset: "+newMetadata, 1);

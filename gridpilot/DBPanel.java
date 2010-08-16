@@ -2143,7 +2143,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       tableResults.clearSelection();
     }
     CreateEditDialog pDialog = new CreateEditDialog(
-        new DatasetCreationPanel(dbPluginMgr, this, false), false, false, true, false, true);
+        new DatasetCreationPanel(dbPluginMgr, this, false), false, true, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
  }
   
@@ -2152,7 +2152,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */ 
  protected void editDataset(){
    DatasetCreationPanel dscp = new DatasetCreationPanel(dbPluginMgr, this, true);
-   CreateEditDialog pDialog = new CreateEditDialog(dscp, true, false, true, false, true);
+   CreateEditDialog pDialog = new CreateEditDialog(dscp, true, true, true, false, true);
    if(!dscp.editable){
      pDialog.setBCreateUpdateEnabled(false);
    }
@@ -4526,22 +4526,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       // Check if referenced runtime environment exists
       String sourceExecutableIdentifier = MyUtil.getIdentifierField(sourceMgr.getDBName(),
           "executable");
-      String targetExecutableIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(),
-          "executable");
+      String sourceExecutableName = MyUtil.getNameField(sourceMgr.getDBName(),
+         "executable");
       String targetRuntimeEnvironmentName = MyUtil.getNameField(dbPluginMgr.getDBName(),
           "runtimeEnvironment");
       String runtimeEnvironment = sourceMgr.getExecutableRuntimeEnvironment(
-          executable.getValue(
-              sourceExecutableIdentifier).toString());
+          executable.getValue(sourceExecutableIdentifier).toString());
       DBResult targetRuntimes = dbPluginMgr.getRuntimeEnvironments();
       Vector<String> runtimeNames = new Vector<String>();
       for(int i=0; i<targetRuntimes.values.length; ++i){
         runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
       }
-      if(runtimeEnvironment==null || runtimeNames==null ||
-          !runtimeNames.contains(runtimeEnvironment)){
-        GridPilot.getClassMgr().getLogFile().addInfo("WARNING: runtime environment for executable "+
-              executable.getValue(targetExecutableIdentifier)+" does not exist.");
+      if(runtimeEnvironment==null || runtimeNames==null || !runtimeNames.contains(runtimeEnvironment)){
+        String msg = "WARNING: runtime environment "+runtimeEnvironment+", of executable "+
+           executable.getValue(sourceExecutableName)+" does not exist.";
+        MyUtil.showError(msg+" You will not be able to use this executable until you've loaded\n" +
+        		"a computing system that provides the needed runtime environment.");
+        GridPilot.getClassMgr().getLogFile().addInfo(msg);
       }
       dbPluginMgr.createExecutable(executable.fields, executable.values);
     }

@@ -29,7 +29,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String [] cstAttributesNames;
   private JTextComponent [] tcCstAttributes;
   private boolean reuseTextFields = true;
-  private Vector tcConstant = new Vector(); // contains all text components
+  private Vector<JTextComponent> tcConstant = new Vector<JTextComponent>(); // contains all text components
   private String [] cstAttr = null;
   private boolean editing = false;
   private DBPluginMgr dbPluginMgr = null;
@@ -55,6 +55,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String datasetName = "";
   private String title = "";
   private DBPanel targetPanel;
+  private ArrayList<JComponent> detailFields = new ArrayList<JComponent>();
+  private HashMap<String, JComponent> labels = new HashMap<String, JComponent>();
+  private HashMap<String, JComponent> textFields = new HashMap<String, JComponent>();
+  private String[] detailFieldNames;
+  private HashMap<String, String> descriptions;
   
   public boolean editable = true;
 
@@ -172,11 +177,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Color.white, new Color(165, 163, 151)), title));
     
     //spAttributes.setPreferredSize(new Dimension(590, 500));
-    spAttributes.setMaximumSize(new Dimension(600, 500));
+    //spAttributes.setMaximumSize(new Dimension(600, 500));
     //spAttributes.setMinimumSize(new Dimension(300, 300));
     
     pTop.add(pExecutable);
 
+    initVars();
     initAttributePanel();
     setValues();
     checkValues();
@@ -219,9 +225,39 @@ public class DatasetCreationPanel extends CreateEditPanel{
       );
     }
     
-    updateUI();
+    showDetails(false);
+    
   }
   
+  private void initVars() {
+    detailFieldNames = new String [] {"identifier", datasetExecutableReference[1], datasetExecutableVersionReference[1],
+        "created", "lastModified", "metaData", "runNumber", "totalEvents", "inputDataset", "inputDB", "totalFiles"};
+    descriptions = new HashMap<String, String>();
+    descriptions.put("name", "Name of this application/dataset");
+    descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
+    descriptions.put("identifier", "Unique identifier");
+    descriptions.put(datasetExecutableReference[1], "Optional: Executable used by this application/dataset");
+    descriptions.put(datasetExecutableVersionReference[1], "Optional: Version of the executable");
+    descriptions.put("created", "Creation date of this record");
+    descriptions.put("lastModified", "Last modification date of this record");
+    descriptions.put("metaData", "Optional: data describing the application/dataset");
+    descriptions.put("runNumber", "Optional: number used to keep track of datasets");
+    descriptions.put("totalEvents", "Optional: number of events of this dataset");
+    descriptions.put("inputDataset", "Optional: input dataset");
+    descriptions.put("inputDB", "Optional: name of database holding the input dataset");
+    descriptions.put("totalFiles", "Optional: total number of files. If not given, inferred from number of physical files");
+    String key;
+    HashMap<String, String> locaseDescriptions = new HashMap<String, String>();
+    for(Iterator<String>it=descriptions.keySet().iterator(); it.hasNext();){
+      key = it.next();
+      locaseDescriptions.put(key.toLowerCase(), descriptions.get(key));
+    }
+    for(Iterator<String>it=locaseDescriptions.keySet().iterator(); it.hasNext();){
+      key = it.next();
+      descriptions.put(key, locaseDescriptions.get(key));
+    }
+  }
+
   private void checkValues(){
     for(int i=0; i<cstAttributesNames.length; ++i){
       // in case the database does not support lookup on dataset id (like DQ2);
@@ -275,6 +311,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
               3);
       tcCstAttributes = new JTextComponent[cstAttributesNames.length];
     }
+    int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i){
       if(cstAttributesNames[i].equalsIgnoreCase("metaData")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
@@ -293,26 +330,25 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Adding cstAttributesNames["+i+"], "+cstAttributesNames[i]+
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
-        pAttributes.add(MyUtil.createCheckPanel1(
+        JPanel outputLocationCheckPanel = MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], tcCstAttributes[i], true, true, true, false),
-            new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
+            cstAttributesNames[i], tcCstAttributes[i], true, true, true, false);
+        pAttributes.add(outputLocationCheckPanel,
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 21, 5, 5), 0, 0));
         pAttributes.add(tcCstAttributes[i],
-            new GridBagConstraints(1, i, 3, 1, 0.0, 0.0,
+            new GridBagConstraints(1, row, 3, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
+        labels.put(cstAttributesNames[i], tcCstAttributes[i]);
+        outputLocationCheckPanel.setToolTipText(descriptions.get(cstAttributesNames[i].toLowerCase()));
+        ++row;
       }
       else{
-        pAttributes.add(new JLabel(cstAttributesNames[i]),
-            new GridBagConstraints(0, i, 1, 1, 0.0, 0.0,
-                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                new Insets(5, 25, 5, 5), 0, 0));
-        pAttributes.add(tcCstAttributes[i],
-            new GridBagConstraints(1, i, 3, 1, 1.0, 0.0,
-                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
-                new Insets(5, 5, 5, 5), 0, 0));
+        JLabel jLabel = new JLabel(cstAttributesNames[i]);
+        labels.put(cstAttributesNames[i], jLabel);
+        textFields.put(cstAttributesNames[i], tcCstAttributes[i]);
       }
       // when creating, zap loaded dataset id
       if(!editing && cstAttributesNames[i].equalsIgnoreCase(datasetIdentifier)){
@@ -328,7 +364,52 @@ public class DatasetCreationPanel extends CreateEditPanel{
          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         MyUtil.setJEditable(tcCstAttributes[i], false);
       }
+      if(isDetail(cstAttributesNames[i])){
+        detailFields.add(tcCstAttributes[i]);
+        if(labels.containsKey(cstAttributesNames[i])){
+          detailFields.add(labels.get(cstAttributesNames[i]));
+        }
+      }
+      else if(labels.containsKey(cstAttributesNames[i]) && textFields.containsKey(cstAttributesNames[i])){
+        // First add the non-detail fields
+        pAttributes.add(labels.get(cstAttributesNames[i]),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(textFields.get(cstAttributesNames[i]),
+            new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                new Insets(5, 5, 5, 5), 0, 0));
+        ++row;
+      }
     }
+    for(int i=0; i<cstAttributesNames.length; ++i){
+      // Then the detail fields
+      if(isDetail(cstAttributesNames[i]) && labels.containsKey(cstAttributesNames[i])){
+        pAttributes.add(labels.get(cstAttributesNames[i]),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(textFields.get(cstAttributesNames[i]),
+            new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                new Insets(5, 5, 5, 5), 0, 0));
+        ++row;
+      }
+      addToolTipText(cstAttributesNames[i]);
+    }
+  }
+  
+  private boolean isDetail(String fieldName){
+    return MyUtil.arrayContainsIgnoreCase(detailFieldNames, fieldName);
+  }
+  
+  private void addToolTipText(String fieldName){
+    if(!labels.containsKey(fieldName) || !descriptions.containsKey(fieldName.toLowerCase())){
+      return;
+    }
+    Debug.debug("Setting tool tip text of "+fieldName+" --> "+descriptions.get(fieldName), 2);
+    labels.get(fieldName).setToolTipText(descriptions.get(fieldName.toLowerCase()));
   }
 
   private void setComboBoxValues(){
@@ -366,7 +447,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           cv.gridx = 0;
           cv.gridy = 0;
       }
-      else if(executableName!=null && !executableName.equals("") &&
+      else if(executableName!=null &&
           cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1])){
         MyUtil.setJText(tcCstAttributes[i], executableName);
       }
@@ -378,7 +459,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   public void clearPanel(){
-    Vector textFields;
+    Vector<JTextComponent> textFields;
     if(editing){
       textFields = getFields(); 
     }
@@ -529,7 +610,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     // This is to ensure only unique elements
     Arrays.sort(ret);
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     if(executables.values.length>0){
       vec.add(ret[0]);
     }
@@ -577,8 +658,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else{
       cbExecutableSelection = new JComboBox();
+      // Start with empty entry
+      cbExecutableSelection.addItem("");
       for(int i=0; i<exeNames.length; ++i){
-          cbExecutableSelection.addItem(exeNames[i]);
+        cbExecutableSelection.addItem(exeNames[i]);
       }
       pExecutable.add(new JLabel("Executable:"), null);
       pExecutable.add(cbExecutableSelection, null);
@@ -624,6 +707,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       if(editing){
         pVersion.add(new JLabel("No versions found."));
       }
+      setValuesInAttributePanel();
     }
     else if(versions.length==1){
       executableVersion = versions[0];
@@ -662,7 +746,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     String executableID = dbPluginMgr.getExecutableID(executableName, executableVersion);
     CreateEditDialog pDialog = new CreateEditDialog(
        new ExecutableCreationPanel(dbPluginMgr, panel, true, executableID),
-       true, false, true, false, true);
+       true, true, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName("Executable"));
     setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
   }
@@ -730,10 +814,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void cbExecutableSelection_actionPerformed(){
     if(cbExecutableSelection.getSelectedItem()==null){
-        return;
+      return;
     }
     else{
-        executableName = cbExecutableSelection.getSelectedItem().toString();
+      executableName = cbExecutableSelection.getSelectedItem().toString();
     }
     try{
       pTop.remove(jbEditExe);
@@ -947,6 +1031,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
     initExecutablePanel();
     pTop.updateUI();
     
+  }
+  
+  public void showDetails(boolean show){
+    for(Iterator<JComponent> it=detailFields.iterator(); it.hasNext(); ){
+      it.next().setVisible(show);
+    }
   }
   
 }

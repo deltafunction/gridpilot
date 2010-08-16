@@ -10,6 +10,8 @@ import javax.swing.JPanel;
  */
 public abstract class CreateEditPanel extends JPanel{
   
+  private static final long serialVersionUID = 1L;
+  
   public StatusBar statusBar;
 
   public void clearPanel(){
