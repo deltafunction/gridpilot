@@ -513,7 +513,8 @@ public class MySSL extends SSL{
         }
       }
       catch(Exception e){
-        if(GridPilot.VOMS_SERVER_URL!=null && keyFile!=null && LocalStaticShell.existsFile(keyFile)){
+        if(GridPilot.VOMS_SERVER_URL!=null && keyFile!=null && LocalStaticShell.existsFile(keyFile) &&
+            i==1){
           MyUtil.showError("Could not create VOMS proxy. Please check that you're member of a VO on "+
               GridPilot.VOMS_SERVER_URL+" and, if not, unset \"voms server\" in your preferences.\n\n" +
                   "I will now attempt to create a normal proxy.");
