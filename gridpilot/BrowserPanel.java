@@ -104,6 +104,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
   private static final String FILE_FOUND_TEXT = "File found. Size: ";
+  private static final String DIR_FILTER = "^*/$|";
 
   public static int HISTORY_SIZE = 15;
 
@@ -1909,7 +1910,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
       host = "";
     }
-    Vector<String> textVector = ft.list(globusUrl, /*always list directories*/"^*/$|"+filter);
+    Vector<String> textVector = ft.list(globusUrl,
+        /*always list directories*/DIR_FILTER+
+        (filter.equals("")?"*":filter));
 
     String text = "";
     // TODO: reconsider max entries and why listing more is so slow...

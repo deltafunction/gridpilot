@@ -548,10 +548,10 @@ public class MyTransferControl extends TransferControl {
           for(int i=0; i<srcUrls.length; ++i){
             if(srcUrls[i].getProtocol().equalsIgnoreCase("srm")){
               Debug.debug("Remembering host "+srcUrls[i].getHost(), 2);
-              serverPluginMap.put(srcUrls[i].getHost(), SRM2_PLUGIN_NAME);
+              serverPluginMap.put(srcUrls[i].getHost()+":"+srcUrls[i].getProtocol(), SRM2_PLUGIN_NAME);
             }
             if(destUrls[i].getProtocol().equalsIgnoreCase("srm")){
-              serverPluginMap.put(destUrls[i].getHost(), SRM2_PLUGIN_NAME);
+              serverPluginMap.put(destUrls[i].getHost()+":"+destUrls[i].getProtocol(), SRM2_PLUGIN_NAME);
               Debug.debug("Remembering host "+destUrls[i].getHost(), 2);
             }
           }
@@ -810,11 +810,11 @@ public class MyTransferControl extends TransferControl {
               for(int j=0; j<sources.length; ++j){
                 if(sources[j].getProtocol().equalsIgnoreCase("srm")){
                   Debug.debug("Remembering host "+sources[j].getHost(), 2);
-                  serverPluginMap.put(sources[j].getHost(), SRM2_PLUGIN_NAME);
+                  serverPluginMap.put(sources[j].getHost()+":"+sources[j].getProtocol(), SRM2_PLUGIN_NAME);
                 }
                 if(destinations[j].getProtocol().equalsIgnoreCase("srm")){
                   Debug.debug("Remembering host "+destinations[j].getHost(), 2);
-                  serverPluginMap.put(destinations[j].getHost(), SRM2_PLUGIN_NAME);
+                  serverPluginMap.put(destinations[j].getHost()+":"+destinations[j].getProtocol(), SRM2_PLUGIN_NAME);
                 }
               }
             }
@@ -1175,8 +1175,8 @@ public class MyTransferControl extends TransferControl {
     GlobusURL srmUrl = new GlobusURL(arr[arr.length-1]);
     Debug.debug("Finding plugin for transfer "+transferID, 2);
     Debug.debug("Checking host "+srmUrl.getHost(), 2);
-    if(serverPluginMap.containsKey(srmUrl.getHost())){
-      return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(srmUrl.getHost()));
+    if(serverPluginMap.containsKey(srmUrl.getHost()+":"+srmUrl.getProtocol())){
+      return GridPilot.getClassMgr().getFTPlugin(serverPluginMap.get(srmUrl.getHost()+":"+srmUrl.getProtocol()));
     }
     ftPluginName = Util.split(checkArr[0], "-")[0];
     return GridPilot.getClassMgr().getFTPlugin(ftPluginName);
