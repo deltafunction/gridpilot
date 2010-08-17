@@ -37,7 +37,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private DBRecord executable = null;
   private DBResult runtimeEnvironments = null;
   private String [] executableFields = null;
-  private JButton bEditExecutable;
+  private JButton bEditRuntimeEnvironment;
 
   private static final long serialVersionUID = 1L;
   private static int TEXTFIELDWIDTH = 32;
@@ -51,16 +51,20 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private HashMap<String, String> descriptions;
 
   public JComponent [] tcCstAttributes;
+  private String[] executableRuntimeReference;
+  private String[] datasetExecutableReference;
+  private String[] datasetExecutableVersionReference;
 
   /**
    * Constructor
    */
   public ExecutableCreationPanel(DBPluginMgr _dbPluginMgr,
-      DBPanel _panel, boolean _editing, String executableID){
+      DBPanel _panel, boolean _editing, String _executableID){
     dbPluginMgr = _dbPluginMgr;
     editing = _editing;
     panel = _panel;
-    table = panel.getTable();
+    table = panel==null?null:panel.getTable();
+    executableID = _executableID;
     executableIdentifier =
       MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "executable");
     executableFields = dbPluginMgr.getFieldNames("executable");
@@ -70,21 +74,25 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     Debug.debug("Number of runtimeEnvironments found: "+runtimeEnvironments.values.length+
         "; "+MyUtil.arrayToString(runtimeEnvironments.fields),3);
     cstAttr = new String[cstAttributesNames.length];
+    executableRuntimeReference = MyUtil.getExecutableRuntimeReference(dbPluginMgr.getDBName());
+    datasetExecutableReference =
+      MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
+    datasetExecutableVersionReference =
+      MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
     // Find executable ID from table
-    if((executableID!=null && !executableID.equals("") || table.getSelectedRow()>-1) &&
-        editing){
-      Debug.debug("Editing...", 3);
-      String [] runtimeReference = MyUtil.getExecutableRuntimeReference(dbPluginMgr.getDBName());
-      if(executableID==null || executableID.equals("")){
-        for(int i=0; i<table.getColumnNames().length; ++i){
-          Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
-          Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
-          if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(executableIdentifier)){
-            executableID = fieldVal.toString();
-            break;
-          }
+    if((executableID==null || executableID.equals("")) && table!=null && table.getSelectedRow()>-1){
+      for(int i=0; i<table.getColumnNames().length; ++i){
+        Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
+        Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
+        if(fieldVal!=null && table.getColumnName(i).equalsIgnoreCase(executableIdentifier)){
+          executableID = fieldVal.toString();
+          break;
         }
       }
+    }
+    if((executableID!=null && !executableID.equals("")) &&
+        editing){
+      Debug.debug("Editing...", 3);
       if(executableID==null || executableID.equals("-1") ||
           executableID.equals("")){
         Debug.debug("ERROR: could not find executableID.", 1);
@@ -96,7 +104,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           Debug.debug("filling " + cstAttributesNames[i],  3);
           if(executable.getValue(cstAttributesNames[i])!=null){
             cstAttr[i] = executable.getValue(cstAttributesNames[i]).toString();
-            if(cstAttributesNames[i].equalsIgnoreCase(runtimeReference[1])){
+            if(cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
               runtimeEnvironmentName = cstAttr[i];
             }
           }
@@ -110,7 +118,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   }
 
   private void initButtons(){
-    bEditExecutable = MyUtil.mkButton("search.png", "Look up", "Look up runtime environment record");
+    bEditRuntimeEnvironment = MyUtil.mkButton("search.png", "Look up", "Look up runtime environment record");
   }
 
   /**
@@ -124,9 +132,9 @@ public class ExecutableCreationPanel extends CreateEditPanel{
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), 
-        (executableID.equals("-1")?"new executable":"executable "+executableID)));
+        (executableID==null||executableID.equals("-1")?"new executable":"executable "+executableID)));
     
-    spAttributes.setPreferredSize(new Dimension(650, 430));
+    //spAttributes.setPreferredSize(new Dimension(650, 280));
     //spAttributes.setMinimumSize(new Dimension(650, 500));
     
     setLayout(new GridBagLayout());
@@ -159,17 +167,22 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       // Disable identifier field when creating
       Debug.debug("Disabling identifier field", 3);
       for(int i =0; i<cstAttributesNames.length; ++i){
-        if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier) ||
-            cstAttributesNames[i].equalsIgnoreCase("created") ||
-            cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+        if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier)){
           MyUtil.setJEditable(tcCstAttributes[i], false);
         }
         else if(runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
-            cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
+            cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
           MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+        }
+        if(isDetail(cstAttributesNames[i])){
+          detailFields.add(tcCstAttributes[i]);
+          if(labels.containsKey(cstAttributesNames[i])){
+            detailFields.add(labels.get(cstAttributesNames[i]));
+          }
         }
       }
     }
+    showDetails(false);
     updateUI();
    }
 
@@ -198,7 +211,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private String[] getRuntimeEnvironmentNames(){
     String [] ret = new String[runtimeEnvironments.values.length];
     for(int i=0; i<runtimeEnvironments.values.length; ++i){
-      ret[i] = runtimeEnvironments.getValue(i, "name").toString(); 
+      ret[i] = runtimeEnvironments.getValue(i, executableRuntimeReference[0]).toString(); 
       Debug.debug("name is "+ret[i], 3);
     }
     // This is to ensure only unique elements
@@ -224,16 +237,18 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     return arr;
   }
 
+  // TODO: hash by first letter if number of entries exceeds ~20
   private void initRuntimeEnvironmentPanel(int datasetID){
     
     pRuntimeEnvironment.removeAll();
     pRuntimeEnvironment.setLayout(new FlowLayout());
 
     String [] runtimeEnvironmentNames = getRuntimeEnvironmentNames();
+    Arrays.sort(runtimeEnvironmentNames);
 
     if(runtimeEnvironmentNames.length==0){
       pRuntimeEnvironment.add(new JLabel("No runtime environments found."));
-      bEditExecutable.setEnabled(false);
+      bEditRuntimeEnvironment.setEnabled(false);
     }
     else if(runtimeEnvironmentNames.length==1){
       runtimeEnvironmentName = runtimeEnvironmentNames[0];
@@ -261,10 +276,10 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     ct.gridheight=1;
     add(pRuntimeEnvironment, ct);
     
-    bEditExecutable.addActionListener(new java.awt.event.ActionListener(){
+    bEditRuntimeEnvironment.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         try{
-          viewRuntimeEnvironments();
+          lookupRuntimeEnvironments();
         } 
         catch(Exception e1){
           e1.printStackTrace();
@@ -276,7 +291,9 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     ct.gridy = 0;
     ct.gridwidth=1;
     ct.gridheight=1;
-    add(bEditExecutable, ct);
+    if(GridPilot.ADVANCED_MODE){
+      add(bEditRuntimeEnvironment, ct);
+    }
 
     updateUI();
   }
@@ -286,10 +303,11 @@ public class ExecutableCreationPanel extends CreateEditPanel{
    * @throws InvocationTargetException 
    * @throws InterruptedException 
    */
-  private void viewRuntimeEnvironments() throws InterruptedException, InvocationTargetException{
+  private void lookupRuntimeEnvironments() throws InterruptedException, InvocationTargetException{
     if(runtimeEnvironmentName==null || runtimeEnvironmentName.equals("")){
       return;
     }
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     GridPilot.getClassMgr().getGlobalFrame().requestFocusInWindow();
     GridPilot.getClassMgr().getGlobalFrame().setVisible(true);
     Thread t = new Thread(){
@@ -309,6 +327,13 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           Debug.debug("Couldn't create panel for dataset " + "\n" +
                              "\tException\t : " + e.getMessage(), 2);
           e.printStackTrace();
+        }
+        finally{
+          try{
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+          catch(Exception ee){
+          }
         }
       }
     };
@@ -332,22 +357,23 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   }
   
   private void initVars() {
-    detailFieldNames = new String [] {"identifier", datasetExecutableReference[1], datasetExecutableVersionReference[1],
-        "created", "lastModified", "metaData", "runNumber", "totalEvents", "inputDataset", "inputDB", "totalFiles"};
+    // identifier, name, version, runtimeEnvironmentName, arguments, outputFiles, executableFile,
+    // comment, created, lastModified, inputFiles
+    detailFieldNames = new String [] {executableIdentifier, /*datasetExecutableReference[0], datasetExecutableVersionReference[0],*/
+        executableRuntimeReference[1], /*"arguments", "outputFiles", "executableFile", */"comment", "created", "lastModified"/*,
+        "inputFiles"*/};
     descriptions = new HashMap<String, String>();
-    descriptions.put("name", "Name of this application/dataset");
-    descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
-    descriptions.put("identifier", "Unique identifier");
-    descriptions.put(datasetExecutableReference[1], "Optional: Executable used by this application/dataset");
-    descriptions.put(datasetExecutableVersionReference[1], "Optional: Version of the executable");
+    descriptions.put(executableIdentifier, "Unique identifier of this executable");
+    descriptions.put(datasetExecutableReference[0], "Name of this executable");
+    descriptions.put(datasetExecutableVersionReference[0], "Version of this executable");
+    descriptions.put(executableRuntimeReference[1], "Runtime environment used by this executable");
+    descriptions.put("arguments", "Name(s) of argument(s) that must be given to the executable file");
+    descriptions.put("outputFiles", "Names of output files produced by this executable");
+    descriptions.put("executableFile", "Name of the file (script or binary) that will actually be run");
+    descriptions.put("comment", "Optional: comment describing the executable");
     descriptions.put("created", "Creation date of this record");
     descriptions.put("lastModified", "Last modification date of this record");
-    descriptions.put("metaData", "Optional: data describing the application/dataset");
-    descriptions.put("runNumber", "Optional: number used to keep track of datasets");
-    descriptions.put("totalEvents", "Optional: number of events of this dataset");
-    descriptions.put("inputDataset", "Optional: input dataset");
-    descriptions.put("inputDB", "Optional: name of database holding the input dataset");
-    descriptions.put("totalFiles", "Optional: total number of files. If not given, inferred from number of physical files");
+    descriptions.put("inputFiles", "Optional: Input file(s) of the executable");
     String key;
     HashMap<String, String> locaseDescriptions = new HashMap<String, String>();
     for(Iterator<String>it=descriptions.keySet().iterator(); it.hasNext();){
@@ -370,6 +396,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
+      
       if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
           cstAttributesNames[i].equalsIgnoreCase("comment")){
         if(!reuseTextFields || tcCstAttributes[i]==null){
@@ -384,39 +411,47 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           tcCstAttributes[i] = argsComboBox;
         }
         tcCstAttributes[i].setToolTipText("Arguments known by GridPilot:\n"+
-            MyUtil.arrayToString(JobCreator.AUTO_FILL_ARGS, "\n"));
+           MyUtil.arrayToString(JobCreator.AUTO_FILL_ARGS, "\n"));
       }
       else{
         if(!reuseTextFields || tcCstAttributes[i]==null || !tcCstAttributes[i].isEnabled()){
           tcCstAttributes[i] = new JTextField("", TEXTFIELDWIDTH);
         }
       }
-      if(cstAttributesNames[i].equalsIgnoreCase("definition") ||
-         cstAttributesNames[i].equalsIgnoreCase("executableFile") ||
-         cstAttributesNames[i].equalsIgnoreCase("validationScript") ||
-         cstAttributesNames[i].equalsIgnoreCase("extractionScript")){
-        pAttributes.add(MyUtil.createCheckPanel1(
+      
+      if(cstAttributesNames[i].equalsIgnoreCase("executableFile")){
+        JPanel executableFileCheckPanel = MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], true, true, false, false),
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], true, true, false, false);
+        pAttributes.add(executableFileCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));
+        labels.put(cstAttributesNames[i], executableFileCheckPanel);
+        textFields.put(cstAttributesNames[i], tcCstAttributes[i]);
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
-        pAttributes.add(MyUtil.createCheckPanel1(
+        JPanel inputFilesCheckPanel = MyUtil.createCheckPanel1(
             (JFrame) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false, true),
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false, true);
+        pAttributes.add(inputFilesCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(5, 22, 5, 5), 0, 0));
+        labels.put(cstAttributesNames[i], inputFilesCheckPanel);
+        textFields.put(cstAttributesNames[i], tcCstAttributes[i]);
       }
-     else{
-        pAttributes.add(new JLabel(cstAttributesNames[i]),
+      else{
+        JLabel jLabel = new JLabel(cstAttributesNames[i]);
+        pAttributes.add(jLabel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 25, 5, 5), 0, 0));
+        labels.put(cstAttributesNames[i], jLabel);
+        textFields.put(cstAttributesNames[i], tcCstAttributes[i]);
       }
-      if(cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
+      
+      if(cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
         Debug.debug("Setting selection to "+runtimeEnvironmentName, 3);
         if(cbRuntimeEnvironmentSelection!=null &&
             runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("")){
@@ -429,10 +464,48 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         // and multiple selections should be allowed.
         //MyUtil.setJEditable(tcCstAttributes[i], false);
       }
-      pAttributes.add(tcCstAttributes[i],
-          new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
-          GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
-          new Insets(5, 5, 5, 5), 0, 0));
+      
+    }
+    
+    for(int i=0; i<cstAttributesNames.length; ++i){
+      if(cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1]) ||
+         cstAttributesNames[i].equalsIgnoreCase("created") ||
+         cstAttributesNames[i].equalsIgnoreCase("lastModified")){
+        MyUtil.setJEditable(tcCstAttributes[i], false);
+      }
+      if(isDetail(cstAttributesNames[i])){
+        detailFields.add(tcCstAttributes[i]);
+        if(labels.containsKey(cstAttributesNames[i])){
+          detailFields.add(labels.get(cstAttributesNames[i]));
+        }
+      }
+      else if(labels.containsKey(cstAttributesNames[i]) && textFields.containsKey(cstAttributesNames[i])){
+        // First add the non-detail fields
+        pAttributes.add(labels.get(cstAttributesNames[i]),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(textFields.get(cstAttributesNames[i]),
+            new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                new Insets(5, 5, 5, 5), 0, 0));
+        ++row;
+      }
+    }
+    for(int i=0; i<cstAttributesNames.length; ++i){
+      // Then the detail fields
+      if(isDetail(cstAttributesNames[i]) && labels.containsKey(cstAttributesNames[i])){
+        pAttributes.add(labels.get(cstAttributesNames[i]),
+            new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(5, 25, 5, 5), 0, 0));
+        pAttributes.add(textFields.get(cstAttributesNames[i]),
+            new GridBagConstraints(1, row, 3, 1, 1.0, 0.0,
+                GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                new Insets(5, 5, 5, 5), 0, 0));
+        ++row;
+      }
+      addToolTipText(cstAttributesNames[i]);
     }
   }
 
@@ -505,10 +578,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           break;
         }
       }
-      if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier) ||
-          cstAttributesNames[i].equalsIgnoreCase("created") ||
-          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
-        MyUtil.setJEditable(tcCstAttributes[i], false);
+      if(cstAttributesNames[i].equalsIgnoreCase(executableIdentifier)){
         if(!editing){
           try{
             Debug.debug("Clearing identifier",3);
@@ -519,9 +589,20 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           }
         }
       }
+      else if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[0])){
+        if(!editing){
+          try{
+            Debug.debug("Setting default version",3);
+            MyUtil.setJText(tcCstAttributes[i], "0.0");
+          }
+          catch(java.lang.Exception e){
+            Debug.debug("Attribute not found, "+e.getMessage(),1);
+          }
+        }
+      }
       else if(cbRuntimeEnvironmentSelection!=null &&
           runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
-          cstAttributesNames[i].equalsIgnoreCase("runtimeEnvironmentName")){
+          cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
         MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
       }
     }
@@ -567,4 +648,23 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       v.add(tcCstAttributes[i]);
     return v;
   }
+  
+  public void showDetails(boolean show){
+    for(Iterator<JComponent> it=detailFields.iterator(); it.hasNext(); ){
+      it.next().setVisible(show);
+    }
+  }
+
+  private boolean isDetail(String fieldName){
+    return MyUtil.arrayContainsIgnoreCase(detailFieldNames, fieldName);
+  }
+
+  private void addToolTipText(String fieldName){
+    if(!labels.containsKey(fieldName) || !descriptions.containsKey(fieldName.toLowerCase())){
+      return;
+    }
+    Debug.debug("Setting tool tip text of "+fieldName+" --> "+descriptions.get(fieldName), 2);
+    labels.get(fieldName).setToolTipText(descriptions.get(fieldName.toLowerCase()));
+  }
+
 }

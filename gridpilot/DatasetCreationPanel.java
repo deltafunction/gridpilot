@@ -49,6 +49,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String targetDB = null;
   private DBRecord dataset = null;
   private DBResult executables = null;
+  private String [] jobDefDatasetReference;
   private String [] datasetExecutableReference;
   private String [] datasetExecutableVersionReference;
   private JButton jbEditExe;
@@ -79,6 +80,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     executables = dbPluginMgr.getExecutables();
     editable = true;
     
+    jobDefDatasetReference = MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
     datasetExecutableReference =
       MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
     datasetExecutableVersionReference =
@@ -202,7 +204,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       jbEditExe.addActionListener(new java.awt.event.ActionListener(){
         public void actionPerformed(ActionEvent e){
           try{
-            viewExecutable();
+            lookupExecutable();
           }
           catch(Exception e1){
             e1.printStackTrace();
@@ -230,12 +232,12 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   private void initVars() {
-    detailFieldNames = new String [] {"identifier", datasetExecutableReference[1], datasetExecutableVersionReference[1],
+    detailFieldNames = new String [] {datasetIdentifier, datasetExecutableReference[1], datasetExecutableVersionReference[1],
         "created", "lastModified", "metaData", "runNumber", "totalEvents", "inputDataset", "inputDB", "totalFiles"};
     descriptions = new HashMap<String, String>();
-    descriptions.put("name", "Name of this application/dataset");
+    descriptions.put(jobDefDatasetReference[0], "Name of this application/dataset");
     descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
-    descriptions.put("identifier", "Unique identifier");
+    descriptions.put(datasetIdentifier, "Unique identifier");
     descriptions.put(datasetExecutableReference[1], "Optional: Executable used by this application/dataset");
     descriptions.put(datasetExecutableVersionReference[1], "Optional: Version of the executable");
     descriptions.put("created", "Creation date of this record");
@@ -341,7 +343,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
             new GridBagConstraints(1, row, 3, 1, 0.0, 0.0,
             GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
-        labels.put(cstAttributesNames[i], tcCstAttributes[i]);
+        labels.put(cstAttributesNames[i], outputLocationCheckPanel);
         outputLocationCheckPanel.setToolTipText(descriptions.get(cstAttributesNames[i].toLowerCase()));
         ++row;
       }
@@ -604,9 +606,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
     Debug.debug("fields: "+MyUtil.arrayToString(executables.fields), 3);
     for(int i=0; i<executables.values.length; ++i){
       Debug.debug("#"+i, 3);
-      Debug.debug("name: "+executables.getValue(i, "name"), 3);
+      Debug.debug("name: "+executables.getValue(i, datasetExecutableReference[0]), 3);
       Debug.debug("values: "+MyUtil.arrayToString(executables.values[i]), 3);
-      ret[i] = executables.getValue(i, "name").toString(); 
+      ret[i] = executables.getValue(i, datasetExecutableReference[0]).toString(); 
     }
     // This is to ensure only unique elements
     Arrays.sort(ret);
@@ -745,7 +747,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     String executableID = dbPluginMgr.getExecutableID(executableName, executableVersion);
     CreateEditDialog pDialog = new CreateEditDialog(
-       new ExecutableCreationPanel(dbPluginMgr, panel, true, executableID),
+       new ExecutableCreationPanel(dbPluginMgr, null, true, executableID),
        true, true, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName("Executable"));
     setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -756,11 +758,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
    * @throws InvocationTargetException 
    * @throws InterruptedException 
    */
-  private void viewExecutable() throws InterruptedException, InvocationTargetException{
+  private void lookupExecutable() throws InterruptedException, InvocationTargetException{
     if(executableName==null || executableName.equals("") ||
         executableVersion==null || executableVersion.equals("")){
       return;
     }
+    
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     
     MyResThread t1 = new MyResThread(){
       public void run(){
@@ -783,7 +787,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     else{
       SwingUtilities.invokeAndWait(t1);
     }
-
+    
     MyResThread t2 = new MyResThread(){
       public void run(){
         try{
@@ -801,6 +805,13 @@ public class DatasetCreationPanel extends CreateEditPanel{
           Debug.debug("Couldn't create panel for dataset " + "\n" +
                              "\tException\t : " + e.getMessage(), 2);
           e.printStackTrace();
+        }
+        finally{
+          try{
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+          catch(Exception ee){
+          }
         }
       }
     };
@@ -963,7 +974,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       else if(targetFields[j].equalsIgnoreCase("InputDB")){
         targetAttr[j] = dbPluginMgr.getDBName();
       }
-      else if(targetFields[j].equalsIgnoreCase("identifier") ||
+      else if(targetFields[j].equalsIgnoreCase(datasetIdentifier) ||
           targetFields[j].equalsIgnoreCase("percentageValidatedFiles") ||
           targetFields[j].equalsIgnoreCase("percentageFailedFiles ") ||
           //targetFields[j].equalsIgnoreCase("totalFiles") ||

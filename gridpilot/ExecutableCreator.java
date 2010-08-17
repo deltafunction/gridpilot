@@ -47,14 +47,15 @@ public class ExecutableCreator{
       default : return;
     }
 
+    boolean ok = true;
+    String error = "";
     if(editing){
       String executableIdentifier =
         MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "executable");
       String id = "-1";
       for(int i=0; i<cstAttrNames.length; ++i){
         Debug.debug("Checking name "+executableIdentifier+":"+cstAttrNames[i].toString(), 3);
-        if(cstAttrNames[i].toString().equalsIgnoreCase(
-            executableIdentifier)){
+        if(cstAttrNames[i].toString().equalsIgnoreCase(executableIdentifier)){
           id = cstAttr[i];
           break;
         }
@@ -70,10 +71,30 @@ public class ExecutableCreator{
       }
     }
     else{
-      if(!dbPluginMgr.createExecutable(cstAttr)){
+      // Check that name and version have been set
+      String [] datasetExecutableReference =
+        MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
+      String [] datasetExecutableVersionReference =
+        MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
+      for(int i=0; i<cstAttrNames.length; ++i){
+        if(cstAttrNames[i].toString().equalsIgnoreCase(datasetExecutableVersionReference[0])){
+          if(cstAttr[i]==null || cstAttr[i].equals("")){
+            ok = false;
+            error = error+"You must fill in "+datasetExecutableVersionReference[0]+". ";
+          }
+        }
+        else if(cstAttrNames[i].toString().equalsIgnoreCase(datasetExecutableReference[0])){
+          if(cstAttr[i]==null || cstAttr[i].equals("")){
+            ok = false;
+            error = error+"You must fill in "+datasetExecutableReference[0]+". ";
+          }
+        }
+      }
+      ok = ok && dbPluginMgr.createExecutable(cstAttr);
+      if(!ok){
         JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
             "Executable cannot be created.\n"+
-          dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
+          error+dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
       else{
         anyCreated = true;

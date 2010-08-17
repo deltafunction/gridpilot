@@ -50,7 +50,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private static final String SEARCH_TEXT = "Search";
   private static final String SEARCH_MOUSEOVER_TEXT = "Search with the chosen constraints";
   private static final String REFRESH_TEXT = "Refresh";
-  private static final String REFRESH_MOUSEOVER_TEXT = "Refresh search resultss";
+  private static final String REFRESH_MOUSEOVER_TEXT = "Refresh search results";
   /** Show define, edit and delete buttons on all DB panes. */
   private boolean SHOW_DB_BUTTONS = false;
   
@@ -2289,7 +2289,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   protected void createExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new ExecutableCreationPanel(dbPluginMgr, this, false, null),
-       false, false, true, false, true);
+       false, true, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
   /**
@@ -2305,7 +2305,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   protected void editExecutable(){
     CreateEditDialog pDialog = new CreateEditDialog(
        new ExecutableCreationPanel(dbPluginMgr, this, true, null),
-       true, false, true, false, true);
+       true, true, true, false, true);
     pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
   }
   
