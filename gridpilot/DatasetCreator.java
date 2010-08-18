@@ -147,8 +147,8 @@ public class DatasetCreator{
     }
     // Clear attributes that were set to "" on the panel and are thus
     // to be read from each source dataset.
-    for(Iterator it=clearAttrs.iterator(); it.hasNext(); ){
-      resCstAttr[((Integer) it.next()).intValue()]="";
+    for(Iterator<Integer> it=clearAttrs.iterator(); it.hasNext(); ){
+      resCstAttr[it.next().intValue()]="";
     }
     return true;
   }

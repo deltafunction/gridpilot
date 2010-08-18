@@ -8,7 +8,7 @@ import javax.swing.*;
 
 import java.awt.event.*;
 
-public class CreateEditDialog extends GPFrame /*implements ComponentListener*/{
+public class CreateEditDialog extends GPDialog /*implements ComponentListener*/{
 
   private static final long serialVersionUID = 1L;
   private static final int BCLOSE = 0;

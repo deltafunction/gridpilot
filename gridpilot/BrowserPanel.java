@@ -108,7 +108,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   public static int HISTORY_SIZE = 15;
 
-  public BrowserPanel(Frame parent, String title, String url, 
+  public BrowserPanel(Window parent, String title, String url, 
       String _baseUrl, boolean modal, boolean _withFilter,
       boolean _withNavigation, JComponent _jBox, String _filter,
       boolean _localFS) throws Exception{
@@ -1965,7 +1965,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         listedUrls.add(href);
         listedSizes.add(bytes);
       }
-      text += "<a href=\""+href+"\">"+name+"</a> "+bytes;
+      text += "<a href=\""+href+"\">"+MyUtil.urlDecode(name)+"</a> "+bytes;
       if(i<length-1){
         text += "<br>\n";
       }

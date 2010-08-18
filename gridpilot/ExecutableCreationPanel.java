@@ -421,7 +421,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       
       if(cstAttributesNames[i].equalsIgnoreCase("executableFile")){
         JPanel executableFileCheckPanel = MyUtil.createCheckPanel1(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
+            (Window) SwingUtilities.getWindowAncestor(this),
             cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], true, true, false, false);
         pAttributes.add(executableFileCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
@@ -432,7 +432,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       }
       else if(cstAttributesNames[i].equalsIgnoreCase("inputFiles")){
         JPanel inputFilesCheckPanel = MyUtil.createCheckPanel1(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
+            (Window) SwingUtilities.getWindowAncestor(this),
             cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], false, true, false, false, true);
         pAttributes.add(inputFilesCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,

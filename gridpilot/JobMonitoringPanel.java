@@ -583,7 +583,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     statusBar.setLabel("Waiting for outputs...");
     statusBar.animateProgressBar();
-    ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+    ((Window) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
         Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
     final Thread t = new Thread(){
@@ -603,7 +603,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           outNames = new String [] {"stdout"};
           outs = new String[] {outs[0]};
         }
-        ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+        ((Window) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
             Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         statusBar.stopAnimation();
         statusBar.setLabel("");
@@ -687,7 +687,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     statusBar.setLabel("Waiting for scripts...");
     statusBar.animateProgressBar();
-    ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+    ((Window) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
         Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
     final Thread t = new Thread(){
@@ -695,7 +695,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         MyJobInfo job = JobMgr.getJobAtRow(statusTable.getSelectedRow());
         try{
           String [] scripts = GridPilot.getClassMgr().getCSPluginMgr().getScripts(job);
-          ((JFrame) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
+          ((Window) SwingUtilities.getWindowAncestor(getRootPane())).setCursor(
               Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           statusBar.stopAnimation();
           statusBar.setLabel("");

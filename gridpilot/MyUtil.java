@@ -22,11 +22,11 @@ import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -61,7 +61,6 @@ import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -181,7 +180,7 @@ public class MyUtil extends gridfactory.common.Util{
     }
   }
  
-  public static void launchCheckBrowser(final Frame frame, String url,
+  public static void launchCheckBrowser(final Window frame, String url,
      final JTextComponent text, final boolean localFS, final boolean oneUrl,
      final boolean withNavigation, final boolean onlyDirs, boolean waitForThread,
      final boolean append){
@@ -253,7 +252,7 @@ public class MyUtil extends gridfactory.common.Util{
    }
  }
 
-  private static String handleUrl(final String [] urls, int i, final Frame frame,
+  private static String handleUrl(final String [] urls, int i, final Window frame,
      final boolean onlyDirs, final boolean withNavigation, final boolean localFS){
     BrowserPanel wb = null;
     final String finBaseUrl = "";//url;
@@ -310,7 +309,7 @@ public class MyUtil extends gridfactory.common.Util{
     return url;
   }
  
- private static BrowserPanel launchBrowserPanel(Frame frame, boolean onlyDirs,
+ private static BrowserPanel launchBrowserPanel(Window frame, boolean onlyDirs,
      String url, String finBaseUrl, boolean withNavigation, boolean localFS,
      String [] urls) throws Exception {
    BrowserPanel wb = null;
@@ -375,7 +374,7 @@ private static String fixUrl(String _url){
    return url;
  }
  
- private static void handleCheckPanelException(Frame frame, Exception eee, String finBaseUrl){
+ private static void handleCheckPanelException(Window frame, Exception eee, String finBaseUrl){
    eee.printStackTrace();
    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
    if(!GridPilot.IS_FIRST_RUN){
@@ -398,7 +397,7 @@ private static String fixUrl(String _url){
   * The JTextComponent 'jt' is filled with the selected file path.
   */
  public static JEditorPane createCheckPanel(
-      final Frame frame, 
+      final Window frame, 
       final String name, final JTextComponent jt, final boolean oneUrl,
       final boolean withNavigation,
       final boolean onlyDirs,
@@ -425,7 +424,7 @@ private static String fixUrl(String _url){
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
  public static JPanel createCheckPanel1(
-     final Frame frame,
+     final Window frame,
      final String name,
      final JTextComponent jt,
      final boolean oneUrl,
@@ -436,7 +435,7 @@ private static String fixUrl(String _url){
  }
 
  public static JPanel createCheckPanel1(
-     final Frame frame,
+     final Window frame,
      final String name,
      final JTextComponent jt,
      final boolean oneUrl,
@@ -1892,7 +1891,7 @@ private static String fixUrl(String _url){
     checkAndActivateSSL(null, urls);
   }
   
-  public static void checkAndActivateSSL(Frame frame, String[] urls){
+  public static void checkAndActivateSSL(Window frame, String[] urls){
     for(int i=0; i<urls.length; ++i){
       if(urls[i].toLowerCase().startsWith("https://")){
         try{
@@ -1994,7 +1993,7 @@ private static String fixUrl(String _url){
   public static String getURL(String url, JComponent jcb, boolean onlyDirs,
       String message, String filter) throws IOException{
     Debug.debug("URL: "+url, 3);
-    JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane());
+    Window frame = (Window) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getRootPane());
     frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     final String finUrl = url;
     final String finBaseUrl = "";//url;

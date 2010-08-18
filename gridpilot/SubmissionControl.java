@@ -445,13 +445,7 @@ public class SubmissionControl{
       if(job.getDBStatus()!=DBPluginMgr.FAILED &&
           job.getDBStatus()!=DBPluginMgr.UNEXPECTED &&
           job.getDBStatus()!=DBPluginMgr.ABORTED){
-        java.awt.Frame frame = javax.swing.JOptionPane.getRootFrame();
-        javax.swing.JOptionPane.showMessageDialog(frame, "Cannot resubmit job " +
-                                                  job.getName() +
-                                                  "\nIt is still running",
-                                                  "Cannot resubmit job",
-                                                  javax.swing.JOptionPane.
-                                                  WARNING_MESSAGE);
+        MyUtil.showMessage("Cannot resubmit job", "Cannot resubmit job " + job.getName() + ". It is still running");
         return;
       }
       boolean stdOutExists = false;

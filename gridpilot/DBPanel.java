@@ -2872,7 +2872,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, cleanup not done");
           return;
         }
-        JFrame frame = (JFrame) SwingUtilities.getWindowAncestor(getRootPane());
+        Window frame = (Window) SwingUtilities.getWindowAncestor(getRootPane());
         frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         boolean ok = true;
         String error = "";

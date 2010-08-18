@@ -1,5 +1,7 @@
 package gridpilot;
 
+import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 
 import javax.swing.*;
@@ -515,12 +517,12 @@ public class JobCreationPanel extends CreateEditPanel{
     setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 
     if(editing){
-      Debug.debug("edit job definition", 1);
+      Debug.debug("This class cannot edit job definition", 1);
+      return;
     }
-    else{
-      Debug.debug("create job definition", 1);
-    }
-    if(editing){
+    
+    Vector<String> datasetsWithJobs = getDatasetsWithJobs();
+    if(datasetsWithJobs.size()>0 && !askToContinue(datasetsWithJobs)){
       return;
     }
 
@@ -559,6 +561,42 @@ public class JobCreationPanel extends CreateEditPanel{
                    stdOutputNames,
                    closeWhenDone,
                    SwingUtilities.getWindowAncestor(this));
+  }
+
+  private Vector<String> getDatasetsWithJobs() {
+    String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+    String datasetName;
+    DBResult jobs;
+    Vector<String> datasetsWithJobs = new Vector<String>();
+    for(int i=0; i<datasetIDs.length; ++i){
+      datasetName = dbPluginMgr.getDatasetName(datasetIDs[i]);
+      jobs = dbPluginMgr.getJobDefinitions(datasetIDs[i],  new String [] {idField}, null, null);
+      if(jobs.size()>0){
+        datasetsWithJobs.add(datasetName);
+      }
+    }
+    return datasetsWithJobs;
+  }
+
+  private boolean askToContinue(Vector<String> datasetsWithJobs) {
+    String [] choices = new String[] {"Continue", "Cancel"};
+    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    String message = "The dataset"+(datasetsWithJobs.size()>1?"s ":" ")+datasetsWithJobs+
+       " already contain"+(datasetsWithJobs.size()>1?" ":"s ")+" jobs.\n\n" +
+       		"It is recommended to delete these (click \"Cleanup\" on the Applications/datasets tab)\nbefore creating new jobs." +
+       "\n\n" +
+       "Are you sure you want to continue and create jobs?\n";
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Continue job creation?", message, choices, 1);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(choice<0 || choice>=choices.length-1){
+      return false;
+    }
+    return (choice==0);
   }
 
   private Vector<JComponent> getTextFields(){

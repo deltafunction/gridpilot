@@ -247,7 +247,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     descriptions.put("totalEvents", "Optional: number of events of this dataset");
     descriptions.put("inputDataset", "Optional: input dataset");
     descriptions.put("inputDB", "Optional: name of database holding the input dataset");
-    descriptions.put("totalFiles", "Optional: total number of files. If not given, inferred from number of physical files");
+    descriptions.put("totalFiles", "Optional: total number of files. If not given or -1, inferred from number of input files " +
+    		"when creating jobs");
     String key;
     HashMap<String, String> locaseDescriptions = new HashMap<String, String>();
     for(Iterator<String>it=descriptions.keySet().iterator(); it.hasNext();){
@@ -333,7 +334,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
           " "+tcCstAttributes[i].getClass().toString(), 3);
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
         JPanel outputLocationCheckPanel = MyUtil.createCheckPanel1(
-            (JFrame) SwingUtilities.getWindowAncestor(this),
+            (Window) SwingUtilities.getWindowAncestor(this),
             cstAttributesNames[i], tcCstAttributes[i], true, true, true, false);
         pAttributes.add(outputLocationCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,

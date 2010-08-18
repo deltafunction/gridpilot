@@ -14,6 +14,7 @@ import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -93,7 +94,7 @@ public class MySSL extends SSL{
     activateSSL(null);
   }
 
-  public void activateSSL(Frame frame) throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
+  public void activateSSL(Window frame) throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
     if(sslOk){
       return;
     }
@@ -117,7 +118,7 @@ public class MySSL extends SSL{
   public void activateProxySSL() throws IOException, GeneralSecurityException {
     activateProxySSL(null);
   }
-  public void activateProxySSL(Frame frame) throws IOException, GeneralSecurityException {
+  public void activateProxySSL(Window frame) throws IOException, GeneralSecurityException {
     if(proxyOk){
       Debug.debug("Proxy already ok", 3);
       return;
@@ -178,7 +179,7 @@ public class MySSL extends SSL{
     return getGridCredential(null);
   }
   
-  public /*synchronized*/ GSSCredential getGridCredential(Frame frame){
+  public /*synchronized*/ GSSCredential getGridCredential(Window frame){
     if(gridProxyInitialized){
       Debug.debug("Grid proxy already initialized. "+credential, 2);
       return credential;
@@ -308,7 +309,7 @@ public class MySSL extends SSL{
     return credentials;
   }
   
-  private void decryptPrivateKey(Frame frame) throws IOException {
+  private void decryptPrivateKey(Window frame) throws IOException {
     Exception ee = null;
     if(sslInitialized){
       Debug.debug("SSL already initialized. "+credential, 2);
@@ -398,7 +399,7 @@ public class MySSL extends SSL{
    * @throws IOException
    * @throws GSSException
    */
-  private void initGridProxy(Frame frame) throws IOException, GSSException{
+  private void initGridProxy(Window frame) throws IOException, GSSException{
     
     ExtendedGSSManager manager = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
     File proxy = getProxyFile();
@@ -433,7 +434,7 @@ public class MySSL extends SSL{
     doInitGridProxy(frame);
   }
 
-  private void doInitGridProxy(Frame frame) throws GSSException, IOException {
+  private void doInitGridProxy(Window frame) throws GSSException, IOException {
     File proxy = getProxyFile();
     Debug.debug("proxy not ok: "+credential+": "+
         (credential!=null ? credential.getRemainingLifetime() : 0)+"<-->"+
@@ -549,7 +550,7 @@ public class MySSL extends SSL{
    * @return password, key location, certificate location.
    * @throws Exception 
    */
-  private static String [] askForPassword(final Frame frame,
+  private static String [] askForPassword(final Window frame,
       final String keyFile, final String certFile, final String password) throws IOException{
     MyResThread t = new MyResThread(){
       String [] res = null;
@@ -586,7 +587,7 @@ public class MySSL extends SSL{
     return t.getString2Res();
   }
   
-  private static String [] doAskForPassword(final Frame frame, String keyFile, String certFile, String password)
+  private static String [] doAskForPassword(final Window frame, String keyFile, String certFile, String password)
      throws IllegalArgumentException{
     
     if(keyFile.startsWith("~")){
@@ -903,7 +904,7 @@ public class MySSL extends SSL{
    * The same method as above, except for using getGridSubject0 instead
    * of getGridSubject.
    */
-  public String getGridDatabaseUser0(Frame frame){
+  public String getGridDatabaseUser0(Window frame){
     String user = null;
     try{
       
