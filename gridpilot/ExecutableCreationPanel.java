@@ -256,8 +256,9 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
     else{
       cbRuntimeEnvironmentSelection = new JComboBox();
+      cbRuntimeEnvironmentSelection.addItem("");
       for(int i=0; i<runtimeEnvironmentNames.length; ++i){
-          cbRuntimeEnvironmentSelection.addItem(runtimeEnvironmentNames[i]);
+        cbRuntimeEnvironmentSelection.addItem(runtimeEnvironmentNames[i]);
       }
       pRuntimeEnvironment.add(new JLabel("Runtime environment: "), null);
       pRuntimeEnvironment.add(cbRuntimeEnvironmentSelection, null);
@@ -631,6 +632,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   Debug.debug("create executable",  1);
 
   ExecutableCreator tc = new ExecutableCreator(
+        SwingUtilities.getWindowAncestor(this),
         dbPluginMgr,
         showResults,
         cstAttr,

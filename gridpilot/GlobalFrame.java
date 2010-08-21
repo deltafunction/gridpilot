@@ -40,7 +40,7 @@ public class GlobalFrame extends GPFrame{
 
   private static final String GridPilotURL = "http://www.gridpilot.dk/";
 
-  public static final String GPA_FILTER = "*.gpa|*.html";
+  public static final String GPA_FILTER = "*.gpa|readme.html";
   
   private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
@@ -451,7 +451,7 @@ public class GlobalFrame extends GPFrame{
         jp.add(new JLabel(label));
         jp.add(jt);
       }
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      ConfirmBox confirmBox = new ConfirmBox(this);
       confirmBox.getConfirm("My DN", jp, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
@@ -956,6 +956,7 @@ public class GlobalFrame extends GPFrame{
 
   protected void setImportExportMenu(boolean ds, String [] selectedIds){
     miExport.setVisible(ds);
+    miExport.setEnabled(true);
     if(!ds){
       return;
     }
@@ -1027,6 +1028,7 @@ public class GlobalFrame extends GPFrame{
       }
     }.start();
   }
+  
   protected void doExportDB(DBPanel activePanel) {
     String url = null;
     try{

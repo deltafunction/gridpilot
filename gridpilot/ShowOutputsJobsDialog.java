@@ -52,7 +52,7 @@ public class ShowOutputsJobsDialog extends JOptionPane{
     Vector<String> vFiles;
     int i = 0;
     for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
-      job = it.next();
+      job = (MyJobInfo) it.next();
       vFiles = new Vector<String>();
       if(job.getOutTmp()!=null){
           vFiles.add(job.getOutTmp());

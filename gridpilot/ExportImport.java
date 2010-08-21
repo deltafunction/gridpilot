@@ -10,8 +10,6 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Vector;
 
-import javax.swing.JOptionPane;
-
 public class ExportImport {
   
   /**
@@ -61,7 +59,7 @@ public class ExportImport {
     else{
       exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".gpa";
     }
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     String message = datasetId==null?
          "This will export all dataset(s) and executable(s) of the chosen database\n" +
               "plus any file(s) associated with the executable(s). Non-local file(s) will\n" +
@@ -314,7 +312,7 @@ public class ExportImport {
     }
     choicesVec.add("none (cancel)");
     String [] choices = choicesVec.toArray(new String[choicesVec.size()]);
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     int choice = confirmBox.getConfirm("Import in database",
         "<html>This will import dataset(s) and executable(s) in the chosen database.<br>" +
         "Any file(s) associated with the executables will be copied to<br>" +

@@ -3,7 +3,6 @@ package gridpilot;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
-import gridfactory.common.JobInfo;
 
 import java.net.URL;
 import java.util.Iterator;
@@ -41,7 +40,7 @@ public class JobStatusUpdateControl{
   private static int timeBetweenCheking = 1000;
 
   /** For each plug-in, maximum number of job for one update (0 = INF)*/
-  private HashMap maxJobsByUpdate;
+  private HashMap<String, Integer> maxJobsByUpdate;
 
   private MyJTable statusTable;
 
@@ -53,7 +52,7 @@ public class JobStatusUpdateControl{
    * Except if the method {@link #reset()} is called, each job in toCheckJobs is
    * going to be put in {@link #checkingJobs}
    */
-  private Vector toCheckJobs = new Vector();
+  private Vector<MyJobInfo> toCheckJobs = new Vector<MyJobInfo>();
 
   /**
    * Contains all jobs for which update is processing. <p>
@@ -63,17 +62,17 @@ public class JobStatusUpdateControl{
    * <li> should be "needed to be refreshed" (see {@link #toCheckJobs})and has
    *      belonged to {@link #toCheckJobs}, but doesn't belong to it anymore,
    */
-  private Vector checkingJobs = new Vector(); //
+  private Vector<MyJobInfo> checkingJobs = new Vector<MyJobInfo>(); //
 
   /**
    * Thread vector. <p>
    * @see #checkingJobs
    */
-  public Vector checkingThreads = new Vector();
+  public Vector<Thread> checkingThreads = new Vector<Thread>();
 
   private ImageIcon iconChecking;
 
-  private Vector jobMgrs;
+  private Vector<JobMgr> jobMgrs;
 
   public JobStatusUpdateControl() throws Exception{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
@@ -99,7 +98,7 @@ public class JobStatusUpdateControl{
       }
     });
 
-    maxJobsByUpdate = new HashMap();
+    maxJobsByUpdate = new HashMap<String, Integer>();
 
     loadValues();
 
@@ -210,14 +209,14 @@ public class JobStatusUpdateControl{
     else{
       //rows = statusTable.getSelectedRows();
       jobs = new Vector<MyJobInfo>();
-      for(Iterator<JobInfo> it=JobMgr.getJobsAtRows(rows).iterator(); it.hasNext();){
-        jobs.add((MyJobInfo) it.next());
+      for(Iterator<MyJobInfo> it=JobMgr.getJobsAtRows(rows).iterator(); it.hasNext();){
+        jobs.add(it.next());
       }
     }
    
     // fill toCheckJobs with running jobs
     synchronized(toCheckJobs){
-      Enumeration e = jobs.elements();
+      Enumeration<MyJobInfo> e = jobs.elements();
       while(e.hasMoreElements()){
         MyJobInfo job = (MyJobInfo) e.nextElement();
         Debug.debug("Checking job: "+job.getName()+" "+
@@ -255,7 +254,7 @@ public class JobStatusUpdateControl{
 
     Debug.debug("trigCheck", 1);
 
-    Vector jobs = new Vector();
+    Vector<MyJobInfo> jobs = new Vector<MyJobInfo>();
     synchronized(toCheckJobs){
       if(toCheckJobs.isEmpty()){
         return;
@@ -287,7 +286,7 @@ public class JobStatusUpdateControl{
     
     Debug.debug("Updating status of "+jobs.size()+" jobs", 3);
 
-    GridPilot.getClassMgr().getCSPluginMgr().updateStatus(jobs);
+    GridPilot.getClassMgr().getCSPluginMgr().updateStatus(MyUtil.toJobInfos(jobs));
 
     Debug.debug("Removing "+jobs.size()+" jobs from checkingJobs", 3);
     
@@ -337,8 +336,8 @@ public class JobStatusUpdateControl{
           job.setNeedsUpdate(false);
           jobMgrs = GridPilot.getClassMgr().getJobMgrs();
           JobMgr mgr = null;
-          for(Iterator it = jobMgrs.iterator(); it.hasNext();){
-            mgr = ((JobMgr) it.next());
+          for(Iterator<JobMgr> it = jobMgrs.iterator(); it.hasNext();){
+            mgr = it.next();
             if(mgr.dbName.equals(job.getDBName())){
               mgr.jobFailure(job);
               break;
@@ -351,8 +350,8 @@ public class JobStatusUpdateControl{
     
     Debug.debug("Updating "+jobs.size()+" jobs by status", 3);
     jobMgrs = GridPilot.getClassMgr().getJobMgrs();
-    for(Iterator it = jobMgrs.iterator(); it.hasNext();){
-      ((JobMgr) it.next()).updateJobsByStatus();
+    for(Iterator<JobMgr> it = jobMgrs.iterator(); it.hasNext();){
+      it.next().updateJobsByStatus();
       // fix
       break;
     }

@@ -103,8 +103,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private static int TEXTFIELDWIDTH = 32;
   //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
+  private static final int UPLOAD_TIMEOUT = 30000;
   private static final String FILE_FOUND_TEXT = "File found. Size: ";
   private static final String DIR_FILTER = "^*/$|";
+  private static final int MAX_TEXT_EDIT_LINES = 1000;
 
   public static int HISTORY_SIZE = 15;
 
@@ -366,6 +368,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
             url = e.getDescription();
           }
           download(url, null);
+          //statusBar.setLabel(url+" downloaded");
+          ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
+             "Download ok", url+" downloaded.");
         }
         else if(e instanceof HTMLFrameHyperlinkEvent){
           ((HTMLDocument) ep.getDocument()).processHTMLFrameHyperlinkEvent(
@@ -438,11 +444,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
           miDownload.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ev){
               download(url, null);
+              MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
+                 "Download ok", url+" downloaded.");
             }
           });
           miDelete.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ev){
               deleteFileOrDir(url);
+              statusBar.setLabel(url+" deleted.");
             }
           });
           popupMenu.add(miDownload);
@@ -486,6 +495,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     }
   };
+  
+  private BrowserPanel getThis(){
+    return this;
+  }
   
   // TODO: cleanup this monster
   /**
@@ -936,7 +949,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
       statusBar.setLabel("Downloading "+url);
       GridPilot.getClassMgr().getTransferControl().download(url, dir);
       Debug.debug("Download done, "+url, 2);
-      statusBar.setLabel("");
     }
     catch(Exception e){
       String error = "Could not download "+url;
@@ -954,7 +966,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   private void showError(String str){
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(this);
     String title = "Browser error";
     try{
       confirmBox.getConfirm(title, str, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
@@ -1034,7 +1046,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         new Insets(10, 10, 10, 10), 0, 0));
     jPanel.validate();
     
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(this);
     
     if(disableNameField){
       lfnField.setEnabled(false);
@@ -1320,7 +1332,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
         }
         catch(Exception e){
           //setHttpDirDisplay(url);
-          setHtmlDisplay(url);
+          //setHtmlDisplay(url);
+          setRemoteFileConfirmDisplay(url, httpsFileTransfer);
         }
       }
       // text document on disk
@@ -1384,6 +1397,17 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   private void setRemoteDirDisplay1(String url, FileTransfer fileTransfer, String string) throws Exception {
     try{
+      String filter = jtFilter.getText();
+      if(url.replaceFirst(":443/", "/").startsWith(GridPilot.APP_STORE_URL.replaceFirst(":443/", "/")) &&
+          filter.equals(GlobalFrame.GPA_FILTER)
+          ){
+        try{
+          setRemoteTextEdit(url+"readme.html", httpsFileTransfer);
+          return;
+        }
+        catch(Exception ee){
+        }
+      }
       bOk.setEnabled(ok && isModal());
       bSave.setEnabled(false);
       bNew.setEnabled(true);
@@ -1520,7 +1544,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       Debug.debug("Reading file "+url, 3);
       while((line=in.readLine())!=null){
         ++lineNumber;
-        if(lineNumber>3000){
+        if(lineNumber>MAX_TEXT_EDIT_LINES){
           //throw new IOException("File too big");
           return false;
         }
@@ -1573,9 +1597,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
       int lineNumber = 0;
       while((line=in.readLine())!=null){
         ++lineNumber;
-        if(lineNumber>3000){
+        if(lineNumber>MAX_TEXT_EDIT_LINES){
           throw new IOException("File too big");
         }
+        Debug.debug("-->"+line, 3);
         text += line+"\n";
       }
       in.close();
@@ -1725,7 +1750,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         if(url.endsWith(".gpa") && !withFilter && filter!=null && filter.equals(GlobalFrame.GPA_FILTER)){
           String fileName = url.replaceFirst("^.*/([^/]+)$", "$1");
           ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br><br>" +
-              "<i>Click on the \"OK\" button to import the application</i> <b>"+fileName+".</b></html>");
+              "<i>Click on the \"OK\" button to import the application/dataset</i> <b>"+fileName+".</b></html>");
         }
         else{
           ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br>" +
@@ -2206,7 +2231,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     String msg = "Are you sure you want to delete "+url+(url.endsWith("/")?
         " and all contained files":"") +
     		"?";
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(this);
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
           msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
@@ -2378,8 +2403,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         upload(fileOrDir, thisUrl);
         try{
           statusBar.setLabel("uploading "+thisUrl);
-          ep.getDocument().putProperty(
-              Document.StreamDescriptionProperty, null);
+          ep.getDocument().putProperty(Document.StreamDescriptionProperty, null);
           setDisplay(thisUrl);
         }
         catch(Exception ioe){
@@ -2427,6 +2451,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
             GridPilot.getClassMgr().getLogFile().addMessage("Could not download file.", e);
           }
         }
+        //statusBar.setLabel("All files downloaded");
+        MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
+            "Download ok", "All file(s) downloaded.");
       }
     });
     //SwingUtilities.invokeLater(t);
@@ -2451,6 +2478,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
       }
     };
     rt.start();
+    ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    MyUtil.waitForThread(rt, "upload", UPLOAD_TIMEOUT, "upload", GridPilot.getClassMgr().getLogFile());
+    ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
   }
   
   /**

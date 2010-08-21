@@ -32,7 +32,7 @@ public class JobDefCreationPanel extends CreateEditPanel{
   protected String [] cstAttributesNames;
   protected JComponent [] tcCstAttributes;
   protected boolean reuseTextFields = true;
-  protected Vector tcConstant = new Vector(); // contains all text components
+  protected Vector<JComponent>  tcConstant = new Vector<JComponent> (); // contains all text components
   protected String [] cstAttr = null;
   protected boolean editing = false;
   protected JPanel jobXmlContainer = new JPanel(new GridBagLayout());
@@ -167,9 +167,10 @@ public class JobDefCreationPanel extends CreateEditPanel{
     }
     
     Debug.debug("creating new JobDefCreator", 3);  
-    JobDefCreator jdc = new JobDefCreator(dbName,
+    JobDefCreator jdc = new JobDefCreator(
+                      SwingUtilities.getWindowAncestor(this),
+                      dbName,
                       showResults,
-                      tcConstant,
                       cstAttr,
                       cstAttributesNames,
                       editing
@@ -181,8 +182,8 @@ public class JobDefCreationPanel extends CreateEditPanel{
     
   }
 
-  protected Vector getTextFields(){
-    Vector v = new Vector();
+  protected Vector<JComponent>  getTextFields(){
+    Vector<JComponent>  v = new Vector<JComponent> ();
 
     v.addAll(tcConstant);
 
@@ -368,10 +369,10 @@ public class JobDefCreationPanel extends CreateEditPanel{
     updateUI();
   }
 
-  protected Vector getNonAutomaticFields(String [] cstAttributesNames,
-      JComponent [] tcCstAttributes, Vector tcConstant){
+  protected Vector<JComponent> getNonAutomaticFields(String [] cstAttributesNames,
+      JComponent [] tcCstAttributes, Vector<JComponent> tcConstant){
     
-    Vector v = new Vector();
+    Vector<JComponent> v = new Vector<JComponent>();
     v.addAll(tcConstant);
     for(int i=0; i<tcCstAttributes.length; ++i){
       if(!cstAttributesNames[i].equalsIgnoreCase(jobDefIdentifier) &&
@@ -413,9 +414,9 @@ public class JobDefCreationPanel extends CreateEditPanel{
   public void clearPanel(String [] cstAttributesNames,
       JComponent [] tcCstAttributes,
       JPanel jobXmlContainer,
-      Vector tcConstant){
+      Vector<JComponent> tcConstant){
       
-    Vector textFields = getNonAutomaticFields(cstAttributesNames,
+    Vector<JComponent>  textFields = getNonAutomaticFields(cstAttributesNames,
         tcCstAttributes, tcConstant);
   
     for(int i =0; i<textFields.size(); ++i){

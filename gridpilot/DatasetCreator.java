@@ -5,6 +5,8 @@ import gridfactory.common.Debug;
 import gridfactory.common.StatusBar;
 
 import javax.swing.*;
+
+import java.awt.Window;
 import java.util.HashSet;
 import java.util.Iterator;
 
@@ -29,9 +31,11 @@ public class DatasetCreator{
   private String [] datasetExecutableVersionReference;
   private String datasetIdentifier = "identifier";
   private boolean autoFillName = false;
+  private Window parent;
   public boolean anyCreated = false;
 
-  public DatasetCreator(  StatusBar _statusBar,
+  public DatasetCreator(  Window _parent,
+                          StatusBar _statusBar,
                           DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
@@ -39,7 +43,7 @@ public class DatasetCreator{
                           String [] _datasetIDs,
                           String _targetDB
                           ){
-    
+    parent = _parent;
     statusBar = _statusBar;
     showResults = _showResults;
     cstAttr = _cstAttr;
@@ -71,6 +75,13 @@ public class DatasetCreator{
   }
 
   private void createAllInThisDB() {
+    
+    StringBuffer error = new StringBuffer();
+    if(!checkFields(error)){
+      MyUtil.showError(parent, error.toString());
+      return;
+    }  
+ 
     for(int i=0; i<datasetIDs.length; ++i){       
       Debug.debug("creating #"+datasetIDs[i], 2);
       if(showResults && !okAll){
@@ -213,13 +224,12 @@ public class DatasetCreator{
   }
 
   private boolean createDataset(DBPluginMgr dbPluginMgr, String targetTable){
-    synchronized(semaphoreDatasetCreation){
+    synchronized(semaphoreDatasetCreation){    
       statusBar.setLabel("Creating dataset...");
       pb.setValue(pb.getValue()+1);
-      boolean succes = dbPluginMgr.createDataset(
-          targetTable, cstAttrNames, resCstAttr);
+      boolean succes = dbPluginMgr.createDataset(targetTable, cstAttrNames, resCstAttr);
       if(!succes){
-        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+        JOptionPane.showMessageDialog(parent,
            "ERROR: dataset cannot be created.\n"+
            dbPluginMgr.getError(),
            "", JOptionPane.ERROR_MESSAGE);
@@ -232,4 +242,20 @@ public class DatasetCreator{
     }
     return true;
   }
+  
+  private boolean checkFields(StringBuffer error) {
+    boolean ok = true;
+    // Check that name and version have been set
+    String [] jobDefDatasetReference = MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
+    for(int i=0; i<cstAttrNames.length; ++i){
+      if(cstAttrNames[i].toString().equalsIgnoreCase(jobDefDatasetReference[0])){
+        if(cstAttr[i]==null || cstAttr[i].equals("")){
+          ok = false;
+          error.append("You must fill in "+jobDefDatasetReference[0]+". ");
+        }
+      }
+    }
+    return ok;
+  }
+
 }

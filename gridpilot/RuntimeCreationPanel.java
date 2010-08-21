@@ -25,7 +25,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
   private String [] cstAttr = null;
   private String packIdentifier;
   private boolean reuseTextFields = true;  
-  private Vector tcConstant = new Vector(); // contains all text components
+  private Vector<JComponent> tcConstant = new Vector<JComponent>(); // contains all text components
   private static int TEXTFIELDWIDTH = 32;
   private DBPanel panel = null;
   private DBRecord pack = null;
@@ -269,6 +269,7 @@ public class RuntimeCreationPanel extends CreateEditPanel{
     Debug.debug("create runtineEnvironment",  1);
 
     RuntimeCreator rtf = new RuntimeCreator(
+        SwingUtilities.getWindowAncestor(this),
         dbPluginMgr,
         showResults,
         cstAttr,

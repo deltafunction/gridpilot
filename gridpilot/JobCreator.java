@@ -9,6 +9,8 @@ import java.util.*;
 
 import javax.swing.*;
 
+import org.globus.util.GlobusURL;
+
 import java.awt.*;
 import java.io.IOException;
 
@@ -206,6 +208,7 @@ public class JobCreator{
         }
         partitionCount += currentPartitionCount;
       }
+      statusBar.setLabel("");
       pb = statusBar.createJProgressBar(0, partitionCount);
       statusBar.setProgressBar(pb);
       try{
@@ -376,7 +379,7 @@ public class JobCreator{
         GridPilot.getClassMgr().getLogFile().addMessage("Job definition creation", ex);
       }
     }
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), msg, title,
+    int choice = JOptionPane.showConfirmDialog(parent, msg, title,
         JOptionPane.YES_NO_OPTION);
     if(choice == JOptionPane.NO_OPTION){
       showThis = false;
@@ -436,7 +439,7 @@ public class JobCreator{
             };
             SwingUtilities.invokeLater(showDialog);
           }
-          if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "Job definition " + part +
+          if(JOptionPane.showConfirmDialog(parent, "Job definition " + part +
               " cannot be created.\n\nClick Cancel to stop or OK to continue creating job definitions.", "",
               JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
             break;
@@ -766,6 +769,8 @@ public class JobCreator{
     if(inputFileURLs!=null){
       String [] fils = null;
       String addFils = "";
+      String name = null;
+      String protocol = null;
       for(int j=0; j<inputFileURLs.length; ++j){
         fils = MyUtil.split(inputFileURLs[j], "/");
         if(fils.length>0){
@@ -776,13 +781,23 @@ public class JobCreator{
         }
         fils = MyUtil.split(addFils, "\\\\");
         if(fils.length>0){
-          inputFileNamesVec.add(fils[fils.length-1]);
+          name = fils[fils.length-1];
         }
         else{
-          inputFileNamesVec.add(addFils);
+          name = addFils;
         }
-        Debug.debug("Inputs: "+inputFileNamesVec, 2);
+        protocol = null;
+        try{
+          protocol = (new GlobusURL(inputFileURLs[j])).getProtocol();
+        }
+        catch(Exception ee){
+        }
+        if("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol)){
+          name = MyUtil.urlDecode(name);
+        }
+        inputFileNamesVec.add(name);
       }
+      Debug.debug("Inputs: "+inputFileNamesVec, 2);
     }
     String[] inputFileNames = inputFileNamesVec.toArray(new String[inputFileNamesVec.size()]);
     

@@ -282,7 +282,7 @@ public class ClassMgr{
                      job.getName() +")"), java.awt.BorderLayout.NORTH );
     p.add(cb, java.awt.BorderLayout.CENTER);
 
-    JOptionPane.showMessageDialog(JOptionPane.getRootFrame(), p,
+    JOptionPane.showMessageDialog(getGlobalFrame(), p,
                                   "This job doesn't have a shell",
                                   JOptionPane.PLAIN_MESSAGE);
 

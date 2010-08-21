@@ -349,12 +349,12 @@ public class SubmissionControl{
   /**
    * Submits the specified jobs on the given computing system. <p>
    */
-  public void submitJobs(Set<JobInfo> jobs, String csName){
+  public void submitJobs(Set<MyJobInfo> jobs, String csName){
     synchronized(monitoredJobs){
       Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
       MyJobInfo job;
-      for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
-        job = (MyJobInfo) it.next();
+      for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+        job = it.next();
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
         if(dbPluginMgr.reserveJobDefinition(job.getIdentifier(), "", csName)){
           job.setCSName(csName);
@@ -427,13 +427,13 @@ public class SubmissionControl{
    * If some outputs exist, the user is asked for save them.
    * If the user chooses to not save them, outputs are deleted <p>
    */
-  public void resubmit(Set<JobInfo> jobs){
+  public void resubmit(Set<MyJobInfo> jobs){
     boolean askSave = false;
     boolean deleteFiles = false;
     monitorStatusBar.setLabel("Cleaning up jobs...");
     MyJobInfo job;
-    for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
-      job = (MyJobInfo) it.next();
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      job = it.next();
       Shell shell = null;
       try{
         shell = GridPilot.getClassMgr().getShell(job);
@@ -481,7 +481,7 @@ public class SubmissionControl{
     cleanupAndQueue(jobs);
   }
   
-  private void cleanupAndQueue(Set<JobInfo> jobs){
+  private void cleanupAndQueue(Set<MyJobInfo> jobs){
     MyJobInfo job = null;
     JobMgr jobMgr = null;
     HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
@@ -535,7 +535,7 @@ public class SubmissionControl{
    if(stdOutExists || stdErrExists){
      Object[] options = {"Yes", "No", "No for all", "Cancel"};
 
-     int choice = JOptionPane.showOptionDialog(JOptionPane.getRootFrame(),
+     int choice = JOptionPane.showOptionDialog(null,
          "Do you want to save job \n" +
          "outputs before resubmit it", "Save outputs for " + job.getName() + " ?",
          JOptionPane.YES_NO_CANCEL_OPTION,

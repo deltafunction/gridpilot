@@ -125,7 +125,7 @@ public class LFCLookupPFN extends LookupPFN {
         Debug.debug("PFNs: "+MyUtil.arrayToString(pfns), 2);
         break;
       }
-      if(db.getStop() || !db.findPFNs){
+      if(db.getStop() || !db.lookupPFNs()){
         Debug.debug("Stopping PFN lookup", 2);
         break;
       }

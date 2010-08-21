@@ -1070,7 +1070,7 @@ public class NGComputingSystem implements MyComputingSystem{
       if(!LocalStaticShell.existsFile(dirName)){
         int choice = -1;
         if(CONFIRM_RUN_DIR_CREATION){
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+          ConfirmBox confirmBox = new ConfirmBox();
           choice = confirmBox.getConfirm(
               "Confirm create directory",
               "The working directory, "+dirName+",  of this job was not found. \n" +

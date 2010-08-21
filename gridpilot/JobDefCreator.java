@@ -2,6 +2,7 @@ package gridpilot;
 
 import gridfactory.common.Debug;
 
+import java.awt.Window;
 import java.util.*;
 import javax.swing.*;
 
@@ -18,16 +19,17 @@ public class JobDefCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private String dbName;
+  private Window parent;
   public boolean anyCreated = false;
 
-  public JobDefCreator(String _dbName,
+  public JobDefCreator(Window _parent,
+                       String _dbName,
                        boolean _showResults,
-                       Vector _constants,
                        String [] _cstAttr,
                        String [] _cstAttrNames,
                        boolean _editing
                        ){
-
+    parent = _parent;
     dbName = _dbName;
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName); 
     showResults = _showResults;
@@ -79,7 +81,7 @@ public class JobDefCreator{
       }
       Debug.debug("Updating..."+cstAttrNames.length+" : "+cstAttr.length, 3);
       if(!dbPluginMgr.updateJobDefinition(id, cstAttrNames, cstAttr)){
-        if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition " +
+        if(JOptionPane.showConfirmDialog(parent, "JobDefinition " +
             " cannot be updated", "",
             JOptionPane.OK_CANCEL_OPTION)==JOptionPane.CANCEL_OPTION){
           //cancel updating
@@ -98,7 +100,7 @@ public class JobDefCreator{
       catch(Exception e){
         Debug.debug(e.getMessage(), 1);
         e.printStackTrace();
-        if(JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), "JobDefinition" +
+        if(JOptionPane.showConfirmDialog(parent, "JobDefinition" +
             " cannot be created. "+e.getMessage()+". "+dbPluginMgr.getError(), "",
             JOptionPane.PLAIN_MESSAGE)==JOptionPane.CANCEL_OPTION){
           //cancel creation

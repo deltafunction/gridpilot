@@ -320,7 +320,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         try{
           String msg = "<html>You have "+instances.size()+" running EC2 AMI instance(s).\n<br>" +
           "Do you want to include it/them in the pool of compute hosts?</html>";
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+          ConfirmBox confirmBox = new ConfirmBox();
           if(GridPilot.SPLASH!=null){
             GridPilot.SPLASH.hide();
           }
@@ -392,7 +392,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     (activeInstances.isEmpty()?"":"The following are executing GridPilot jobs:\n"+
     MyUtil.arrayToString(activeInstances.toArray(), ",\n")+".\n" )+
     "What do you want to do?";
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     int choice = -1;
     try{
       if(passiveInstances.isEmpty() || activeInstances.isEmpty()){

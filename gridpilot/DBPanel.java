@@ -364,6 +364,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   */
   protected void initGUI() throws Exception{
     
+    GridPilot.getClassMgr().getGlobalFrame().getContentPane().setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    
     initShowHideFilter();
     
     try{
@@ -656,6 +658,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     showFilter(dbPluginMgr.isFileCatalog() && !dbPluginMgr.isJobRepository());
     updateUI();
+    
+    GridPilot.getClassMgr().getGlobalFrame().getContentPane().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+    
   }
 
   private void addDBDescription() {
@@ -716,18 +721,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void showFilter(final boolean ok){
-    SwingUtilities.invokeLater(
-      new Runnable(){
-        public void run(){
+    //SwingUtilities.invokeLater(
+      //new Runnable(){
+        //public void run(){
           Debug.debug("Showing filter: "+ok, 2);
           spSelectPanel.setVisible(ok);
           bHideFilter.setVisible(ok);
           bShowFilter.setVisible(!ok);
           bClear.setVisible(ok);
           panelSelectPanel.setPreferredSize(new Dimension(0, ok?180:40));
-        }
-      }
-    );
+        //}
+      //}
+    //);
   }
 
   private void initRuntimeEditButtons() {
@@ -1102,6 +1107,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private boolean waitForWorking(){
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     for(int i=0; i<1; ++i){
       if(!getWorking()){
         // retry 3 times with 3 seconds in between
@@ -1122,6 +1128,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         break;
       }
     }
+    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     return true;
   }
 
@@ -1296,7 +1303,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     statusBar.stopAnimation();
     if(tableName.equalsIgnoreCase("file")){
-      if(res.values.length>0){
+      if(res!=null && res.values!=null && res.values.length>0){
         statusBar.setLabel("Records found: "+res.values.length+
             ". Displaying "+(cursor==-1?"1":""+(cursor+1))+" to "+
             ((cursor==-1?0:cursor)+tableResults.getRowCount()));
@@ -1451,6 +1458,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   private void setSearchTableResults() {
+    
+    if(res==null){
+      return;
+    }
+    
     Object[][] vals = null;
     if(tableName.equalsIgnoreCase("file")){
       Debug.debug("Searching from cursor "+cursor, 2);
@@ -1767,7 +1779,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
            miSetFields[i].setName(fieldNames[i]);
            miSetFields[i].addActionListener(new ActionListener(){
              public void actionPerformed(ActionEvent e){
-               String choiceStr = JOptionPane.showInputDialog(JOptionPane.getRootFrame(),
+               String choiceStr = JOptionPane.showInputDialog(GridPilot.getClassMgr().getGlobalFrame(),
                    "New value of "+((JMenuItem) e.getSource()).getName()+":", "",
                    JOptionPane.QUESTION_MESSAGE);
                Debug.debug("choiceStr: "+choiceStr, 3);
@@ -1905,7 +1917,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     // Should be safe, only mysql and hsqldb contain jobDefinitions
     else{
-      String msg = "<html>Are you sure you want to delete file";
+      String msg = "<html>Are you sure you want to delete "+getSelectedIdentifiers().length+
+      " file";
       if(getSelectedIdentifiers().length>1){
         msg += "s";
       }
@@ -1914,7 +1927,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(i>0){
           msg += ",";
         }
-        if(i>7){
+        if(i>2){
           msg += "...";
           break;
         }
@@ -1922,7 +1935,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       msg += "?</html>";
       final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
             msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
@@ -2060,7 +2073,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     msg += "?";
 
     final JCheckBox cbCleanup = new JCheckBox("Delete output file(s)", true);
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     try{
       int choice = confirmBox.getConfirm("Confirm delete",
           msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
@@ -2192,7 +2205,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     for(int i=datasetIdentifiers.length-1; i>=0; --i){
       if(!datasetIdentifiers[i].equals("-1")){
         if(!okAll){
-          ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+          ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
           cbCleanup = new JCheckBox("Delete job definitions", true);    
           if(i<1){
             try{
@@ -2333,7 +2346,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       msg += " " + ids[i];
     }
     msg += "?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+    int choice = JOptionPane.showConfirmDialog(this,
         msg, "Delete?",
         JOptionPane.YES_NO_OPTION);
     if(choice==JOptionPane.NO_OPTION){
@@ -2404,7 +2417,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       msg += " " + ids[i];
     }
     msg += "?";
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(),
+    int choice = JOptionPane.showConfirmDialog(this,
         msg, "Delete?",
         JOptionPane.YES_NO_OPTION);
     if(choice==JOptionPane.NO_OPTION){
@@ -2585,9 +2598,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void doViewJobDefinitions(final String id){
-    SwingUtilities.invokeLater(
-      new Runnable(){
-        public void run(){
+    //SwingUtilities.invokeLater(
+      //new Runnable(){
+        //public void run(){
           try{
             // Create new panel with jobDefinitions.         
             DBPanel dbPanel = new DBPanel(id);
@@ -2607,9 +2620,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                                "\tException\t : " + e.getMessage(), 2);
             e.printStackTrace();
           }
-        }
-      }
-    );
+        //}
+      //}
+    //);
   }
  
   private void processDatasets(final ActionEvent e){
@@ -2695,15 +2708,16 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     try{
       // First try a test job.
+      setJobsRefresh();
       runFirstJob(toSubmitJobDefIds, csName);
       doSubmit(csName, toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]));
     }
     catch(Exception e){
+      stopJobsRefresh();
       ok = false;
       showSubmissionError(e, toSubmitJobDefIds, csName);
       return ok;
     }
-    setJobsRefresh();
     return ok;
   }
   
@@ -2729,6 +2743,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         ).getJobMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
   }
 
+  private void stopJobsRefresh() {
+    GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+        ).getJobMonitoringPanel().stopAutoRefresh();
+  }
+
   private void setTransfersRefresh() {
     GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
         ).getTransferMonitoringPanel().setAutoRefreshSeconds(AUTO_REFRESH_SECONDS);
@@ -2740,7 +2759,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     int sleepMillis = 5000;
     while(dbStatus!=DBPluginMgr.SUBMITTED){
       dbStatus = DBPluginMgr.getStatusId(dbPluginMgr.getJobDefStatus(firstJobDefId));
-      Debug.debug("Waiting for first job, got status "+DBPluginMgr.getStatusName(dbStatus), 2);
+      Debug.debug("Waiting for first job; got status "+DBPluginMgr.getStatusName(dbStatus), 2);
       if(dbStatus==DBPluginMgr.SUBMITTED){
         return;
       }
@@ -2874,6 +2893,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         Window frame = (Window) SwingUtilities.getWindowAncestor(getRootPane());
         frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        boolean anyDeleted = false;
         boolean ok = true;
         String error = "";
         int jobCount = 0;
@@ -2890,28 +2910,30 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
                 new String [] {idField}, null, null);
             DBResult files = dbPluginMgr.getFiles(ids[i]);
             try{
-              ok = ok && cleanupJobsFromDataset(i, ids[i]);
+              cleanupJobsFromDataset(i, ids[i]);
             }
             catch(Exception ee){
               ee.printStackTrace();
             }
             try{
-              ok = ok && deleteJobDefsFromDataset(i, ids[i]);
-              if(ok){
+              anyDeleted = deleteJobDefsFromDataset(i, ids[i]);
+              if(anyDeleted){
                 jobCount = jobCount + jobDefs.size();
               }
             }
             catch(Exception ee){
               ee.printStackTrace();
+              ok = false;
             }
             try{
-              ok = ok && deletefilesOfDataset(i, ids[i]);
-              if(ok){
+              anyDeleted = deletefilesOfDataset(i, ids[i]);
+              if(anyDeleted){
                 fileCount = fileCount + files.size();
               }
             }
             catch(Exception ee){
               ee.printStackTrace();
+              ok = false;
             }
           }
           MyUtil.showMessage("Cleanup done", "Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
@@ -2983,34 +3005,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     int choice = -1;
     try{
-      choice = getDeleteJobDefsConfirm(dsNum, dbPluginMgr.getDatasetName(id));
+      choice = getDeleteJobDefsConfirm(dsNum, dbPluginMgr.getDatasetName(id), jobDefs.values.length);
     }
     catch(Exception e){
       e.printStackTrace();
-      return true;
+      return false;
     }
     if(choice!=0 && choice!=2){
-      return true;
+      return false;
     }
     String [] jobDefIds = new String [jobDefs.values.length];
     for(int i=0; i<jobDefs.values.length; ++i){
       jobDefIds[i] = (String) jobDefs.get(i).getValue(idField);
     }
-    doDeleteJobDefs(jobDefIds, cleanupJobDefs);
-    return ok;
+    return doDeleteJobDefs(jobDefIds, cleanupJobDefs);
   }
 
-  private int getDeleteJobDefsConfirm(int dsNum, String name) throws Exception {
+  private int getDeleteJobDefsConfirm(int dsNum, String name, int numJobs) throws Exception {
     if(deleteJobDefs!=null){
       return deleteJobDefs?2:3;
     }
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()); 
     JCheckBox cbCleanup = new JCheckBox("Delete "+
           (dbPluginMgr.isFileCatalog()?"stdout/stderr of jobs":
             "output files and stdout/stderr of jobs"), true);
     int choice = -1;
-    String title = "Confirm delete job definition(s)";
-    String msg =  "Do you want to delete the job definition(s) of dataset "+name+"?";
+    String title = "Confirm delete job definition"+(numJobs>1?"s":"");
+    String msg =  "Do you want to delete the "+(numJobs>1?numJobs+" ":"")+"job definition"+(numJobs>1?"s":"")+" of dataset "+name+"?";
     Debug.debug("Buttons with icons? "+MyUtil.BUTTON_DISPLAY, 3);
     if(dsNum<1){
       choice = confirmBox.getConfirm(title, msg,
@@ -3060,33 +3081,33 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     int choice = -1;
     try{
-      choice = getDeleteFilesConfirm(dsNum, dbPluginMgr.getDatasetName(id));
+      choice = getDeleteFilesConfirm(dsNum, dbPluginMgr.getDatasetName(id), files.size());
     }
     catch(Exception e){
       e.printStackTrace();
-      return true;
+      return false;
     }
     if(choice!=0 && choice!=2){
-      return true;
+      return false;
     }
     if(files.values.length>0){
       String [] fileIds = new String [files.values.length];
       for(int i=0; i<files.values.length; ++i){
         fileIds[i] = (String) files.get(i).getValue(idField);
       }
-      doDeleteFiles(fileIds, cleanupFiles);
+      ok = ok && doDeleteFiles(fileIds, cleanupFiles);
     }
     return ok;
   }
 
-  private int getDeleteFilesConfirm(int dsNum, String name) throws Exception {
+  private int getDeleteFilesConfirm(int dsNum, String name, int numFiles) throws Exception {
     if(deleteFiles!=null){
       return deleteFiles?2:3;
     }
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
-    JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()); 
+    JCheckBox cbCleanup = new JCheckBox("Delete physical file"+(numFiles>1?"s":""), true);
     String title = "Confirm delete file(s)";
-    String msg = "Do you want to delete the file(s) of dataset "+name+"?";
+    String msg = "Do you want to delete the "+(numFiles>1?numFiles+" ":"")+"file"+(numFiles>1?"s":"")+" of dataset "+name+"?";
     int choice = -1;
     if(dsNum<1){
       choice = confirmBox.getConfirm(title, msg,
@@ -3234,7 +3255,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             if(ok){
               //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
               MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset "+datasetName+
-                  ". Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s).");
+                  ".\n\n" +
+                  "Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s).");
             }
           }
           importingFiles = false;
@@ -3671,7 +3693,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       Debug.debug("Could not open URL "+finUrl+". "+eee.getMessage(), 1);
       eee.printStackTrace();
       GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
@@ -3944,7 +3966,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
-   * Called when mouse is pressed on Process button
+   * Called when mouse is pressed on Run button
    */
   private void bProcess_mousePressed(){
     // if dataset is selected, show the menu with computing systems
@@ -4375,7 +4397,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
       String fileID) throws Exception{
     if(!dbPluginMgr.isFileCatalog()){
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
       String msg = "Cannot create file(s) in virtual table.";
       confirmBox.getConfirm("Confirm delete", msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
       throw new SQLException(msg);

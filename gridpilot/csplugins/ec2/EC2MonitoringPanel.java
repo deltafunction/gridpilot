@@ -12,6 +12,7 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.Window;
 import java.awt.datatransfer.ClipboardOwner;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -29,6 +30,7 @@ import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 
 import org.globus.gsi.GlobusCredentialException;
 import org.ietf.jgss.GSSException;
@@ -205,7 +207,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
         0, 0));
     
 
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+    int choice = JOptionPane.showConfirmDialog(this, panel,
         "Instances to start", JOptionPane.OK_CANCEL_OPTION);
 
     if(choice!=JOptionPane.OK_OPTION){
@@ -230,7 +232,8 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
       ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], idField);
     }
     String msg = "Are you sure you want to terminate "+MyUtil.arrayToString(ids, ", ")+"?";
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(
+        ((Window) SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel())));
     try{
       int choice = confirmBox.getConfirm("Confirm terminate",
           msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),

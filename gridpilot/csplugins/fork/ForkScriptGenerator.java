@@ -316,6 +316,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
         try{
           name = new File((new GlobusURL(downloadFiles[i])).getPath()).getName();
           protocol = downloadFiles[i].replaceFirst("^(\\w+):.*$", "$1");
+          if(protocol.equalsIgnoreCase("http") || protocol.equalsIgnoreCase("https")){
+            name = MyUtil.urlDecode(name);
+          }
         }
         catch(MalformedURLException e){
           e.printStackTrace();

@@ -1,12 +1,14 @@
 package gridpilot;
 
 import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
+import java.io.IOException;
 
 import javax.swing.text.*;
 
@@ -525,6 +527,10 @@ public class JobCreationPanel extends CreateEditPanel{
     if(datasetsWithJobs.size()>0 && !askToContinue(datasetsWithJobs)){
       return;
     }
+    
+    if(!checkInputDatasetsForFiles()){
+      return;
+    }
 
     final String [] cstAttr = new String[tcCstAttributes.length];
     final String [] jobParam = new String[tcJobParam.length];
@@ -563,6 +569,66 @@ public class JobCreationPanel extends CreateEditPanel{
                    SwingUtilities.getWindowAncestor(this));
   }
 
+  private boolean checkInputDatasetsForFiles() {
+    try{
+      for(int i=0; i<datasetIDs.length; ++i){
+        fixEmptyInputDataset(datasetIDs[i]);
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
+   return true;
+  }
+
+  private void fixEmptyInputDataset(String id) throws Exception {
+    try{
+      DBRecord dataset = dbPluginMgr.getDataset(id);
+      String inputName = (String) dataset.getValue("inputDataset");
+      String inputDB = (String) dataset.getValue("inputDB");
+      DBResult inputFiles = null;
+      if(inputName!=null && inputDB!=null){
+        DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
+        String inputID = sourceMgr.getDatasetID(inputName);
+        if(inputID!=null){
+          inputFiles = sourceMgr.getFiles(inputID);
+          if(inputFiles==null || inputFiles.size()==0){
+            if(askImportFiles(inputDB, inputID, inputName)){
+              importFiles(sourceMgr, inputID);
+            }
+          }
+        }
+      }
+    }
+    catch(Exception e){
+      MyUtil.showError(SwingUtilities.getWindowAncestor(this),
+          "ERROR: could not get input dataset for dataset "+id);
+      throw e;
+    }
+  }
+
+  private boolean askImportFiles(String inputDB, String inputID, String inputName) throws IOException {
+    String [] choices = new String[] {"Yes", "no", "Cancel job creation"};
+    ConfirmBox confirmBox = new ConfirmBox((Window) SwingUtilities.getRoot(this));
+    String message = "The input dataset "+inputName+" / "+inputID+" contains no files.\n\n" +
+    		"Would you like to add some files to this dataset?\n";
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Import files?", message, choices, 1);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(choice<0 || choice==1){
+      return false;
+    }
+    else if(choice==2){
+      throw new IOException("Job creation cancelled");
+    }
+    return (choice==0);
+  }
+
   private Vector<String> getDatasetsWithJobs() {
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     String datasetName;
@@ -580,7 +646,7 @@ public class JobCreationPanel extends CreateEditPanel{
 
   private boolean askToContinue(Vector<String> datasetsWithJobs) {
     String [] choices = new String[] {"Continue", "Cancel"};
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox((Window) SwingUtilities.getRoot(this));
     String message = "The dataset"+(datasetsWithJobs.size()>1?"s ":" ")+datasetsWithJobs+
        " already contain"+(datasetsWithJobs.size()>1?" ":"s ")+" jobs.\n\n" +
        		"It is recommended to delete these (click \"Cleanup\" on the Applications/datasets tab)\nbefore creating new jobs." +

@@ -1,5 +1,7 @@
 package gridpilot;
 
+import java.awt.Window;
+
 import gridfactory.common.Debug;
 
 import javax.swing.*;
@@ -15,9 +17,10 @@ public class RuntimeCreator{
   private String [] cstAttrNames;
   private boolean editing;
   private DBPluginMgr dbPluginMgr = null;
+  private Window parent;
   public boolean anyCreated = false;
 
-  public RuntimeCreator(
+  public RuntimeCreator(  Window _parent,
                           DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
@@ -25,6 +28,7 @@ public class RuntimeCreator{
                           boolean _editing
                           ){
 
+    parent = _parent;
     dbPluginMgr = _dbPluginMgr;
     showResults = _showResults;
     cstAttr = _cstAttr;
@@ -59,7 +63,7 @@ public class RuntimeCreator{
       }
       Debug.debug("Updating...", 3);
       if(!dbPluginMgr.updateRuntimeEnvironment(id, cstAttrNames, cstAttr)){
-        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+        JOptionPane.showMessageDialog(GridPilot.getClassMgr().getGlobalFrame(),
             "Runtime environment cannot be updated.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }
@@ -69,7 +73,7 @@ public class RuntimeCreator{
     }
     else{
       if(!dbPluginMgr.createRuntimeEnvironment(cstAttr)){
-        JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+        JOptionPane.showMessageDialog(parent,
             "Runtime environment cannot be created.\n"+
           dbPluginMgr.getError(), "", JOptionPane.PLAIN_MESSAGE);
       }

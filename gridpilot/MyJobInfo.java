@@ -59,9 +59,14 @@ public class MyJobInfo extends JobInfo{
     super(_identifier, _name);
   }
 
+  public JobInfo getJobInfo(){
+    return super.getThis();
+  }
+  
   public String getCSName(){
     return cs;
   }
+  
   public String getDBName(){
     return db;
   }

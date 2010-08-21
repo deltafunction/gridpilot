@@ -356,6 +356,7 @@ public class CSPluginMgr implements MyComputingSystem{
       }
     }
   }
+  
   /**
    * Kills these jobs
    * @see MyComputingSystem#killJobs(Vector)
@@ -366,10 +367,10 @@ public class CSPluginMgr implements MyComputingSystem{
     statusBar.setLabel("Killing job(s)...");
     statusBar.animateProgressBar();
     
-    HashMap<String, MyLinkedHashSet<JobInfo>> csJobs = new HashMap();
+    HashMap<String, MyLinkedHashSet<JobInfo>> csJobs = new HashMap<String, MyLinkedHashSet<JobInfo>>();
     String csName = null;
     MyJobInfo job;
-    for(Iterator it=jobs.iterator(); it.hasNext();){
+    for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
       job = (MyJobInfo) it.next();
       csName = job.getCSName();
       if(!csJobs.keySet().contains(csName)){

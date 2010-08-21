@@ -214,7 +214,7 @@ public class GridPilot extends JApplet{
         icon = null;
       }
     }
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     String confirmString =
         "Now would be a good time to import an example application from the\n" +
         "GridPilot app store and try running a few jobs.\n\n" +
@@ -761,7 +761,7 @@ public class GridPilot extends JApplet{
             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
             new Insets(5, 5, 5, 5), 0, 0));
         String [] choices = new String [] {"Force quit"};
-        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+        ConfirmBox confirmBox = new ConfirmBox();
         int choice = -1;
         try{
           choice = confirmBox.getConfirm("Exiting", TOP_EXIT_PANEL, choices);
@@ -870,9 +870,11 @@ public class GridPilot extends JApplet{
     pUserPwd.add(new JLabel(message), new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 15, 0), 0, 0));
     JTextField [] tf = new JTextField [fields.length];
+    int passwordIndex = -1;
     for(int i=0; i<fields.length; ++i){
       if(fields[i].equalsIgnoreCase("password")){
         tf[i] = new JPasswordField(initialValues[i], 24);
+        passwordIndex = i;
       }
       else{
         tf[i] = new JTextField(initialValues[i], 24);
@@ -882,7 +884,14 @@ public class GridPilot extends JApplet{
       pUserPwd.add(tf[i], new GridBagConstraints(1, i+1, 1, 1, 1.0, 0.0,
           GridBagConstraints.WEST, GridBagConstraints.HORIZONTAL, new Insets(0, 0, 5, 0), 0, 0));
     }
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), pUserPwd,
+    final JTextField passwordField = tf[passwordIndex];
+    SwingUtilities.invokeLater(new Runnable(){
+      public void run(){
+        passwordField.requestFocusInWindow();
+        passwordField.requestFocus();
+      }
+    });
+    int choice = JOptionPane.showConfirmDialog(null, pUserPwd,
         "Login", JOptionPane.OK_CANCEL_OPTION);
     String [] results = new String [fields.length];
     if(choice == JOptionPane.OK_OPTION){

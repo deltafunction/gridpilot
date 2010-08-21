@@ -455,7 +455,7 @@ public class CreateSoftwarePackageWizard extends GPFrame{
       rteCatalog = catalogXml.getRteCatalog();
       
       if(rteCatalog.getBaseSystems().isEmpty() && rteCatalog.getMetaPackages().isEmpty() && rteCatalog.getTarPackages().isEmpty()){
-        ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+        ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
         int choice = -1;
         try{
           choice = confirmBox.getConfirm("No catalog found",

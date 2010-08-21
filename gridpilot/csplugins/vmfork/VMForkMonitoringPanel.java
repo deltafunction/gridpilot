@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 /**
  * Panel showing the status of EC2 and containing buttons for
@@ -145,7 +146,8 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
       ids[i] = (String) instanceTable.getUnsortedValueAt(rows[i], idField);
     }
     String msg = "Are you sure you want to terminate "+MyUtil.arrayToString(ids, ", ")+"?";
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(
+        SwingUtilities.getWindowAncestor(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel()));
     try{
       int choice = confirmBox.getConfirm("Confirm terminate",
           msg, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),

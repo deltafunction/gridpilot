@@ -502,6 +502,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       DatasetUpdater dsu = new DatasetUpdater(
+          SwingUtilities.getWindowAncestor(this),
           dbPluginMgr,
           showResults,
           cstAttr,
@@ -525,6 +526,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Debug.debug("createDataset: cstAttr["+i+"]: "+cstAttr[i], 3);
       }
       DatasetCreator dsc = new DatasetCreator(
+          SwingUtilities.getWindowAncestor(this),
           statusBar,
           dbPluginMgr,
           showResults,
@@ -1010,6 +1012,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
           catch(Exception e){
             e.printStackTrace();
           }
+        }
+        // Default to -1 for totalFiles and totalEvents
+        if(!editing && (targetFields[j].equalsIgnoreCase("totalFiles") || targetFields[j].equalsIgnoreCase("totalEvents"))&&
+            (targetAttr[j]==null || targetAttr[j].equals(""))){
+          targetAttr[j] = "-1";
         }
       }
     }

@@ -331,7 +331,7 @@ public class NGSubmission{
     }
     final JCheckBox cbRemember = new JCheckBox("Remember selection", true);
     cbRemember.setSelected(false);
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     final Object [] displayObjects = new Object[3];
     JPanel jp = new JPanel(new GridLayout(cbsClusters.length, 1));
     for(int i=0; i<cbsClusters.length; ++i){

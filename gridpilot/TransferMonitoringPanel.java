@@ -366,7 +366,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           }
           info += "File catalog : "+(transfer.getDBName()==null?
               "none":transfer.getDBName())+"\n";
-          info += transfer.toString().replaceAll("\\n", "\n")+"\n";
+          info += transfer.toString()+"\n";
           try{
             info += "Status : "+transfer.getStatus()+"\n";
           }
@@ -379,6 +379,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
           catch(Exception e){
             info += "ERROR: could not get full status. "+e.getMessage();
           }
+          info += "\n\n\n";
         }
         catch(Exception e){
           info += "ERROR: could not get status from plugin. " +

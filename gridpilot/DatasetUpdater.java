@@ -18,16 +18,18 @@ public class DatasetUpdater{
   private StatusBar statusBar;
   private String [] cstAttrNames;
   private DBPluginMgr dbPluginMgr;
+  private Window parent;
   public boolean anyCreated = false;
 
-  public DatasetUpdater(  DBPluginMgr _dbPluginMgr,
+  public DatasetUpdater(  Window _parent,
+                          DBPluginMgr _dbPluginMgr,
                           boolean _showResults,
                           String [] _cstAttr,
                           String [] _cstAttrNames,
                           String _identifier,
                           String _name
                           ){
-
+    parent = _parent;
     identifier = _identifier;
     name = _name;
     showResults = _showResults;
@@ -61,7 +63,7 @@ public class DatasetUpdater{
 
   private void updateDBDataset(){
     if(!dbPluginMgr.updateDataset(identifier, name, cstAttrNames, cstAttr)){
-      JOptionPane.showMessageDialog(JOptionPane.getRootFrame(),
+      JOptionPane.showMessageDialog(parent,
           "ERROR: dataset cannot be updated.\n"+
           dbPluginMgr.getError(),
           "", JOptionPane.ERROR_MESSAGE);

@@ -7,6 +7,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
@@ -50,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.Set;
 import java.util.Vector;
 
 
@@ -535,8 +537,8 @@ private static String fixUrl(String _url){
         GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
 
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
-        str, JOptionPane.OK_CANCEL_OPTION);
+    int choice = JOptionPane.showConfirmDialog(GridPilot.getClassMgr().getGlobalFrame(),
+       panel, str, JOptionPane.OK_CANCEL_OPTION);
 
     if(choice!=JOptionPane.OK_OPTION){
       return null;
@@ -561,12 +563,13 @@ private static String fixUrl(String _url){
     JPanel pNum = new JPanel();
     pNum.add(sNum);
     panel.add(pNum, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER,
-        GridBagConstraints.NONE, new Insets(5, 5, 5, 5),
-        0, 0));
+       GridBagConstraints.CENTER,
+       GridBagConstraints.NONE, new Insets(5, 5, 5, 5),
+       0, 0));
 
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
-        title, JOptionPane.OK_CANCEL_OPTION);
+    int choice = JOptionPane.showConfirmDialog(GridPilot.getClassMgr().getGlobalFrame(),
+       panel,
+       title, JOptionPane.OK_CANCEL_OPTION);
 
     if(choice!=JOptionPane.OK_OPTION){
       return -1;
@@ -696,7 +699,7 @@ private static String fixUrl(String _url){
     
     final JCheckBox cbRemember = new JCheckBox("Remember decision", true);
     cbRemember.setSelected(false);
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     try{
       choice = confirmBox.getConfirm("No response from plugin",
           msg, new Object[] {"Yes, interrupt", "No, let it run", cbRemember}, 1);
@@ -970,7 +973,8 @@ private static String fixUrl(String _url){
      op.setInitialValue(showResultsOptions[0]);
     }
 
-    JDialog dialog = op.createDialog(parent!=null?parent:JOptionPane.getRootFrame(), title);    
+    JDialog dialog = op.createDialog(parent!=null?parent:GridPilot.getClassMgr().getGlobalFrame(),
+       title);    
     dialog.requestFocusInWindow();    
     dialog.setResizable(true);
     dialog.setVisible(true);
@@ -1457,6 +1461,10 @@ private static String fixUrl(String _url){
     return pb;
   }
   
+  public static void showError(Window parent, String text){
+    showMessage(parent, "ERROR", text);
+  }
+  
   public static void showError(String text){
     showMessage("ERROR", text);
   }
@@ -1481,8 +1489,8 @@ private static String fixUrl(String _url){
     return mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", "Skip all", "Skip all");
   }
 
-  private static void showMessage0(String title, String text){
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+  private static void showMessage0(Window parent, String title, String text){
+    ConfirmBox confirmBox = new ConfirmBox(parent);
     BorderLayout layout = new BorderLayout();
     JPanel jp = new JPanel(layout);
     JTextArea jt = new JTextArea(text);
@@ -1538,8 +1546,12 @@ private static String fixUrl(String _url){
   }
 
   public static void showMessage(final String title, final String text){
+    showMessage(null, title, text);
+  }
+
+  public static void showMessage(final Window parent, final String title, final String text){
     if(SwingUtilities.isEventDispatchThread()){
-      showMessage0(title, text);
+      showMessage0(parent, title, text);
       return;
     }
     // else
@@ -1547,7 +1559,7 @@ private static String fixUrl(String _url){
       SwingUtilities.invokeAndWait(
         new Runnable(){
           public void run(){
-            showMessage0(title, text);
+            showMessage0(parent, title, text);
           }
         }
       );
@@ -1568,7 +1580,7 @@ private static String fixUrl(String _url){
   
     JOptionPane op = new JOptionPane(ta, JOptionPane.PLAIN_MESSAGE);
   
-    JDialog dialog = op.createDialog(JOptionPane.getRootFrame(), title);
+    JDialog dialog = op.createDialog(null, title);
     dialog.setResizable(true);
     //ta.getPreferredSize(); // without this line, this dialog is too small !?
     dialog.pack();
@@ -2016,7 +2028,7 @@ private static String fixUrl(String _url){
       Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
       eee.printStackTrace();
       GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-      ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()/*,"",""*/); 
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
       try{
         confirmBox.getConfirm("URL could not be opened",
                              "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
@@ -2148,5 +2160,22 @@ private static String fixUrl(String _url){
       return e.isControlDown();
     }
   }
+
+  public static Set<JobInfo> toJobInfos(Set<MyJobInfo> jobs) {
+    MyLinkedHashSet<JobInfo> jobInfos = new MyLinkedHashSet<JobInfo>();
+    for(Iterator<MyJobInfo>it=jobs.iterator(); it.hasNext();){
+      jobInfos.add(it.next().getJobInfo());
+    }
+    return jobInfos;
+  }
+  
+  public static Vector<JobInfo> toJobInfos(Vector<MyJobInfo> jobs) {
+    Vector<JobInfo> jobInfos = new Vector<JobInfo>();
+    for(Iterator<MyJobInfo>it=jobs.iterator(); it.hasNext();){
+      jobInfos.add(it.next().getJobInfo());
+    }
+    return jobInfos;
+  }
+
 
 }

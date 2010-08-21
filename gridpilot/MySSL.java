@@ -10,7 +10,6 @@ import gridfactory.common.SSL;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -701,9 +700,14 @@ public class MySSL extends SSL{
       GridPilot.SPLASH.hide();
     }
     
-    // TODO: doens't work... Cannot set focus in password field.
-    passwordField.requestFocusInWindow();
-    int choice = JOptionPane.showConfirmDialog(JOptionPane.getRootFrame(), panel,
+    SwingUtilities.invokeLater(new Runnable(){
+      public void run(){
+        passwordField.requestFocusInWindow();
+        passwordField.requestFocus();
+      }
+    });
+
+    int choice = JOptionPane.showConfirmDialog(null, panel,
         "Authenticate", JOptionPane.OK_CANCEL_OPTION);
     Debug.debug("showing dialog done", 3);
     

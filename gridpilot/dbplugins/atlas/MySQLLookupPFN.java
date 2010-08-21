@@ -51,22 +51,22 @@ public class MySQLLookupPFN  extends LookupPFN {
       lookupGuid(conn);
     }
     if(guid==null){
-      db.error = "ERROR: No GUID found for LFN "+lfn;
-      Debug.debug(db.error, 1);
+      db.appendError("ERROR: No GUID found for LFN "+lfn);
+      Debug.debug(db.getError(), 1);
       conn.close();
-      throw new SQLException(db.error);
+      throw new SQLException(db.getError());
     }
     // Now query the t_pfn table to get the pfn
     String req = "SELECT pfname, fsize, md5sum FROM t_pfn, t_meta WHERE t_pfn.guid = '"+guid+"' AND " +
             "t_pfn.guid = t_meta.guid";
     Debug.debug(">> "+req, 3);
     ResultSet rset = conn.createStatement().executeQuery(req);
-    Vector resultVector = new Vector();
+    Vector<String> resultVector = new Vector<String>();
     String bytes = null;
     String checksum = null;
     String [] res = null;
     while(rset.next()){
-      if(db.getStop() || !db.findPFNs){
+      if(db.getStop() || !db.lookupPFNs()){
         rset.close();
         conn.close();
         return null;
@@ -86,11 +86,11 @@ public class MySQLLookupPFN  extends LookupPFN {
       }
     }
     if(resultVector.size()==0){
-      db.error = "ERROR: No pfns with found for guid "+guid;
-      Debug.debug(db.error, 1);
+      db.appendError("ERROR: No pfns with found for guid "+guid);
+      Debug.debug(db.getError(), 1);
       rset.close();
       conn.close();
-      throw new SQLException(db.error);
+      throw new SQLException(db.getError());
     }
     rset.close();
     conn.close();
@@ -114,11 +114,11 @@ public class MySQLLookupPFN  extends LookupPFN {
   private void lookupGuid(Connection conn) throws Exception {
     String req = "SELECT guid FROM t_lfn WHERE lfname ='"+lfn+"'";
     ResultSet rset = null;
-    Vector guidVector = new Vector();
+    Vector<String> guidVector = new Vector<String>();
     Debug.debug(">> "+req, 3);
     rset = conn.createStatement().executeQuery(req);
     while(rset.next()){
-      if(db.getStop() || !db.findPFNs){
+      if(db.getStop() || !db.lookupPFNs()){
         rset.close();
         conn.close();
         Debug.debug("LFN "+lfn+" not found.", 1);
@@ -140,8 +140,8 @@ public class MySQLLookupPFN  extends LookupPFN {
       return;
     }
     else if(guidVector.size()>1){
-      db.error = "WARNING: More than one ("+guidVector.size()+") guids with found for lfn "+lfn;
-      Debug.debug(db.error, 1);
+      db.appendError("WARNING: More than one ("+guidVector.size()+") guids with found for lfn "+lfn);
+      Debug.debug(db.getError(), 1);
     }
     guid = (String) guidVector.get(0);
   }

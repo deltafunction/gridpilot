@@ -2,11 +2,11 @@ package gridpilot;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
-import gridfactory.common.JobInfo;
 import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.StatusBar;
 
 import java.awt.Color;
+import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.lang.reflect.InvocationTargetException;
@@ -15,7 +15,6 @@ import java.util.*;
 
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -697,7 +696,7 @@ public class JobMgr{
         logFile.addInfo("Auto-resubmitting job "+job.getIdentifier()+" : "+job.getResubmitCount()+":"+resubmitNr);
         // TODO: consider doing this in a thread...
         SubmissionControl submissionControl = GridPilot.getClassMgr().getSubmissionControl();
-        Set<JobInfo> rJobs = new LinkedHashSet<JobInfo>();
+        Set<MyJobInfo> rJobs = new LinkedHashSet<MyJobInfo>();
         rJobs.add(job);
         submissionControl.resubmit(rJobs);
       }
@@ -739,8 +738,8 @@ public class JobMgr{
    * Returns the jobs at the specified rows in statusTable
    * @see #getJobAtRow(int)
    */
-  public static MyLinkedHashSet<JobInfo> getJobsAtRows(int[] row){
-    MyLinkedHashSet<JobInfo> jobs = new MyLinkedHashSet<JobInfo>(row.length);
+  public static MyLinkedHashSet<MyJobInfo> getJobsAtRows(int[] row){
+    MyLinkedHashSet<MyJobInfo> jobs = new MyLinkedHashSet<MyJobInfo>(row.length);
     for(int i=0; i<row.length; ++i){
       jobs.add(getJobAtRow(row[i]));
     }
@@ -1279,7 +1278,7 @@ public class JobMgr{
    */
   public static void killJobs(final int [] rows){
     if(GridPilot.getClassMgr().getCSPluginMgr().killJobs(
-        getJobsAtRows(rows))){
+        MyUtil.toJobInfos(getJobsAtRows(rows)))){
       // update db and monitoring panel
     }
   }
@@ -1288,7 +1287,8 @@ public class JobMgr{
    * Cleans all jobs at the specified rows.
    */
   public static void cleanJobs(final int [] rows) {
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame()); 
+    ConfirmBox confirmBox = new ConfirmBox(
+        (Window) SwingUtilities.getRoot(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel())); 
     try{
       int choice = confirmBox.getConfirm("Confirm clean",
           "This will clean all files produced by the job(s)\n" +

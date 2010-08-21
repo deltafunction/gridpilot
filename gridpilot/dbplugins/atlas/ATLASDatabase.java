@@ -76,17 +76,17 @@ public class ATLASDatabase extends DBCache implements Database{
  
   private boolean sslActivated = false;
   private boolean proxySslActivated = false;
+  private boolean findPFNs = true;
+  private boolean stop = false;
+  private String error;
 
   // when creating user datasets, this will be prepended with /grid/atlas
   public String lfcUserBasePath = null;
   public String connectTimeout = "10000";
   public String socketTimeout = "30000";
   public String lrcPoolSize = "5";
-  public boolean stop = false;
-  public boolean findPFNs = true;
   public String homeSite;
   //public String homeServerMysqlAlias;
-  public String error;
 
   public ATLASDatabase(String _dbName) throws IOException, GeneralSecurityException{
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
@@ -181,6 +181,10 @@ public class ATLASDatabase extends DBCache implements Database{
     forceFileDelete = (forceDeleteStr!=null && forceDeleteStr.equalsIgnoreCase("yes"));
   }
   
+  public boolean lookupPFNs(){
+    return findPFNs;
+  }
+  
   protected void activateSsl() throws Exception{
     if(sslActivated){
       return;
@@ -210,10 +214,12 @@ public class ATLASDatabase extends DBCache implements Database{
   
   public void requestStopLookup(){
     setFindPFNs(false);
+    Debug.debug("Stopping lookup", 2);
   }
   
   public void clearRequestStopLookup(){
     setFindPFNs(true);
+    Debug.debug("Re-enabling lookup", 2);
   }
 
   public void clearRequestStop(){
@@ -246,7 +252,7 @@ public class ATLASDatabase extends DBCache implements Database{
     findPFNs = doit;
   }
   
-  public DBResult select(String selectRequest, String idField, boolean findAll){
+  public synchronized DBResult select(String selectRequest, String idField, boolean findAll){
     
     if(useCaching && queryResults.containsKey(selectRequest)){
       Debug.debug("Returning cached result for "+selectRequest, 2);
@@ -781,9 +787,9 @@ public class ATLASDatabase extends DBCache implements Database{
             pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll);
             catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
             bytes = (bytes.equals("")&&pfnRes.getBytes()!=null&&
-                !pfnRes.getBytes().equals("")?pfnRes.getBytes():bytes);
+               !pfnRes.getBytes().equals("")?pfnRes.getBytes():bytes);
             checksum = (checksum.equals("")&&pfnRes.getChecksum()!=null&&
-                !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
+               !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
           }
           catch(Exception e){
             e.printStackTrace();

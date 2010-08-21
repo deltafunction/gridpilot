@@ -9,8 +9,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
 
-import javax.swing.JOptionPane;
-
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
@@ -499,7 +497,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     if(!runningVMs){
       return;
     }
-    ConfirmBox confirmBox = new ConfirmBox(JOptionPane.getRootFrame());
+    ConfirmBox confirmBox = new ConfirmBox();
     int choice = -1;
     try{
       String msg = "You have locally running virtual machines(s).";

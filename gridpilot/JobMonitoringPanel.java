@@ -3,7 +3,6 @@ package gridpilot;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
-import gridfactory.common.JobInfo;
 import gridfactory.common.MyLinkedHashSet;
 
 import javax.swing.*;
@@ -472,6 +471,11 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     cbAutoRefresh.setSelected(true);
     cbAutoRefresh_clicked();
   }
+  
+  public void stopAutoRefresh(){
+    cbAutoRefresh.setSelected(false);
+    cbAutoRefresh_clicked();
+  }
 
   /**
    * Called when either the spinner valuer is changed or combo box "sec/min" is changed
@@ -520,7 +524,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       return;
     }
 
-    Set jobs = JobMgr.getJobsAtRows(rows);
+    Set<MyJobInfo> jobs = JobMgr.getJobsAtRows(rows);
 
     int [] options = {DBPluginMgr.VALIDATED, DBPluginMgr.FAILED, DBPluginMgr.UNDECIDED, DBPluginMgr.ABORTED};
     
@@ -533,7 +537,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     int choices[] = null;
     try{
-      choices = ShowOutputsJobsDialog.show(JOptionPane.getRootFrame(), jobs, sOptions);
+      choices = ShowOutputsJobsDialog.show((Window) SwingUtilities.getRoot(this), jobs, sOptions);
     }
     catch(Exception e){
       GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not show scripts.", e);
@@ -629,7 +633,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
   private void doShowOutput(final MyJobInfo job, final String message,
       final String [] outNames, final String [] outs){
-    ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
+    ShowOutputsJobsDialog.showTabs((Window) SwingUtilities.getRoot(this),
         message + " " + job.getName(),
         outNames,
         outs);
@@ -699,7 +703,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
               Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           statusBar.stopAnimation();
           statusBar.setLabel("");
-          ShowOutputsJobsDialog.showTabs(JOptionPane.getRootFrame(),
+          ShowOutputsJobsDialog.showTabs((Window) SwingUtilities.getRoot(getThis()),
               "Scripts for job " + job.getName(),
               job,
               scripts            
@@ -718,6 +722,10 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     });
     t.start();
 
+  }
+  
+  private JobMonitoringPanel getThis(){
+    return this;
   }
 
   /**
@@ -920,13 +928,13 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
       public void run(){    
         int [] rows = statusTable.getSelectedRows();       
         Debug.debug("Setting status of rows "+MyUtil.arrayToString(rows)+" from "+statusTable.getRowCount(), 2);
-        MyLinkedHashSet<JobInfo> jobs = JobMgr.getJobsAtRows(rows);
+        MyLinkedHashSet<MyJobInfo> jobs = JobMgr.getJobsAtRows(rows);
         MyJobInfo job = null;
         JobMgr jobMgr = null;
         HashMap<JobMgr, Vector<Integer>> datasetJobs = new HashMap<JobMgr, Vector<Integer>>();
         int i = 0;
-        for(Iterator<JobInfo> it=jobs.iterator(); it.hasNext();){
-          job = (MyJobInfo) it.next();
+        for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+          job = it.next();
           jobMgr = getJobMgr(job);
           if(!datasetJobs.containsKey(jobMgr)){
             datasetJobs.put(jobMgr, new Vector<Integer>());

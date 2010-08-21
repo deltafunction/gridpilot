@@ -3314,7 +3314,7 @@ public class DBPluginMgr extends DBCache implements Database{
         return null;
       }
     }
-    if(totalFiles==0 && totalEvents==0){
+    if(totalFiles<=0 && totalEvents<=0){
       return null;
     }
     if(totalFiles>0 && totalEvents>0){
