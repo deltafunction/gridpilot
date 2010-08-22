@@ -893,6 +893,12 @@ private static String fixUrl(String _url){
 
   public static int showResult(String [] cstAttrNames, String [] cstAttr, String title, int optionType,
       String cancelText){
+    return showResult(null, cstAttrNames, cstAttr, title, optionType,
+        cancelText);
+  }
+  
+  public static int showResult(Component parent, String [] cstAttrNames, String [] cstAttr, String title, int optionType,
+      String cancelText){
     JPanel pResult = new JPanel(new GridBagLayout());
     int row = 0;
     JComponent jval;
@@ -942,7 +948,7 @@ private static String fixUrl(String _url){
     Debug.debug("Setting size "+width+":"+height, 3);
     sp.setPreferredSize(new Dimension(width, height));
     
-    return showResult(null, sp, title, optionType, cancelText);
+    return showResult(parent, sp, title, optionType, cancelText);
     
   }
   
@@ -2177,5 +2183,84 @@ private static String fixUrl(String _url){
     return jobInfos;
   }
 
+  public static void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
+    pane.addHyperlinkListener(
+        new HyperlinkListener(){
+        public void hyperlinkUpdate(final HyperlinkEvent e){
+          if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
+            System.out.println("Launching browser...");
+            final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
+            window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            ResThread t = new ResThread(){
+              public void run(){
+                try{
+                  new BrowserPanel(
+                        window,
+                        "Browser",
+                        e.getURL().toString(),
+                        null,
+                        true,// modal
+                         false,// with filter
+                        true,// with navigation
+                        null,// filter
+                        null,// JBox
+                        false,// only local
+                        true,// cancel enabled
+                        false);// registration enabled
+                  return;
+                }
+                catch(Exception e){
+                }
+                try{
+                  new BrowserPanel(
+                      window,
+                      "Browser",
+                      "file:~/",
+                      null,
+                      true,
+                      false,
+                      true,
+                      null,
+                      null,
+                      false,
+                      true,
+                      false);
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                  try{
+                    window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                    MyUtil.showError("WARNING: could not open URL. "+e.getMessage());
+                  }
+                  catch(Exception e2){
+                    e2.printStackTrace();
+                  }
+                }
+              }
+            };
+            //SwingUtilities.invokeLater(t);
+            t.start();
+          }
+        }
+      });
+  }
+
+  public static void showHtmlMessage(Window window, String title, String message) {
+    final JPanel jPanel = new JPanel(new GridBagLayout());
+    JEditorPane pane = new JEditorPane("text/html", "<html>"+message.replaceAll("\n", "<br>")+"</html>");
+    pane.setEditable(false);
+    pane.setOpaque(false);
+    MyUtil.addHyperLinkListener(pane, jPanel);
+    jPanel.add(pane);
+    ConfirmBox confirmBox = new ConfirmBox(window); 
+    try{
+      confirmBox.getConfirm(title, jPanel,
+                        new Object[] {mkOkObject(confirmBox.getOptionPane())});
+    }
+    catch(Exception e){
+      Debug.debug("Could not get confirmation, "+e.getMessage(), 1);
+    }
+
+  }
 
 }

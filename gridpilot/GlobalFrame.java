@@ -40,7 +40,7 @@ public class GlobalFrame extends GPFrame{
 
   private static final String GridPilotURL = "http://www.gridpilot.dk/";
 
-  public static final String GPA_FILTER = "*.gpa|readme.html";
+  public static final String GPA_FILTER = "*"+GridPilot.APP_EXTENSION+"|"+GridPilot.APP_INDEX_FILE;
   
   private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
@@ -500,7 +500,7 @@ public class GlobalFrame extends GPFrame{
     //menuFile.add(miReloadValues);
     
     // Import/export
-    JMenuItem miImport = new JMenuItem("Import application(s)");
+    JMenuItem miImport = new JMenuItem("Import application/dataset");
     menuFile.add(miImport);
     if(GridPilot.ADVANCED_MODE){
       menuFile.add(miExport);
@@ -769,7 +769,7 @@ public class GlobalFrame extends GPFrame{
       menuHelp.add(menuHelpAbout);
       menuHelp.addSeparator();
     }
-    JMenuItem menuHelpWebsite = new JMenuItem("Go to GridPilot website");
+    JMenuItem menuHelpWebsite = new JMenuItem("GridPilot website");
     menuHelpWebsite.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuWebsite_actionPerformed();
@@ -960,8 +960,8 @@ public class GlobalFrame extends GPFrame{
     if(!ds){
       return;
     }
-    if(selectedIds.length==1){
-      miExport.setText("Export selected application");
+    if(selectedIds.length>0){
+      miExport.setText("Export selected application(s)");
     }
     else if(selectedIds.length==0){
       miExport.setText("Export all application(s)");
@@ -1041,9 +1041,9 @@ public class GlobalFrame extends GPFrame{
     try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        if(activePanel.getSelectedIdentifiers().length==1){
+        if(activePanel.getSelectedIdentifiers().length>1){
           ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
-              activePanel.getDBName(), activePanel.getSelectedIdentifier());
+              activePanel.getDBName(), activePanel.getSelectedIdentifiers());
           MyUtil.showMessage("Export successful",
               "Thanks and congratulations! You've successfully exported your application/dataset.\n" +
               "If you haven't already done so, please consider making it available for others to use.");
@@ -1095,21 +1095,45 @@ public class GlobalFrame extends GPFrame{
       e.printStackTrace();
     }
     try{
+      String[] importUrls = new String[]{url};
+      boolean readmeAvailable = false;
       if(url!=null && !url.equals("")){
-        if(!url.endsWith(".gpa")){
-          throw new IOException("Only gzipped tar archives (with extension gpa) can be imported.");
+        if(!url.endsWith(GridPilot.APP_EXTENSION)){
+          if(url.replaceFirst(":443/", "/").startsWith(GridPilot.APP_STORE_URL.replaceFirst(":443/", "/")) &&
+              url.endsWith(GridPilot.APP_INDEX_FILE)){
+            importUrls = findImportUrls(url.replaceFirst(GridPilot.APP_INDEX_FILE+"$", ""));
+            readmeAvailable = true;
+          }
+          else{
+            throw new IOException("Only gzipped tar archives (with extension gpa) can be imported.");
+          }
         }
-        Debug.debug("Importing from "+url, 2);
-        String importUrl = url;
-        if(MyUtil.isLocalFileName(importUrl)){
-          importUrl = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrl));
+        Debug.debug("Importing from "+MyUtil.arrayToString(importUrls), 2);
+        StringBuffer msgs = new StringBuffer();
+        boolean atLeastOneImported = false;
+        for(int i=0; i<importUrls.length; ++i){
+          if(MyUtil.isLocalFileName(importUrls[i])){
+            importUrls[i] = MyUtil.clearTildeLocally(MyUtil.clearFile(importUrls[i]));
+          }
+          String [] res = ExportImport.importToDB(importUrls[i]);
+          if(res==null){
+            continue;
+          }
+          refreshTab(res[0]);
+          msgs.append(res[1]);
+          msgs.append("\n\n");
+          atLeastOneImported = true;
         }
-        String [] res = ExportImport.importToDB(importUrl);
-        refreshTab(res[0]);
-        String message = res[1]+"\n\n" +
-           "Right-click on your new application to add files or create and run jobs.";
-        activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        MyUtil.showMessage("Import successful", message);
+        if(atLeastOneImported){
+          String message = msgs.toString()+
+          "Right-click on your new application/dataset to add files or create and run jobs."+
+          (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a> for more information.":"");
+          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          MyUtil.showHtmlMessage(this, "Import successful", message);
+        }
+        else{
+          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        }
       }
       else{
         Debug.debug("Not importing. "+url, 2);
@@ -1124,6 +1148,27 @@ public class GlobalFrame extends GPFrame{
     }
   }
   
+  /**
+   * Find .gpa files in the directory 'url'
+   * @param url
+   * @return list of URLs
+   * @throws Exception 
+   */
+  private String[] findImportUrls(String url) throws Exception {
+    GridPilot.getClassMgr().getTransferControl();
+    String[][] urlsAndSizes = MyTransferControl.findAllFilesAndDirs(url, "*"+GridPilot.APP_EXTENSION);
+    HashSet<String> urlsSet = new HashSet<String>();
+    for(int i=0; i<urlsAndSizes[0].length; ++i){
+      if(urlsAndSizes[0][i].endsWith(GridPilot.APP_EXTENSION) &&
+          urlsAndSizes[0][i].replace(url, "").indexOf("/")<0){
+        urlsSet.add(urlsAndSizes[0][i]);
+      }
+    }
+    String [] ret = urlsSet.toArray(new String[urlsSet.size()]);
+    Arrays.sort(ret);
+    return ret;
+  }
+
   private void refreshTab(String dbName) {
     DBPanel panel;
     int i = 0;

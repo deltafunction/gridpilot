@@ -79,6 +79,9 @@ public class ATLASDatabase extends DBCache implements Database{
   private boolean findPFNs = true;
   private boolean stop = false;
   private String error;
+  // WORKING THREAD SEMAPHORE
+  private boolean working = false;
+
 
   // when creating user datasets, this will be prepended with /grid/atlas
   public String lfcUserBasePath = null;
@@ -252,17 +255,38 @@ public class ATLASDatabase extends DBCache implements Database{
     findPFNs = doit;
   }
   
-  public synchronized DBResult select(String selectRequest, String idField, boolean findAll){
-    
-    if(useCaching && queryResults.containsKey(selectRequest)){
-      Debug.debug("Returning cached result for "+selectRequest, 2);
-      return (DBResult) queryResults.get(selectRequest);
+  public /*synchronized*/ DBResult select(String selectRequest, String idField, boolean findAll){
+    DBResult ret = null;
+    try{
+      if(useCaching && queryResults.containsKey(selectRequest)){
+        Debug.debug("Returning cached result for "+selectRequest, 2);
+        return (DBResult) queryResults.get(selectRequest);
+      }
+      
+      if(getStop()){
+        return null;
+      }
+      
+      if(!waitForWorking()){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: timed out waiting for other search to complete," +
+          "search not performed --> "+selectRequest);
+        return null;
+      }
+     
+      ret = doSelect(selectRequest, idField, findAll);
+      
     }
-    
-    if(getStop()){
-      return null;
+    catch(Exception e){
+      logFile.addMessage("WARNING: Problem performing SELECT request "+selectRequest, e);
     }
-    
+    finally{
+      stopWorking();
+    }
+    return ret;
+  }
+  
+  public /*synchronized*/ DBResult doSelect(String selectRequest, String idField, boolean findAll){
+        
     JProgressBar pb = null;
     String req = selectRequest;
     Pattern patt;
@@ -2849,5 +2873,40 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   public void executeUpdate(String sql) throws Exception {
     throw new Exception("The database "+dbName+" does not support general purpose SQL updates.");
   }
-
+  
+  private boolean waitForWorking(){
+    for(int i=0; i<1; ++i){
+      if(!getWorking()){
+        // retry 10 times with 10 seconds in between
+        try{
+          Thread.sleep(10000);
+        }
+        catch(Exception e){
+        }
+        if(i==9){
+          return false;
+        }
+        else{
+          continue;
+        }
+      }
+      else{
+        break;
+      }
+    }
+    return true;
+  }
+  
+  // try grabbing the semaphore
+  private boolean getWorking(){
+    if(!working){
+      working = true;
+      return true;
+    }
+    return false;
+  }
+  // release the semaphore
+  private void stopWorking(){
+    working = false;
+  }
 }

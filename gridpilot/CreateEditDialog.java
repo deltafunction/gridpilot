@@ -151,6 +151,7 @@ public class CreateEditDialog extends GPDialog /*implements ComponentListener*/{
 
     // Initialize CreateEditPanel
     createEditPanel.initGUI();
+    bCreateUpdate.requestFocus();
     //setMinimumSize(new Dimension(400, 270));
     setMinimumSize(new Dimension(createEditPanel.getPreferredSize().width+40, createEditPanel.getPreferredSize().height+40));
     createEditPanel.validate();

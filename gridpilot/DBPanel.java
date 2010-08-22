@@ -16,7 +16,6 @@ import javax.swing.*;
 import javax.swing.event.*;
 
 import org.globus.util.GlobusURL;
-import org.safehaus.uuid.UUIDGenerator;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -85,7 +84,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bHideFilter;
   private JMenuItem miEdit = null;
   private JMenuItem miImportFiles = new JMenuItem("Import file(s)");
-  private JMenuItem miExportDataset = new JMenuItem("Export application");
+  private JMenuItem miExportDatasets = new JMenuItem("Export application(s)");
   private String [] identifiers;
   // lists of field names with table name as key
   private String [] fieldNames = null;
@@ -108,8 +107,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // WORKING THREAD SEMAPHORE
   // The idea is to ignore new requests when working on a request
   private boolean working = false;
-  // Import thread semaphore
-  private boolean importingFiles = false;
   private boolean exportingDataset = false;
   private int cursor = -1;
   private DBResult res = null;
@@ -128,6 +125,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   // Replicating semaphore
   private boolean replicating = false;
   private int fileCatalogTimeout;
+  private Window window = SwingUtilities.getWindowAncestor(this);
 
   /**
    * Create a new DBPanel from scratch.
@@ -135,13 +133,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    public DBPanel() throws Exception{
    }
    
-   /**
-    * Create a new DBPanel from a parent panel.
-    */
+  /**
+   * Create a new DBPanel from a parent panel.
+   */
   private DBPanel(String _parentId) throws Exception{
     parentId = _parentId;
   }
-    
+  
   // try grabbing the semaphore
   private /*synchronized*/ boolean getWorking(){
     if(!working){
@@ -166,6 +164,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   protected String getDBName(){
     return dbName;
+  }
+  
+  protected DBPluginMgr getDBPluginMgr(){
+    return dbPluginMgr;
   }
   
   protected String getTableName(){
@@ -257,6 +259,27 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    
    public MyJTable getTable(){
      return tableResults;
+   }
+
+   private String getDatasetName(String datasetID) {
+     // Get the dataset name and id
+     // Well, again: DQ2 cannot lookup dataset name from id...
+     //String datasetName = dbPluginMgr.getDatasetName(datasetID);
+     String [] datasetNameFields = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
+     String datasetNameField = datasetNameFields[0];
+     int datasetNameIndex = -1;
+     String [] columnNames = tableResults.getColumnNames();
+     for(int i=0; i<tableResults.getColumnNames().length; ++i){
+       if(columnNames[i].equalsIgnoreCase(datasetNameField)){
+         datasetNameIndex = i;
+         break;
+       }
+     }
+     Debug.debug("dataset fields "+datasetNameField+"-->"+datasetNameIndex+":"+
+         MyUtil.arrayToString(columnNames), 3);
+     String datasetName = (String) tableResults.getUnsortedValueAt(
+         tableResults.getSelectedRow(), datasetNameIndex);
+     return datasetName;
    }
 
   private void setFieldArrays(){
@@ -1343,8 +1366,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
         miImportFiles.setEnabled(dbPluginMgr.isFileCatalog() && !lsm.isSelectionEmpty() &&
             lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
-        miExportDataset.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty() &&
-            lsm.getMaxSelectionIndex()==lsm.getMinSelectionIndex());
+        miExportDatasets.setEnabled(dbPluginMgr.isJobRepository() && !lsm.isSelectionEmpty());
         menuEditCopy.setEnabled(!lsm.isSelectionEmpty());
         menuEditCut.setEnabled(!lsm.isSelectionEmpty());
         menuEditPaste.setEnabled(clipboardOwned);
@@ -1585,7 +1607,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     miImportFiles.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        importFiles();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        ResThread rt = new ResThread(){
+          public void run(){
+            try{
+              String datasetID = getSelectedIdentifier();
+              String datasetName = getDatasetName(datasetID);
+              ExportImport.importFiles(datasetID, datasetName, getDBPluginMgr());
+            }
+            catch(Exception e){
+              setException(e);
+              e.printStackTrace();
+            }
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+        };
+        rt.start();
+        MyUtil.waitForThread(rt, "import", fileCatalogTimeout, "importFiles", GridPilot.getClassMgr().getLogFile());
       }
     });
     JMenuItem miViewFiles = new JMenuItem("Show file(s)");
@@ -1614,7 +1652,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         getInfo();
       }
     });
-    miExportDataset.addActionListener(new ActionListener(){
+    miExportDatasets.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         exportDataset();
       }
@@ -1635,7 +1673,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     miViewFiles.setEnabled(true);
     miReplicateDataset.setEnabled(true);
     miGetInfoOnDataset.setEnabled(true);
-    miExportDataset.setEnabled(true);
+    miExportDatasets.setEnabled(true);
     miViewJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miCreateJobDefinitions.setEnabled(dbPluginMgr.isJobRepository());
     miDelete.setEnabled(true);
@@ -1647,7 +1685,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     tableResults.addMenuItem(miImportFiles);
     if(GridPilot.ADVANCED_MODE){
       tableResults.addMenuSeparator();
-      tableResults.addMenuItem(miExportDataset);
+      tableResults.addMenuItem(miExportDatasets);
       tableResults.addMenuSeparator();
     }
 
@@ -1906,13 +1944,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             // the identifier is the last column
             tableResults.getColumnCount()-1).toString()).getValue(fieldNames[j]).toString();*/
       }
-      MyUtil.showResult(fieldNames, values, "file", MyUtil.OK_OPTION, "Skip");
+      MyUtil.showResult(tableResults,
+          fieldNames, values, "file", MyUtil.OK_OPTION, "Skip");
     //}
   }
   
   private void deleteFiles(){
     if(!dbPluginMgr.isFileCatalog()){
-      MyUtil.showLongMessage("This is a virtual file table. " +
+      MyUtil.showMessage(window, "This is a virtual file table. " +
             "Entries cannot be modified directly.", "Cannot delete");
     }
     // Should be safe, only mysql and hsqldb contain jobDefinitions
@@ -2004,8 +2043,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     
     Debug.debug("Deleting "+_ids.length+" rows. "+MyUtil.arrayToString(_ids), 2);
     if(_ids.length!=0){
-      GridPilot.getClassMgr().getStatusBar().setLabel(
-         "Deleting file(s). Please wait...");
+      GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s). Please wait...");
       JProgressBar pb = statusBar.setProgressBar();
       statusBar.setProgressBarMax(pb, _ids.length);
       
@@ -2048,7 +2086,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         //tableResults.removeRow(rows[i]);
       }
       //tableResults.tableModel.fireTableDataChanged();
-      //GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) done.");
+      GridPilot.getClassMgr().getStatusBar().setLabel("Deleting file(s) done.");
       statusBar.removeProgressBar(pb);
     }
     return anyDeleted;
@@ -2654,7 +2692,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           ok = false;
         }
         if(!ok){
-          MyUtil.showError("Problem processing dataset(s). "+
+          MyUtil.showError(window,
+              "Problem processing dataset(s). "+
               (error==null||error.equals("")?"See the log for details.":error));
         }
         setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -2703,7 +2742,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     Debug.debug("Submitting "+jobCount+" job(s)", 3);
     if(jobCount==0){
-      MyUtil.showMessage("No submitable jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
+      MyUtil.showMessage(window,
+          "No submitable jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
       return ok;
     }
     try{
@@ -2828,7 +2868,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           ok = false;
         }
         if(!ok){
-          MyUtil.showError("Problem monitoring dataset(s). "+
+          MyUtil.showError(window, 
+              "Problem monitoring dataset(s). "+
               (error==null||error.equals("")?"See the log for details.":error));
         }
       }
@@ -2870,7 +2911,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
     }
     if(jobCount==0){
-      MyUtil.showMessage("No jobs", "There are no jobs defined for the selected dataset(s)");
+      MyUtil.showMessage(window, 
+          "No jobs", "There are no jobs defined for the selected dataset(s)");
     }
     return ok;
   }
@@ -2936,9 +2978,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               ok = false;
             }
           }
-          MyUtil.showMessage("Cleanup done", "Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
+          MyUtil.showMessage(window, 
+              "Cleanup done", "Cleaned up dataset(s) "+MyUtil.arrayToString(ids)+
               ".\n\n  job(s) cleaned: "+jobCount+"\n\n"+
-              "  file(s) cleaned: "+fileCount+"");
+              "  file(s) cleaned: "+fileCount+"\n\n");
         }
         catch(Exception e){
           ok = false;
@@ -2955,7 +2998,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         cleanupFiles = null;        
         stopWorking();
         if(!ok){
-          MyUtil.showError("Problem cleaning up dataset(s). "+
+          MyUtil.showError(window, 
+              "Problem cleaning up dataset(s). "+
               (error==null||error.equals("")?"See the log for details.":error));
         }
       }
@@ -3169,107 +3213,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   /**
    * Called from the right-click menu
    */
-  private void importFiles(){
-    if(!getSelectedIdentifier().equals("-1") && !importingFiles){
-      setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-      MyResThread rt = new MyResThread(){
-        public void run(){
-          importingFiles = true;
-          // Get the dataset name and id
-          String datasetID = getSelectedIdentifier();
-          // Well, again: DQ2 cannot lookup dataset name from id...
-          //String datasetName = dbPluginMgr.getDatasetName(datasetID);
-          String [] datasetNameFields = MyUtil.getFileDatasetReference(dbPluginMgr.getDBName());
-          String datasetNameField = datasetNameFields[0];
-          int datasetNameIndex = -1;
-          String [] columnNames = tableResults.getColumnNames();
-          for(int i=0; i<tableResults.getColumnNames().length; ++i){
-            if(columnNames[i].equalsIgnoreCase(datasetNameField)){
-              datasetNameIndex = i;
-              break;
-            }
-          }
-          Debug.debug("dataset fields "+datasetNameField+"-->"+datasetNameIndex+":"+
-              MyUtil.arrayToString(columnNames), 3);
-          String datasetName = (String) tableResults.getUnsortedValueAt(
-              tableResults.getSelectedRow(), datasetNameIndex);
-          // Find the list of files
-          String [] regUrls = null;
-          String [] regSizes = null;
-          String regBaseURL = null;
-          try{
-            String [][] importFiles = getImportFiles();
-            regUrls = importFiles[0];
-            regSizes = importFiles[1];
-            regBaseURL = importFiles[2][0];
-          }
-          catch(Exception e){
-            String error = "ERROR: could not get URLs to register";
-            Debug.debug(error, 1);
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-            GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-            importingFiles = false;
-            return;
-          }         
-          if(regUrls!=null){
-            // Register the files
-            String uuid = null;
-            String lfn = null;
-            String pfn = null;
-            String size = null;
-            boolean ok = true;
-            for(int i=0; i<regUrls.length; ++i){
-              try{
-                pfn = regUrls[i];
-                size = regSizes[i];
-                int lastSlash = pfn.lastIndexOf("/");
-                lfn = pfn;
-                if(lastSlash>-1){
-                  lfn = pfn.substring(lastSlash + 1);
-                }
-                uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
-                String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
-                //GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
-                GridPilot.getClassMgr().getStatusBar().setLabel(message);
-                GridPilot.getClassMgr().getLogFile().addInfo(message);
-                dbPluginMgr.registerFileLocation(
-                    datasetID, datasetName, uuid, lfn, pfn, size, null, false);
-                // Set outputLocation of the dataset. When processing this dataset, this will be used by
-                // JobCreator to find the relative path of the input files and thus allow reconstructing
-                // the directory structure for the processed dataset.
-                String outputLocation = (String) dbPluginMgr.getDataset(datasetID).getValue("outputLocation");
-                if(outputLocation==null || outputLocation.trim().equals("")){
-                  dbPluginMgr.updateDataset(datasetID, datasetName,
-                      new String[] {"outputLocation"}, new String[] {regBaseURL});
-                }
-              }
-              catch(Exception e){
-                ok = false;
-                String msg = "ERROR: could not register "+pfn+" for file "+lfn+" in dataset "+datasetName;
-                GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
-                //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
-                MyUtil.showError(msg);
-                setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-              }
-            }
-            if(ok){
-              //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
-              MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset "+datasetName+
-                  ".\n\n" +
-                  "Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s).");
-            }
-          }
-          importingFiles = false;
-          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-        }
-      };
-      SwingUtilities.invokeLater(rt);
-    }
-  }
-  
-  /**
-   * Called from the right-click menu
-   */
   private void getInfo() {
     Debug.debug("Getting info on file(s) of dataset(s)", 2);
     new Thread(){
@@ -3322,7 +3265,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
             msg = msg + exMsg;
           }
-          MyUtil.showMessage("Information on selected dataset(s)", msg);
+          MyUtil.showMessage(window,
+              "Information on selected dataset(s)", msg);
         }
         catch(Exception e){
           setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
@@ -3424,12 +3368,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         public void run(){
           exportingDataset = true;
           // Get the dataset name and id
-          String datasetID = getSelectedIdentifier();
+          String[] datasetIDs = getSelectedIdentifiers();
           try{
-            if(exportDataset(datasetID)){
-              MyUtil.showMessage("Export successful",
-                  "Thanks and congratulations! You've successfully exported your application/dataset.\n" +
-                  "If you haven't already done so, please consider making it available for others to use.");
+            if(exportDataset(datasetIDs)){
+              MyUtil.showMessage(window, "Export successful",
+                  "Thanks and congratulations! You've successfully exported "+
+                  datasetIDs+" application"+(datasetIDs.length>1?"s":"")+
+                  "/dataset"+(datasetIDs.length>1?"s":"")+".\n");
             }
           }
           catch(Exception e){
@@ -3446,7 +3391,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
   }
   
-  private boolean exportDataset(String datasetID) throws Exception {
+  private boolean exportDataset(String[] datasetIDs) throws Exception {
     //String url = MyUtil.getURL("file:~/", null, true, "Choose destination directory");
     String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
     if(url!=null && !url.equals("")){
@@ -3455,7 +3400,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           MyUtil.urlIsRemote(url)?
           url:
           MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
-          dbName, datasetID);
+          dbName, datasetIDs);
       return true;
     }
     else{
@@ -3659,103 +3604,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     clipboardOwned = false;
     menuEditPaste.setEnabled(false);
     GridPilot.getClassMgr().getGlobalFrame().cutting = false;
-  }
-
-  // Returns a 3xn array of URLs, sizes and URL dirs
-  private String [][] getImportFiles() throws Exception{
-    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-    final String finUrl = "";
-    final String finBaseUrl = "";
-    JCheckBox cbRecursive = new JCheckBox();
-    cbRecursive.setSelected(false);
-    JPanel panel = new JPanel();
-    panel.add(new JLabel("Recursively"));
-    panel.setToolTipText("<html>Find files in subdirectories recursively.</html>");
-    panel.add(cbRecursive);
-    BrowserPanel wb = null;
-    try{
-      wb = new BrowserPanel(
-           GridPilot.getClassMgr().getGlobalFrame(),
-           "Choose files",
-           finUrl,
-           finBaseUrl,
-           true,
-           /*filter*/true,
-           /*navigation*/true,
-           panel,
-           null,
-           false,
-           true,
-           false);   
-      Debug.debug("NOT registering", 2);
-    }
-    catch(Exception eee){
-      Debug.debug("Could not open URL "+finUrl+". "+eee.getMessage(), 1);
-      eee.printStackTrace();
-      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
-      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
-      try{
-        confirmBox.getConfirm("URL could not be opened",
-                             "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
-                          new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
-      }
-      catch(Exception eeee){
-        Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
-      }
-    }
-    if(wb!=null && wb.getLastURL()!=null &&
-        wb.getLastURL().startsWith(finBaseUrl)){
-        //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    }
-    else{
-      // Don't do anything if we cannot get a URL
-      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
-      return null;
-    }
-    Debug.debug("Checking files/dirs "+MyUtil.arrayToString(wb.getLastURLs())+
-        ":"+MyUtil.arrayToString(wb.getLastSizes()), 2);
-    String [][] ret0 = new String [2][];
-    String [][] ret = new String [3][];
-    if(cbRecursive.isSelected() /*&& MyUtil.isLocalFileName(wb.getLastURLs()[0])*/){
-      ret0 = MyTransferControl.findAllFiles(wb.getLastURLs(), wb.getLastSizes(), wb.getFilter());
-    }
-    else{
-      ret0 = findFiles(wb.getLastURLs(), wb.getLastSizes());
-    }
-    ret[0] = new String[ret0[0].length];
-    ret[1] = ret0[1];
-    ret[2] = new String[ret0[0].length];
-    for(int i=0; i<ret0[0].length; ++i){
-      ret[0][i] = fixLocalFile(ret0[0][i]);
-      ret[2][i] = wb.getLastURL();
-    }
-    setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-    //GridPilot.getClassMgr().getStatusBar().setLabel("");
-    Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+" --> "+
-        MyUtil.arrayToString(ret[1]), 2);
-    return ret;
-  }
-  
-  private String fixLocalFile(String fil) {
-    if(MyUtil.isLocalFileName(fil) && !fil.startsWith("file:")){
-      return "file://"+fil;
-    }
-    return fil;
-  }
-
-  private String[][] findFiles(String[] lastUrlsList, String[] lastSizesList) {
-    Vector<String> files = new Vector<String>();
-    Vector<String> sizes = new Vector<String>();
-    for(int i=0; i<lastUrlsList.length; ++i){
-      if(!lastUrlsList[i].endsWith("/")){
-        files.add(lastUrlsList[i]);
-        sizes.add(lastSizesList[i]);
-      }
-    };
-    String[][] ret = new String[2][];
-    ret[0] = files.toArray(new String[files.size()]);
-    ret[1] = sizes.toArray(new String[sizes.size()]);
-    return ret;
   }
 
   /**
@@ -3989,7 +3837,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String csName = ((JMenuItem)e.getSource()).getText();
         String [] jobDefIds = getSelectedIdentifiers();
         if(!areSubmitable(jobDefIds)){
-          MyUtil.showMessage("Job(s) not submitable", "Not all job(s) in selection are submitable.");
+          MyUtil.showMessage(window,
+             "Job(s) not submitable", "Not all job(s) in selection are submitable.");
           return;
         }
         doSubmit(csName, jobDefIds);
@@ -4040,7 +3889,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     statusBar.setLabel("Submitting first job. Please wait...");
     try{
       if(!GridPilot.ADVANCED_MODE){
-        MyUtil.showMessage("Submitting job(s)",
+        MyUtil.showMessage(window, "Submitting job(s)",
             "Your job(s) will be prepared and submitted.  This may involve downloading\n" +
             "and booting a virtual machine and downloading input file(s), so please\n" +
             "have patience. You can follow the progress on the various monitor tabs.");
@@ -4064,7 +3913,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private void showSubmissionError(Exception e, Vector<?> selectedJobDefinitions, String csName) {
     String error = e.getMessage();
-    MyUtil.showMessage("Submission failed", "Submission of the "+
+    MyUtil.showMessage(window,
+        "Submission failed", "Submission of the "+
         (selectedJobDefinitions.isEmpty()?"":"first ")+"job failed." +
             "\nPlease check that you're allowed to run jobs on "+csName+
             "\nand that any runtime environments your job's executable is requiring" +
@@ -4106,11 +3956,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
       }
       if(datasetNameIndex==-1){
-        MyUtil.showError("To copy from this table, "+datasetNameField+" must be displayed.");
+        MyUtil.showError(window, "To copy from this table, "+datasetNameField+" must be displayed.");
         return;
       }
       if(nameIndex==-1){
-        MyUtil.showError("To copy from this table, "+nameField+" must be displayed.");
+        MyUtil.showError(window, "To copy from this table, "+nameField+" must be displayed.");
         return;
       }
       Debug.debug("Indices: "+datasetNameIndex+":"+nameIndex, 2);
@@ -4562,7 +4412,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(runtimeEnvironment==null || runtimeNames==null || !runtimeNames.contains(runtimeEnvironment)){
         String msg = "WARNING: runtime environment "+runtimeEnvironment+", of executable "+
            executable.getValue(sourceExecutableName)+" does not exist.";
-        MyUtil.showError(msg+" You will not be able to use this executable until you've loaded\n" +
+        MyUtil.showError(window,
+            msg+" You will not be able to use this executable until you've loaded\n" +
         		"a computing system that provides the needed runtime environment.");
         GridPilot.getClassMgr().getLogFile().addInfo(msg);
       }

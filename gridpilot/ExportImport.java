@@ -1,6 +1,7 @@
 package gridpilot;
 
 import gridfactory.common.ConfirmBox;
+import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
@@ -9,6 +10,11 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Vector;
+
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 public class ExportImport {
   
@@ -28,57 +34,64 @@ public class ExportImport {
    * If 'datasetId' is null, the whole "dataset" and "executable" tables are exported.
    * Input files for the tranformation(s) are bundled in the exported tarball.
    * @param exportDir
-   * @param datasetId
+   * @param datasetIds
    * @param _dbName
    * @throws Exception
    */
-  public static void exportDB(String exportDir, String _dbName, String datasetId) throws Exception{
+  public static void exportDB(String exportDir, String _dbName, String[] datasetIds) throws Exception{
     String dbName = _dbName;
-    String executableId = null;
-    String datasetName = null;
-    if(datasetId!=null){
+    String[] executableIds = null;
+    String[] datasetNames = null;
+    String exeName;
+    String exeVersion;
+    if(datasetIds!=null && datasetIds.length>0){
+      executableIds = new String [datasetIds.length];
+      datasetNames = new String [datasetIds.length];
       DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
-      String exeName = mgr.getDatasetExecutableName(datasetId);
-      String exeVersion = mgr.getDatasetExecutableVersion(datasetId);
-      executableId = mgr.getExecutableID(exeName, exeVersion);
-      datasetName = mgr.getDatasetName(datasetId);
+      for(int i=0; i<datasetIds.length; ++i){
+        datasetNames[i] = mgr.getDatasetName(datasetIds[i]);
+        exeName = mgr.getDatasetExecutableName(datasetIds[i]);
+        exeVersion = mgr.getDatasetExecutableVersion(datasetIds[i]);
+        executableIds[i] = mgr.getExecutableID(exeName, exeVersion);
+      }
     }
-    String exportFileName;
-    String [] choices;
-    if(dbName==null){
-      choices = new String[GridPilot.DB_NAMES.length+1];
-      System.arraycopy(GridPilot.DB_NAMES, 0, choices, 0, GridPilot.DB_NAMES.length);
-    }
-    else{
-      choices = new String[] {"Continue", "Cancel"};
-    }
-    choices[choices.length-1] = datasetId==null?"none (cancel)":"cancel";
-    if(datasetName!=null){
-      exportFileName = datasetName+".gpa";
+    String exportFileName = null;;
+    Object [] choices;
+    String proposedName;
+    if(datasetNames!=null && datasetNames.length>0){
+      proposedName = datasetNames[0]+GridPilot.APP_EXTENSION;
     }
     else{
-      exportFileName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+".gpa";
+      proposedName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+GridPilot.APP_EXTENSION;
     }
+    JTextField tf = new JTextField(proposedName, 32);
+    choices = new Object[] {"Cancel", "Export to this file:", tf};
     ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
-    String message = datasetId==null?
+    String message = (datasetIds==null?
          "This will export all dataset(s) and executable(s) of the chosen database\n" +
               "plus any file(s) associated with the executable(s). Non-local file(s) will\n" +
-              "be downloded first.\n\n" +
-              "Choose database to export from or choose none to cancel.\n" :
-         "This will export the dataset \n\n" +
-               "\"" + datasetName + "\"\n\n" +
-               "and its associated executable plus any file(s) associated\n" +
-               "with this executable. Non-local file(s) will be downloaded\n" +
-               "first.\n\n" +
-               "Notice: if the file \n\n" +exportFileName + "\n\n" +
-               "already exists in the chosen directory, it will be overwritten.\n";
-    int choice = confirmBox.getConfirm("Export from database", message, choices);
-    if(choice<0 || choice>=choices.length-1){
-      return;
+              "be downloded first.\n\n" :
+         "This will export the dataset(s) \n\n" +
+               "\"" + MyUtil.arrayToString(datasetNames) + "\"\n\n" +
+               "and associated executable(s) plus any file(s) associated\n" +
+               "with the executable(s). Non-local file(s) will be downloaded\n" +
+               "first.\n\n") +
+               "Choose a  name for the exported file. Notice that if a file with this name\n" +
+               "already exists in "+exportDir+", it will be overwritten.\n\n";
+    for(int j=0; j<3; ++j){
+      int choice = confirmBox.getConfirm("Export from database", message, choices, 1);
+      if(choice<0 || choice>=choices.length-2){
+        return;
+      }
+      exportFileName = tf.getText().trim();
+      if(exportFileName==null || exportFileName.trim().length()==0){
+        MyUtil.showError("You must choose a name for the export file.");
+      }
+      else{
+        break;
+      }
     }
-    if(dbName==null){
-      dbName = GridPilot.DB_NAMES[choice];
-    }
+    exportFileName = exportFileName.trim();
     // Work in a tmp dir
     File tmpDir = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
     tmpDir.delete();
@@ -91,9 +104,9 @@ public class ExportImport {
     GridPilot.addTmpFile(tarFile.getAbsolutePath(), tarFile);
     // Save everything to the tmp dir
     saveTableAndFiles(tmpDir, DEFAULT_DATA_DIR, dbName, "dataset", new String [] {OUTPUT_LOCATION_FIELD},
-        datasetId);
+        datasetIds);
     saveTableAndFiles(tmpDir, EXE_FILES_DIR, dbName, "executable", EXE_FILE_FIELDS,
-        executableId);
+        executableIds);
     // Tar up the tmp dir
     MyUtil.tar(tarFile, tmpDir);
     String gzipFile = tarFile.getAbsolutePath()+".gz";
@@ -138,12 +151,15 @@ public class ExportImport {
    * @throws Exception
    */
   private static void saveTableAndFiles(File dbDir, String filesDirName, String dbName, String table,
-      String [] fileFields, String id) throws Exception{
+      String [] fileFields, String [] ids) throws Exception{
     String idField = MyUtil.getIdentifierField(dbName, table);
     String query = "SELECT * FROM "+table;
-    if(id!=null){
-      Debug.debug("Exporting row "+id, 2);
-      query += " WHERE "+idField+" = "+id;
+    if(ids!=null && ids.length>0){
+      Debug.debug("Exporting rows "+MyUtil.arrayToString(ids), 2);
+      query += " WHERE";
+      for(int i=0; i<ids.length; ++i){
+        query += (i>0?" AND ":" ")+idField+" = "+ids[i];
+      }
     }
     DBResult dbResult =
       GridPilot.getClassMgr().getDBPluginMgr(dbName).select(query, idField, true);
@@ -314,8 +330,9 @@ public class ExportImport {
     String [] choices = choicesVec.toArray(new String[choicesVec.size()]);
     ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     int choice = confirmBox.getConfirm("Import in database",
-        "<html>This will import dataset(s) and executable(s) in the chosen database.<br>" +
-        "Any file(s) associated with the executables will be copied to<br>" +
+        "<html>This will import the dataset(s) and executable(s) contained in<br>"+
+        importFile+"<br>in the chosen database.<br>" +
+        "Any file(s) associated with the executable(s) will be copied to<br>" +
         executableDirectory + "/.<br><br>" +
         "Non-existing local output location(s) will be set to<br>" +
         dataDirectory + "/.<br><br>" +
@@ -479,4 +496,121 @@ public class ExportImport {
     return ret;
   }
 
+/////////////// FUNCTIONS FOR IMPORTNG FILES INTO DATASETS ////////////////
+  
+  /**
+   * Ask for directory and import all files in it.
+   * @throws Exception 
+   */
+  public static void importFiles(final String datasetID, final String datasetName,
+     final DBPluginMgr dbPluginMgr) throws Exception{
+    // Find the list of files
+    String [] regUrls = null;
+    String [] regSizes = null;
+    String regBaseURL = null;
+    DBRecord dataset = dbPluginMgr.getDataset(datasetID);
+    String outputLocation = (String) dataset.getValue("outputLocation");
+    String [][] importFiles = getImportFiles(outputLocation);
+    regUrls = importFiles[0];
+    regSizes = importFiles[1];
+    regBaseURL = importFiles[2][0];
+    dbPluginMgr.importFiles(datasetID, datasetName, regUrls, regSizes, regBaseURL);
+    dbPluginMgr.updateDataset(datasetID, datasetName, new String[]{"outputLocation"}, new String[]{regBaseURL});
+  }
+
+  // Returns a 3xn array of URLs, sizes and URL dirs
+  private static String [][] getImportFiles(String startURL) throws Exception{
+    final String finUrl = startURL;
+    final String finBaseUrl = "";
+    JCheckBox cbRecursive = new JCheckBox();
+    cbRecursive.setSelected(false);
+    JPanel panel = new JPanel();
+    panel.add(new JLabel("Recursive"));
+    panel.setToolTipText("<html>Find files in subdirectories recursively.</html>");
+    panel.add(cbRecursive);
+    BrowserPanel wb = null;
+    try{
+      wb = new BrowserPanel(
+           GridPilot.getClassMgr().getGlobalFrame(),
+           "Choose files",
+           finUrl,
+           finBaseUrl,
+           true,
+           /*filter*/true,
+           /*navigation*/true,
+           panel,
+           null,
+           false,
+           true,
+           false);   
+      Debug.debug("NOT registering", 2);
+    }
+    catch(Exception eee){
+      Debug.debug("Could not open URL "+finUrl+". "+eee.getMessage(), 1);
+      eee.printStackTrace();
+      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
+      try{
+        confirmBox.getConfirm("URL could not be opened",
+                             "The URL "+finBaseUrl+" could not be opened. \n"+eee.getMessage(),
+                          new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
+      }
+      catch(Exception eeee){
+        Debug.debug("Could not get confirmation, "+eeee.getMessage(), 1);
+      }
+    }
+    if(wb!=null && wb.getLastURL()!=null &&
+        wb.getLastURL().startsWith(finBaseUrl)){
+        //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    }
+    else{
+      // Don't do anything if we cannot get a URL
+      Debug.debug("ERROR: Could not open URL "+finBaseUrl, 1);
+      return null;
+    }
+    Debug.debug("Checking files/dirs "+MyUtil.arrayToString(wb.getLastURLs())+
+        ":"+MyUtil.arrayToString(wb.getLastSizes()), 2);
+    String [][] ret0 = new String [2][];
+    String [][] ret = new String [3][];
+    if(cbRecursive.isSelected() /*&& MyUtil.isLocalFileName(wb.getLastURLs()[0])*/){
+      ret0 = MyTransferControl.findAllFiles(wb.getLastURLs(), wb.getLastSizes(), wb.getFilter());
+    }
+    else{
+      ret0 = findFiles(wb.getLastURLs(), wb.getLastSizes());
+    }
+    ret[0] = new String[ret0[0].length];
+    ret[1] = ret0[1];
+    ret[2] = new String[ret0[0].length];
+    for(int i=0; i<ret0[0].length; ++i){
+      ret[0][i] = fixLocalFile(ret0[0][i]);
+      ret[2][i] = wb.getLastURL();
+    }
+    //GridPilot.getClassMgr().getStatusBar().setLabel("");
+    Debug.debug("Returning last URL list "+MyUtil.arrayToString(ret[0])+" --> "+
+        MyUtil.arrayToString(ret[1]), 2);
+    return ret;
+  }
+  
+  private static String fixLocalFile(String fil) {
+    if(MyUtil.isLocalFileName(fil) && !fil.startsWith("file:")){
+      return "file://"+fil;
+    }
+    return fil;
+  }
+
+  private static String[][] findFiles(String[] lastUrlsList, String[] lastSizesList) {
+    Vector<String> files = new Vector<String>();
+    Vector<String> sizes = new Vector<String>();
+    for(int i=0; i<lastUrlsList.length; ++i){
+      if(!lastUrlsList[i].endsWith("/")){
+        files.add(lastUrlsList[i]);
+        sizes.add(lastSizesList[i]);
+      }
+    };
+    String[][] ret = new String[2][];
+    ret[0] = files.toArray(new String[files.size()]);
+    ret[1] = sizes.toArray(new String[sizes.size()]);
+    return ret;
+  }
+  
 }

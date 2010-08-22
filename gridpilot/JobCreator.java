@@ -49,7 +49,7 @@ public class JobCreator{
   private StatusBar statusBar;
   // Caches
   private HashMap<String, String> datasetNameIds = new HashMap<String, String>();
-  private HashMap<String, DBResult> datasetIdFiles = new HashMap<String, DBResult>();
+  private HashMap<String, DBResult> datasetIdFiles;
   
   private DBResult inputFileRecords = null;
   private String [] inputFileIds = null;
@@ -111,6 +111,8 @@ public class JobCreator{
     resOutMap = new String [outMap.length][2];
     resStdOut  = new String[stdOut.length];
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
+    
+    datasetIdFiles = new HashMap<String, DBResult>();
 
     createAllJobDefs();
     
@@ -345,6 +347,7 @@ public class JobCreator{
       ++partitionCount;
     }
     if(skipAll){
+      statusBar.setLabel("");
       return -1;
     }
     else{
@@ -556,8 +559,13 @@ public class JobCreator{
           sss.replace(pos6, pos6+2, "");
         }
         else{
-          path = path.replaceFirst(escapeRegChars(inputFileNames[0]), "");
-          Debug.debug("Path: "+path, 2);
+          path = path.replaceFirst(escapeRegChars(inputFileNames[0])+"$", "");
+          // If the input file is on a web server and has spaces in its name,
+          // the inputFileNames[0] will have to be URL encoded to match
+          Debug.debug("Path: "+path, 3);
+          Debug.debug("Replacing in path: "+MyUtil.urlEncode(escapeRegChars(inputFileNames[0]))+"$", 3);
+          path = path.replaceFirst(MyUtil.urlEncode(escapeRegChars(inputFileNames[0]))+"$", "");
+          Debug.debug("Path now: "+path, 2);
           sss.replace(pos6, pos6+2, path);
         }
       }

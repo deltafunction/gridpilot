@@ -1280,7 +1280,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       else if(url.startsWith("https://") &&
           !url.endsWith("/") && !url.endsWith("htm") &&
           !url.endsWith("html") && !url.endsWith(".gz") &&
-          !url.endsWith(".tgz") && !url.endsWith(".gpa") &&
+          !url.endsWith(".tgz") && !url.endsWith(GridPilot.APP_EXTENSION) &&
           url.indexOf(".root")<0){
         if(!setRemoteTextEdit(url, httpsFileTransfer)){
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
@@ -1303,7 +1303,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         setHtmlDisplay(url);
       }
       // tarball on disk or web server
-      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(GridPilot.APP_EXTENSION)) &&
           (url.startsWith("http://") || url.startsWith("file:"))){
         setFileConfirmDisplay(url);
       }
@@ -1313,12 +1313,12 @@ public class BrowserPanel extends JDialog implements ActionListener{
         setRemoteFileConfirmDisplay(url, gsiftpFileTransfer);
       }
       // tarball on https server
-      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(GridPilot.APP_EXTENSION)) &&
           (url.startsWith("https:/"))){
         setRemoteFileConfirmDisplay(url, httpsFileTransfer);
       }
       // tarball on s3 server
-      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(".gpa")) &&
+      else if((url.endsWith(".gz") || url.endsWith(".tgz") || url.endsWith(GridPilot.APP_EXTENSION)) &&
           (url.startsWith("sss:/"))){
         setRemoteFileConfirmDisplay(url, sssFileTransfer);
       }
@@ -1330,10 +1330,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
         try{
           setHttpTextDisplay(url);
         }
-        catch(Exception e){
-          //setHttpDirDisplay(url);
-          //setHtmlDisplay(url);
+        catch(FileTooBigException e){
           setRemoteFileConfirmDisplay(url, httpsFileTransfer);
+        }
+        catch(Exception e){
+          setHtmlDisplay(url);
         }
       }
       // text document on disk
@@ -1399,11 +1400,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
     try{
       String filter = jtFilter.getText();
       if(url.replaceFirst(":443/", "/").startsWith(GridPilot.APP_STORE_URL.replaceFirst(":443/", "/")) &&
-          filter.equals(GlobalFrame.GPA_FILTER)
+          filter.equals(GlobalFrame.GPA_FILTER) && (thisUrl==null || !thisUrl.endsWith(GridPilot.APP_INDEX_FILE))
           ){
         try{
-          setRemoteTextEdit(url+"readme.html", httpsFileTransfer);
-          return;
+          long bytes = httpsFileTransfer.getFileBytes(new GlobusURL(url+GridPilot.APP_INDEX_FILE));
+          if(bytes>0){
+            setHtmlDisplay(url+GridPilot.APP_INDEX_FILE);
+            return;
+          }
         }
         catch(Exception ee){
         }
@@ -1581,45 +1585,50 @@ public class BrowserPanel extends JDialog implements ActionListener{
    * Set the EditorPane to display the text page web url.
    * The page cannot be edited.
    */
-  private void setHttpTextDisplay(String url) throws IOException{
+  private void setHttpTextDisplay(String url) throws Exception{
     Debug.debug("setHttpTextDisplay "+url, 3);
     jtFilter.setEnabled(false);
+    bSave.setEnabled(false);
+    bNew.setEnabled(false);
+    bUpload.setEnabled(false);
+    bDownload.setEnabled(false);
+    bRegister.setEnabled(false);
+    URL readURL = new URL(url);
+    String contentType = "";
     try{
-      bSave.setEnabled(false);
-      bNew.setEnabled(false);
-      bUpload.setEnabled(false);
-      bDownload.setEnabled(false);
-      bRegister.setEnabled(false);
-      BufferedReader in = new BufferedReader(
-          new InputStreamReader((new URL(url)).openStream()));
-      String text = "";
-      String line;
-      int lineNumber = 0;
-      while((line=in.readLine())!=null){
-        ++lineNumber;
-        if(lineNumber>MAX_TEXT_EDIT_LINES){
-          throw new IOException("File too big");
-        }
-        Debug.debug("-->"+line, 3);
-        text += line+"\n";
+      URLConnection conn = readURL.openConnection();
+      contentType = conn.getContentType();
+      Debug.debug("getContentType: "+conn.getContentType(), 2);
+    }
+    catch(Exception ee){
+      ee.printStackTrace();
+    }
+    if(contentType.toLowerCase().startsWith("text/html")){
+      throw new IOException("Content-type text/html will not be displayed as text.");
+    }
+    BufferedReader in = new BufferedReader(new InputStreamReader(readURL.openStream()));
+    String text = "";
+    String line;
+    int lineNumber = 0;
+    while((line=in.readLine())!=null){
+      ++lineNumber;
+      if(lineNumber>MAX_TEXT_EDIT_LINES){
+        throw new FileTooBigException("File too big");
       }
-      in.close();
-      ep.setPage(url);
-      ep.setText(text);
-      ep.setEditable(false);
-      pButton.updateUI();
-      Debug.debug("Setting thisUrl, "+url, 3);
-      thisUrl = url;
-      setUrl(thisUrl);
-      lastUrlsList = new String [] {thisUrl};
-      lastSizesList = new String [] {Integer.toString(text.getBytes().length)};
-      ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      Debug.debug("-->"+line, 3);
+      text += line+"\n";
     }
-    catch(IOException e){
-      Debug.debug("Could not set text editor for url "+url+". "+
-         e.getMessage(), 1);
-      throw e;
-    }
+    in.close();
+    ep.setPage(url);
+    ep.setText(text);
+    ep.setEditable(false);
+    pButton.updateUI();
+    Debug.debug("Setting thisUrl, "+url, 3);
+    thisUrl = url;
+    setUrl(thisUrl);
+    lastUrlsList = new String [] {thisUrl};
+    lastSizesList = new String [] {Integer.toString(text.getBytes().length)};
+    ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
   }
 
   /**
@@ -1639,10 +1648,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       // this is a reload and does nothing...
       //ep.setPage("file:///");
       // Update: see http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4412125
-      //ep.getEditorKit().createDefaultDocument();
-      //ep.getDocument().putProperty(Document.StreamDescriptionProperty, null)
+      ep.getEditorKit().createDefaultDocument();
+      ep.getDocument().putProperty(Document.StreamDescriptionProperty, null);
       //
       ep.setPage(url);
+      
+      if(thisUrl!=null && thisUrl.endsWith(GridPilot.APP_INDEX_FILE) &&
+          GlobalFrame.GPA_FILTER.equals(jtFilter.getText())){
+      }
       
       ep.setEditable(false);
       pButton.updateUI();
@@ -1747,10 +1760,10 @@ public class BrowserPanel extends JDialog implements ActionListener{
         ep.setContentType("text/html");
         String filter = jtFilter.getText();
         Debug.debug("Remote file: "+url+" > "+withFilter+" > "+filter+" > "+GlobalFrame.GPA_FILTER, 2);
-        if(url.endsWith(".gpa") && !withFilter && filter!=null && filter.equals(GlobalFrame.GPA_FILTER)){
+        if(url.endsWith(GridPilot.APP_EXTENSION) && !withFilter && filter!=null && filter.equals(GlobalFrame.GPA_FILTER)){
           String fileName = url.replaceFirst("^.*/([^/]+)$", "$1");
           ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br><br>" +
-              "<i>Click on the \"OK\" button to import the application/dataset</i> <b>"+fileName+".</b></html>");
+              "<i>Click \"OK\" to import the application/dataset</i> <b>"+fileName+".</b></html>");
         }
         else{
           ep.setText(FILE_FOUND_TEXT+bytes+" bytes.<br>" +

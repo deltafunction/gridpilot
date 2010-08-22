@@ -4,6 +4,7 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
+import gridfactory.common.ResThread;
 
 import javax.swing.*;
 import javax.swing.border.*;
@@ -47,6 +48,7 @@ public class JobCreationPanel extends CreateEditPanel{
   private static String REMOTE_NAME_LABEL = " -> Destination : ";
   private static String LABEL_END = " : ";
   private boolean closeWhenDone;
+  private int fileCatalogTimeout;
 
   // TODO: use JobMgr, move some functionality from here to there.
   
@@ -85,6 +87,16 @@ public class JobCreationPanel extends CreateEditPanel{
     if(_datasetIDs.length>0){
       Debug.debug("Creating job(s) for datasets "+MyUtil.arrayToString(_datasetIDs), 3);
     } 
+    
+    String timeout = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "File catalog timeout");
+    if(timeout!=null){
+      try{
+        fileCatalogTimeout = Integer.parseInt(timeout);
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not parse file catalog timeout", e);
+      }
+    }
 
     initGUI(_datasetIDs);
   }
@@ -531,6 +543,9 @@ public class JobCreationPanel extends CreateEditPanel{
     if(!checkInputDatasetsForFiles()){
       return;
     }
+    else{
+      Debug.debug("Will now create job definitions...", 2);
+    }
 
     final String [] cstAttr = new String[tcCstAttributes.length];
     final String [] jobParam = new String[tcJobParam.length];
@@ -583,29 +598,47 @@ public class JobCreationPanel extends CreateEditPanel{
   }
 
   private void fixEmptyInputDataset(String id) throws Exception {
-    try{
-      DBRecord dataset = dbPluginMgr.getDataset(id);
-      String inputName = (String) dataset.getValue("inputDataset");
-      String inputDB = (String) dataset.getValue("inputDB");
-      DBResult inputFiles = null;
-      if(inputName!=null && inputDB!=null){
-        DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
-        String inputID = sourceMgr.getDatasetID(inputName);
-        if(inputID!=null){
-          inputFiles = sourceMgr.getFiles(inputID);
-          if(inputFiles==null || inputFiles.size()==0){
-            if(askImportFiles(inputDB, inputID, inputName)){
-              importFiles(sourceMgr, inputID);
+    DBRecord dataset = dbPluginMgr.getDataset(id);
+    String inputName = (String) dataset.getValue("inputDataset");
+    String inputDB = (String) dataset.getValue("inputDB");
+    DBResult inputFiles = null;
+    if(inputName!=null && inputDB!=null){
+      DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
+      String inputID = sourceMgr.getDatasetID(inputName);
+      if(inputID!=null){
+        inputFiles = sourceMgr.getFiles(inputID);
+        if(inputFiles==null || inputFiles.size()==0){
+          if(askImportFiles(inputDB, inputID, inputName)){
+            try{
+              importFiles(sourceMgr, inputID, inputName);
+            }
+            catch(Exception e){
+              MyUtil.showError(SwingUtilities.getWindowAncestor(this),
+                  "ERROR: could not import files into dataset "+inputName);
+              throw e;
             }
           }
         }
       }
     }
-    catch(Exception e){
-      MyUtil.showError(SwingUtilities.getWindowAncestor(this),
-          "ERROR: could not get input dataset for dataset "+id);
-      throw e;
-    }
+  }
+
+  private void importFiles(final DBPluginMgr sourceMgr, final String inputID, final String inputName) {
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    ResThread rt = new ResThread(){
+      public void run(){
+        try{
+          ExportImport.importFiles(inputID, inputName, sourceMgr);
+        }
+        catch(Exception e){
+          setException(e);
+          e.printStackTrace();
+        }
+        setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      }
+    };
+    rt.start();
+    MyUtil.waitForThread(rt, "import", fileCatalogTimeout, "importFiles", GridPilot.getClassMgr().getLogFile());
   }
 
   private boolean askImportFiles(String inputDB, String inputID, String inputName) throws IOException {
@@ -615,7 +648,7 @@ public class JobCreationPanel extends CreateEditPanel{
     		"Would you like to add some files to this dataset?\n";
     int choice = -1;
     try{
-      choice = confirmBox.getConfirm("Import files?", message, choices, 1);
+      choice = confirmBox.getConfirm("Import files?", message, choices, 0);
     }
     catch(Exception e){
       e.printStackTrace();

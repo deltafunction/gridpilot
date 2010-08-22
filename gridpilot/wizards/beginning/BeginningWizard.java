@@ -2,9 +2,7 @@ package gridpilot.wizards.beginning;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -24,9 +22,7 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.ResThread;
 
-import gridpilot.BrowserPanel;
 import gridpilot.GridPilot;
 import gridpilot.MySSL;
 import gridpilot.MyUtil;
@@ -39,9 +35,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
 
 import org.globus.util.GlobusURL;
 
@@ -740,7 +733,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     String remoteDB = configFile.getValue("Regional_DB", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
@@ -953,7 +946,7 @@ public class BeginningWizard{
     JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
     atlasLabel.setEditable(false);
     atlasLabel.setOpaque(false);
-    addHyperLinkListener(atlasLabel, jPanel);
+    MyUtil.addHyperLinkListener(atlasLabel, jPanel);
     atlasDetails.add(atlasLabel,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1022,68 +1015,6 @@ public class BeginningWizard{
       }
     });
     return atlasDetails;
-  }
-
-  private void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
-    pane.addHyperlinkListener(
-        new HyperlinkListener(){
-        public void hyperlinkUpdate(final HyperlinkEvent e){
-          if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-            System.out.println("Launching browser...");
-            final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
-            window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-            ResThread t = new ResThread(){
-              public void run(){
-                try{
-                  new BrowserPanel(
-                        window,
-                        "Browser",
-                        e.getURL().toString(),
-                        null,
-                        true,// modal
-                         false,// with filter
-                        true,// with navigation
-                        null,// filter
-                        null,// JBox
-                        false,// only local
-                        true,// cancel enabled
-                        false);// registration enabled
-                  return;
-                }
-                catch(Exception e){
-                }
-                try{
-                  new BrowserPanel(
-                      window,
-                      "Browser",
-                      "file:~/",
-                      null,
-                      true,
-                      false,
-                      true,
-                      null,
-                      null,
-                      false,
-                      true,
-                      false);
-                }
-                catch(Exception e){
-                  e.printStackTrace();
-                  try{
-                    window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                    MyUtil.showError("WARNING: could not open URL. "+e.getMessage());
-                  }
-                  catch(Exception e2){
-                    e2.printStackTrace();
-                  }
-                }
-              }
-            };
-            //SwingUtilities.invokeLater(t);
-            t.start();
-          }
-        }
-      });
   }
 
   /* Configure computing systems
@@ -1161,7 +1092,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+ngString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     csPanels[0].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1189,7 +1120,7 @@ public class BeginningWizard{
     pane = new JEditorPane("text/html", "<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     csPanels[1].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1258,7 +1189,7 @@ public class BeginningWizard{
     pane = new JEditorPane("text/html", "<html>"+ec2String.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     csPanels[3].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1513,7 +1444,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     String remoteDB = configFile.getValue("My_DB_Remote", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
@@ -1700,7 +1631,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel);
     String homeUrl = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Grid home url");
     String [] defDirs;
     String [] names;

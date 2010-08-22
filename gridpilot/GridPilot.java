@@ -56,6 +56,9 @@ public class GridPilot extends JApplet{
    * computing systems). */
   public static final boolean CLEAN_ALL_RTES_ON_START = true;
   public static String APP_STORE_URL;
+  public static final String APP_INDEX_FILE = "readme.html";
+  public static final String APP_EXTENSION = ".gpa";
+
   protected static String userConfFileName;
   /**
    * List of main section headers in config file

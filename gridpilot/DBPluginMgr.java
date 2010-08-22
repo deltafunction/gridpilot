@@ -36,6 +36,9 @@ public class DBPluginMgr extends DBCache implements Database{
   // Time out in ms used if neither the specific time out nor "default timeout" is
   // defined in configFile
   private int dbTimeOut = 60*1000;
+  
+  // Import thread semaphore
+  private boolean importingFiles = false;
 
   public DBPluginMgr(String _dbName){
     dbName = _dbName;
@@ -2226,7 +2229,7 @@ public class DBPluginMgr extends DBCache implements Database{
     boolean ret = true;
     DBRecord jobDef = getJobDefinition(jobDefId);
     String [] toDeleteFiles = null;
-    if(((String) jobDef.getValue("status")).equalsIgnoreCase(DBPluginMgr.getStatusName(DBPluginMgr.DEFINED))){
+    if(((String) jobDef.getValue("status")).equalsIgnoreCase(getStatusName(DEFINED))){
       return ret;
     }
     try{
@@ -3442,4 +3445,65 @@ public class DBPluginMgr extends DBCache implements Database{
     db.clearRequestStop();
   }
   
+  public void importFiles(String datasetID, String datasetName, String [] regUrls,
+      String [] regSizes, String regBaseURL) {
+    if(importingFiles){
+      return;
+    }
+    importingFiles = true;
+    try{
+      if(regUrls!=null){
+        // Register the files
+        boolean ok = true;
+        for(int i=0; i<regUrls.length; ++i){
+          try{
+            importFile(regUrls[i], regSizes[i], datasetName, datasetID, regBaseURL);
+          }
+          catch(Exception e){
+            ok = false;
+            String msg = "ERROR: could not register "+regUrls[i]+" in dataset "+datasetName;
+            GridPilot.getClassMgr().getLogFile().addMessage(msg, e);
+            //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("ERROR: could not register "+pfn);
+            MyUtil.showError(msg);
+          }
+        }
+        if(ok){
+          //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
+          MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset <b>"+
+              datasetName+"</b>.\n\n" /*+
+              "Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s)."*/);
+        }
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    finally{
+      importingFiles = false;
+    }
+  }
+
+  private void importFile(String pfn, String size, String datasetName, String datasetID, String regBaseURL) {
+    int lastSlash = pfn.lastIndexOf("/");
+    String lfn = pfn;
+    if(lastSlash>-1){
+      lfn = pfn.substring(lastSlash + 1);
+    }
+    String uuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+    String message = "Generated new UUID "+uuid.toString()+" for "+lfn;
+    //GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel(message);
+    GridPilot.getClassMgr().getStatusBar().setLabel(message);
+    GridPilot.getClassMgr().getLogFile().addInfo(message);
+    registerFileLocation(
+        datasetID, datasetName, uuid, lfn, pfn, size, null, false);
+    // Set outputLocation of the dataset. When processing this dataset, this will be used by
+    // JobCreator to find the relative path of the input files and thus allow reconstructing
+    // the directory structure for the processed dataset.
+    String outputLocation = (String) getDataset(datasetID).getValue("outputLocation");
+    if(outputLocation==null || outputLocation.trim().equals("")){
+      updateDataset(datasetID, datasetName,
+          new String[] {"outputLocation"}, new String[] {regBaseURL});
+    }
+  }
+
 }
