@@ -1041,18 +1041,22 @@ public class GlobalFrame extends GPFrame{
     try{
       if(url!=null && !url.equals("")){
         Debug.debug("Exporting to "+url, 2);
-        if(activePanel.getSelectedIdentifiers().length>1){
-          ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
-              activePanel.getDBName(), activePanel.getSelectedIdentifiers());
-          MyUtil.showMessage("Export successful",
-              "Thanks and congratulations! You've successfully exported your application/dataset.\n" +
-              "If you haven't already done so, please consider making it available for others to use.");
+        String [] datasetIDs = activePanel.getSelectedIdentifiers();
+        if(datasetIDs.length>1){
+          if(ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
+              activePanel.getDBName(), datasetIDs)){
+            MyUtil.showMessage(this, "Export successful",
+                "Thanks and congratulations! You've successfully exported "+
+                datasetIDs.length+" application"+(datasetIDs.length>1?"s":"")+
+                "/dataset"+(datasetIDs.length>1?"s":"")+".\n");
+          }
         }
         else{
-          ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
-              null, null);
-          MyUtil.showMessage("Export successful",
-              "Thanks and congratulations! You've successfully exported your application(s)/dataset(s).");
+          if(ExportImport.exportDB(MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
+              null, null)){
+            MyUtil.showMessage("Export successful",
+            "Thanks and congratulations! You've successfully exported your application(s)/dataset(s).");
+          }
         }
       }
       else{

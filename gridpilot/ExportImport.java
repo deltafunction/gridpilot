@@ -38,7 +38,7 @@ public class ExportImport {
    * @param _dbName
    * @throws Exception
    */
-  public static void exportDB(String exportDir, String _dbName, String[] datasetIds) throws Exception{
+  public static boolean exportDB(String exportDir, String _dbName, String[] datasetIds) throws Exception{
     String dbName = _dbName;
     String[] executableIds = null;
     String[] datasetNames = null;
@@ -65,31 +65,35 @@ public class ExportImport {
       proposedName = "GridPilot_EXPORT_"+MyUtil.getDateInMilliSeconds()+GridPilot.APP_EXTENSION;
     }
     JTextField tf = new JTextField(proposedName, 32);
-    choices = new Object[] {"Cancel", "Export to this file:", tf};
+    choices = new Object[] {"Cancel", "Export to this file", tf};
     ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
     String message = (datasetIds==null?
-         "This will export all dataset(s) and executable(s) of the chosen database\n" +
-              "plus any file(s) associated with the executable(s). Non-local file(s) will\n" +
+         "This will export all dataset(s) and executable(s) of the chosen database plus\n" +
+              "any physical file(s) associated with the executable(s). Non-local file(s) will\n" +
               "be downloded first.\n\n" :
          "This will export the dataset(s) \n\n" +
                "\"" + MyUtil.arrayToString(datasetNames) + "\"\n\n" +
-               "and associated executable(s) plus any file(s) associated\n" +
-               "with the executable(s). Non-local file(s) will be downloaded\n" +
-               "first.\n\n") +
+               "and associated executable(s) plus any physical file(s) associated\n" +
+               "with the executable(s). Non-local file(s) will be downloaded first.\n\n") +
                "Choose a  name for the exported file. Notice that if a file with this name\n" +
                "already exists in "+exportDir+", it will be overwritten.\n\n";
     for(int j=0; j<3; ++j){
       int choice = confirmBox.getConfirm("Export from database", message, choices, 1);
-      if(choice<0 || choice>=choices.length-2){
-        return;
+      if(choice<0 || choice!=1){
+        Debug.debug("Export cancelled.", 2);
+        return false;
       }
       exportFileName = tf.getText().trim();
       if(exportFileName==null || exportFileName.trim().length()==0){
-        MyUtil.showError("You must choose a name for the export file.");
+        MyUtil.showError("You must give a name for the export file.");
       }
       else{
         break;
       }
+    }
+    if(exportFileName==null || exportFileName.trim().length()==0){
+      Debug.debug("No file name given.", 2);
+      return false;
     }
     exportFileName = exportFileName.trim();
     // Work in a tmp dir
@@ -124,6 +128,7 @@ public class ExportImport {
       LocalStaticShell.moveFile(tarFile.getAbsolutePath()+".gz",
           (new File(exportDir, exportFileName)).getAbsolutePath());
     }
+    return true;
   }
 
   /**

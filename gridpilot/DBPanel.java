@@ -2719,7 +2719,18 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     DBResult jobDefs;
     String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
     // Create jobs if none present
+    String datasetName;
+    Vector<String> datasetNames = new Vector<String>();
+    String exeName;
     for(int i=ids.length-1; i>=0; --i){
+      datasetName = dbPluginMgr.getDatasetName(ids[i]);
+      datasetNames.add(datasetName);
+      exeName = dbPluginMgr.getDatasetExecutableName(ids[i]);
+      // Pop up a warning if this is not an application dataset
+      if(exeName==null || exeName.equals("")){
+        MyUtil.showError(window, "You cannot run the dataset "+datasetName+" - it has no executable defined.");
+        continue;
+      }
       jobDefs = dbPluginMgr.getJobDefinitions(ids[i],
           new String [] {idField}, null, null);
       if(jobDefs.values.length==0){
@@ -2743,7 +2754,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     Debug.debug("Submitting "+jobCount+" job(s)", 3);
     if(jobCount==0){
       MyUtil.showMessage(window,
-          "No submitable jobs", "No submitable jobs in datasets "+MyUtil.arrayToString(ids));
+          "No submitable jobs", "No submitable jobs in dataset(s) "+datasetNames);
       return ok;
     }
     try{
@@ -3373,7 +3384,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             if(exportDataset(datasetIDs)){
               MyUtil.showMessage(window, "Export successful",
                   "Thanks and congratulations! You've successfully exported "+
-                  datasetIDs+" application"+(datasetIDs.length>1?"s":"")+
+                  datasetIDs.length+" application"+(datasetIDs.length>1?"s":"")+
                   "/dataset"+(datasetIDs.length>1?"s":"")+".\n");
             }
           }
@@ -3396,12 +3407,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     String url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, true, "Choose destination directory");
     if(url!=null && !url.equals("")){
       Debug.debug("Exporting to "+url, 2);
-      ExportImport.exportDB(
+      return ExportImport.exportDB(
           MyUtil.urlIsRemote(url)?
           url:
           MyUtil.clearTildeLocally(MyUtil.clearFile(url)),
           dbName, datasetIDs);
-      return true;
     }
     else{
       Debug.debug("Not exporting. "+url, 2);
