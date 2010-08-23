@@ -14,8 +14,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
-import javax.swing.JOptionPane;
-
 import org.globus.gsi.GlobusCredentialException;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSException;

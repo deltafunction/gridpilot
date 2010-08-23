@@ -547,7 +547,7 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   private boolean deleteFile(String url, JobInfo job){
     boolean ret = true;
-    if(url!=null || url.trim().equals("")){
+    if(url==null || url.trim().equals("")){
       return ret;
     }
     try{
