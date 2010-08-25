@@ -602,7 +602,7 @@ public class JobCreationPanel extends CreateEditPanel{
     String inputName = (String) dataset.getValue("inputDataset");
     String inputDB = (String) dataset.getValue("inputDB");
     DBResult inputFiles = null;
-    if(inputName!=null && inputDB!=null){
+    if(inputName!=null && !inputName.trim().equals("") && inputDB!=null && !inputDB.trim().equals("")){
       DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
       String inputID = sourceMgr.getDatasetID(inputName);
       if(inputID!=null){

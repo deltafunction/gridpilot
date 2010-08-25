@@ -843,7 +843,6 @@ public class ForkComputingSystem implements MyComputingSystem{
    *
    */
   protected boolean getInputFiles(MyJobInfo job, Shell thisShellMgr){
-    boolean ok = true;
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     String transID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
     Debug.debug("Getting input files for executable " + transID, 2);
@@ -880,6 +879,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     }
     Vector<String> downloadVector = new Vector<String>();
     String [] downloadFiles = null;
+    boolean ok = true;
     for(int i=0; i<inputFiles.length; ++i){
       try{
         inputFiles[i] = Util.fixSrmUrl(inputFiles[i]);
@@ -986,7 +986,7 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   private boolean remoteShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
       boolean ignoreRemoteInputs, AbstractList<String> downloadVector) {
-    boolean ok = false;
+    boolean ok = true;
     // If source starts with file:/, scp the file from local disk.
     if(inputFile.matches("^file:/*[^/]+.*")){
       inputFile = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFile));
@@ -1012,14 +1012,14 @@ public class ForkComputingSystem implements MyComputingSystem{
           downloadVector.add(inputFile);
         }
         else{
-          Debug.debug("Getting input file "+inputFile+" --> "+runDir(job), 3);
+          Debug.debug("Getting input file "+inputFile+" --> "+runDir(job), 2);
           GridPilot.getClassMgr().getTransferStatusUpdateControl().copyInputFile(
               MyUtil.clearFile(inputFile), runDir(job)+"/"+fileName, thisShellMgr, true, submitTimeout, error);
         }
       }
-      catch(Exception ioe){ 
-        logFile.addMessage("WARNING: could not get input file "+inputFile+
-            ".", ioe);
+      catch(Exception ioe){
+        ok = false;
+        logFile.addMessage("WARNING: could not get input file "+inputFile+".", ioe);
         ioe.printStackTrace();
       }
     }

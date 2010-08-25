@@ -72,6 +72,10 @@ public class CreateEditDialog extends GPDialog /*implements ComponentListener*/{
     pack();
   }
   
+  public void focusCreateUpdateButton(){
+    bCreateUpdate.requestFocus(true);
+  }
+  
   private void initButtons(){
     bClose = MyUtil.mkButton("cancel.png", "Close", "Close this window");
     bClear = MyUtil.mkButton("clear.png", "Clear", "Clear fields");
@@ -183,6 +187,7 @@ public class CreateEditDialog extends GPDialog /*implements ComponentListener*/{
             setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             createEditPanel.create(cbShowResults.isSelected(), editing);
             setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            bClose.requestFocus(true);
           }
         };
         rt.start();

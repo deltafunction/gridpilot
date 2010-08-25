@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.Vector;
 
 import javax.crypto.NoSuchPaddingException;
-import javax.swing.JOptionPane;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 
@@ -656,13 +655,11 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     S3Object [] objects = s3Service.listObjects(bucket, globusUrl.getPath(), null);
     if(objects==null || objects.length==0){
       String error = "WARNING: object not found: "+globusUrl.getPath()+". Backing out.";
-      Debug.debug(error, 1);
-      return;
+      throw new IOException(error);
     }
     if(objects==null || objects.length>1){
       String error = "WARNING: object ambiguous: "+globusUrl.getPath()+". Backing out.";
-      Debug.debug(error, 1);
-      return;
+      throw new IOException(error);
     }
     final String objectKey = objects[0].getKey();
     final TransferInfo transfer = new TransferInfo(globusUrl,

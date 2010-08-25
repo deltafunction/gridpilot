@@ -403,6 +403,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
         Debug.debug("No free slot on any host.", 2);
         return false;
       }
+      Debug.debug("Preprocessing job "+job.getName(), 2);
       (preprocessingHostJobs.get(host)).add(job);
       Debug.debug("Getting ShellMgr for host "+host, 2);
       Shell mgr = getShell(host);
@@ -412,8 +413,19 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       if(!getShell(job.getHost()).existsFile(runDir(job))){
         getShell(job.getHost()).mkdirs(runDir(job));
       }
-      ret = setupJobRTEs((MyJobInfo) job, getShell(job.getHost())) &&
-         setRemoteOutputFiles((MyJobInfo) job) && getInputFiles((MyJobInfo) job, getShell(job.getHost()));
+      boolean rtesOK = setupJobRTEs((MyJobInfo) job, getShell(job.getHost()));
+      boolean outputFilesOK = setRemoteOutputFiles((MyJobInfo) job);
+      boolean inputFilesOK = getInputFiles((MyJobInfo) job, getShell(job.getHost()));
+      ret = rtesOK && outputFilesOK && inputFilesOK;
+      if(!rtesOK){
+        logFile.addMessage("WARNING: could not setup RTEs for job "+job.getName());
+      }
+      if(!outputFilesOK){
+        logFile.addMessage("WARNING: could not set output files for job "+job.getName());
+      }
+      if(!inputFilesOK){
+        logFile.addMessage("WARNING: could not stage input files for job "+job.getName());
+      }
       // With this, jobs can queue up indefinitely on a single host
       /*try{
         ((HashSet) preprocessingHostJobs.get(job.getHost())).remove(job);

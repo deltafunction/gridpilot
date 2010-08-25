@@ -1888,6 +1888,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
               getSelectedIdentifiers(), false);
           CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
+          pDialog.focusCreateUpdateButton();
           pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefinition")+"(s)");
         }
       }
@@ -2767,6 +2768,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       stopJobsRefresh();
       ok = false;
       showSubmissionError(e, toSubmitJobDefIds, csName);
+      try{
+        workThread.interrupt();
+        GridPilot.getClassMgr().getSubmissionControl().cancelSubmission();
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
       return ok;
     }
     return ok;
@@ -2836,6 +2844,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     JobCreationPanel panel = new JobCreationPanel(dbPluginMgr, getTable().getColumnNames(),
         new String [] {datasetId}, true);
     CreateEditDialog pDialog = new CreateEditDialog(panel, false, true, true, true, true);
+    pDialog.focusCreateUpdateButton();
     pDialog.setTitle("Create "+GridPilot.getRecordDisplayName("jobDefinition")+"(s)");
     while(pDialog!=null && pDialog.isVisible()){
       try{
@@ -3908,6 +3917,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     catch(Exception e){
       showSubmissionError(e, selectedJobDefinitions, csName);
+      try{
+        workThread.interrupt();
+        GridPilot.getClassMgr().getSubmissionControl().cancelSubmission();
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
       statusBar.stopAnimation();
       setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       return;

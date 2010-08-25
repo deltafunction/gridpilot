@@ -2422,7 +2422,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         catch(Exception ioe){
           ioe.printStackTrace();
         }
-        statusBar.setLabel(thisUrl+" uploaded");
+        statusBar.setLabel(fileOrDir+" uploaded to "+thisUrl);
       }
       else if(e.getSource()==bDownload){
         final File dir = MyUtil.getDownloadDir(this);      

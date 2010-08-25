@@ -1092,7 +1092,7 @@ public class GlobalFrame extends GPFrame{
     String url = null;
     try{
       //url = MyUtil.getURL("file:~/", null, false, "Choose *.gpa file to import from.");
-      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose *.gpa file to import from.", GPA_FILTER);
+      url = MyUtil.getURL(GridPilot.APP_STORE_URL, null, false, "Choose application to import.", GPA_FILTER);
     }
     catch(IOException e){
       activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));

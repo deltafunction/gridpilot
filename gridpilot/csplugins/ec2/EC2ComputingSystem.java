@@ -201,8 +201,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     });
   }
 
-
-  
   public boolean preProcess(JobInfo job) throws Exception {
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());

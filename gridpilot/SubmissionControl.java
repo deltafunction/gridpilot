@@ -15,7 +15,6 @@ import java.util.Vector;
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
-import gridfactory.common.JobInfo;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
 
@@ -1049,7 +1048,7 @@ public class SubmissionControl{
       boolean bailOut = false;
       try{
         ok = csPluginMgr.preProcess(job);
-        Debug.debug("Done preprocessing "+job.getName(), 2);
+        Debug.debug("Done preprocessing "+job.getName()+" with result "+ok, 2);
       }
       catch(Exception e){
         logFile.addMessage("ERROR: something went wrong with the preprocessing of the job " +
@@ -1247,7 +1246,7 @@ public class SubmissionControl{
    * Stops the submission. <br>
    * Empties toSubmitJobs, and set these jobs to Failed.
    */
-  private void cancelSubmission(){
+  public void cancelSubmission(){
     cancelled = true;
     preprocessTimer.stop();
     submitTimer.stop();

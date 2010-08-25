@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.TimeoutException;
 
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -822,8 +823,8 @@ public class CSPluginMgr implements MyComputingSystem{
     };
 
     t.start();
-
-    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing") &&
+    boolean waitOk;
+    if((waitOk=MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "preProcessing")) &&
         t.getBoolRes()){
       return true;
     }
@@ -831,6 +832,9 @@ public class CSPluginMgr implements MyComputingSystem{
       if(t.getException()!=null){
         Debug.debug("Detected exception - propagating to caller.", 1);
         throw t.getException();
+      }
+      if(!waitOk){
+        throw new TimeoutException("Timed out waiting for preProcessing of job "+job.getName());
       }
       return false;
     }
