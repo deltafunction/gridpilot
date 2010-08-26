@@ -2184,13 +2184,19 @@ private static String fixUrl(String _url){
   }
 
   public static void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
+    addHyperLinkListener(pane, jPanel, true, true);
+  }
+  
+  public static void addHyperLinkListener(JEditorPane pane, final JPanel jPanel, final boolean modal, final boolean cancelEnabled){
     pane.addHyperlinkListener(
         new HyperlinkListener(){
         public void hyperlinkUpdate(final HyperlinkEvent e){
           if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
             System.out.println("Launching browser...");
             final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
-            window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            if(modal){
+              window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            }
             ResThread t = new ResThread(){
               public void run(){
                 try{
@@ -2199,13 +2205,13 @@ private static String fixUrl(String _url){
                         "Browser",
                         e.getURL().toString(),
                         null,
-                        true,// modal
-                         false,// with filter
+                        modal,// modal
+                        false,// with filter
                         true,// with navigation
                         null,// filter
                         null,// JBox
                         false,// only local
-                        true,// cancel enabled
+                        cancelEnabled,// cancel enabled
                         false);// registration enabled
                   return;
                 }
@@ -2250,7 +2256,7 @@ private static String fixUrl(String _url){
     JEditorPane pane = new JEditorPane("text/html", "<html>"+message.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane, jPanel, false, false);
     jPanel.add(pane);
     ConfirmBox confirmBox = new ConfirmBox(window); 
     try{

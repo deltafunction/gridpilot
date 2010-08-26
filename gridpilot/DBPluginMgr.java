@@ -3469,8 +3469,8 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         if(ok){
           //GridPilot.getClassMgr().getGlobalFrame().monitoringPanel.statusBar.setLabel("Registration done");
-          MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset <b>"+
-              datasetName+"</b>.\n\n" /*+
+          MyUtil.showMessage("Import succesful", "Registered "+regUrls.length+" file(s) in dataset "+
+              datasetName+".\n\n" /*+
               "Right-click on the dataset and choose \"Show file(s)\" to inspect the registered file(s)."*/);
         }
       }

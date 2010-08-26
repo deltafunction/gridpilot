@@ -500,7 +500,7 @@ public class GlobalFrame extends GPFrame{
     //menuFile.add(miReloadValues);
     
     // Import/export
-    JMenuItem miImport = new JMenuItem("Import application/dataset");
+    JMenuItem miImport = new JMenuItem("Import application(s)/dataset(s)");
     menuFile.add(miImport);
     if(GridPilot.ADVANCED_MODE){
       menuFile.add(miExport);
@@ -1078,8 +1078,10 @@ public class GlobalFrame extends GPFrame{
       public void run(){
         try{
           doImportToDB(activePanel);
+          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
         catch(Exception ex){
+          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           Debug.debug("WARNING: could not import.", 1);
           ex.printStackTrace();
         }
@@ -1132,11 +1134,7 @@ public class GlobalFrame extends GPFrame{
           String message = msgs.toString()+
           "Right-click on your new application/dataset to add files or create and run jobs."+
           (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a> for more information.":"");
-          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           MyUtil.showHtmlMessage(this, "Import successful", message);
-        }
-        else{
-          activePanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
       }
       else{

@@ -72,7 +72,7 @@ public class CSPluginMgr implements MyComputingSystem{
   private String [] enabledCSs;
   private HashMap<String, Integer> notUpdatableJobs = new HashMap<String, Integer>();
 
-  private Integer MAX_UPDATE_ATTEMPTS = 5;
+  private Integer MAX_UPDATE_ATTEMPTS = 30;
 
   public CSPluginMgr() throws Throwable{
     init();
