@@ -1128,7 +1128,7 @@ public class SubmissionControl{
     Debug.debug("Checking if we can still preprocess this job, "+
         job.getName()+":"+retr+">"+preprocessRetries, 2);
     if(retr>preprocessRetries){
-      logFile.addInfo("WARNING: timed out waiting for free slot for job "+job.getName()+" / "+job.getIdentifier()+
+      logFile.addInfo("WARNING: timed out ("+(preprocessRetries*timeBetweenSubmissions/1000)+" seconds) waiting for free slot for job "+job.getName()+" / "+job.getIdentifier()+
           ". To increase the timeout, modify " +
           "\"Computing systems\" -> \"Submit retries\" and/or \"Computing systems\" -> \"Time between submissions\"");
       preprocessRetryJobs.remove(job);
@@ -1256,25 +1256,30 @@ public class SubmissionControl{
     if(toCancelJobs.isEmpty()){
       return;
     }
-    Enumeration<MyJobInfo> e = toCancelJobs.elements();
     MyJobInfo job = null;
     JobMgr jobMgr = null;
-    while(e.hasMoreElements()){
-      job = (MyJobInfo) e.nextElement();
-      statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), JobMgr.FIELD_JOBID);
-      statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr.FIELD_JOBNAME);
-      statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
-      job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
-      job.setNeedsUpdate(false);
-      jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
-      if(jobMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
-        job.setDBStatus(DBPluginMgr.FAILED);
+    try{
+      Enumeration<MyJobInfo> e = toCancelJobs.elements();
+      while(e.hasMoreElements()){
+        job = (MyJobInfo) e.nextElement();
+        statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), JobMgr.FIELD_JOBID);
+        statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr.FIELD_JOBNAME);
+        statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
+        job.setCSStatus(MyJobInfo.CS_STATUS_FAILED);
+        job.setNeedsUpdate(false);
+        jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
+        if(jobMgr.updateDBStatus(job, DBPluginMgr.FAILED)){
+          job.setDBStatus(DBPluginMgr.FAILED);
+        }
+        else{
+          logFile.addMessage("DB update status(" + job.getIdentifier() + ", " +
+              DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
+        }
+        jobMgr.updateDBCells(toCancelJobs);
       }
-      else{
-        logFile.addMessage("DB update status(" + job.getIdentifier() + ", " +
-            DBPluginMgr.getStatusName(job.getDBStatus()) + ") failed", job);
-      }
-      jobMgr.updateDBCells(toCancelJobs);
+    }
+    catch(Exception ee){
+      ee.printStackTrace();
     }
     toPreprocessJobs.removeAllElements();
     preprocessingJobs.removeAllElements();

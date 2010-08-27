@@ -2768,7 +2768,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       stopJobsRefresh();
       ok = false;
       GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not submit first job.", e);
-      showSubmissionError(e, toSubmitJobDefIds, csName);
       try{
         workThread.interrupt();
         GridPilot.getClassMgr().getSubmissionControl().cancelSubmission();
@@ -2776,6 +2775,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       catch(Exception ee){
         ee.printStackTrace();
       }
+      showSubmissionError(e, toSubmitJobDefIds, csName);
       return ok;
     }
     return ok;
