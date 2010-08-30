@@ -1131,9 +1131,20 @@ public class GlobalFrame extends GPFrame{
           atLeastOneImported = true;
         }
         if(atLeastOneImported){
-          String message = msgs.toString()+
+          if(!GridPilot.ADVANCED_MODE && readmeAvailable){
+            try{
+              BrowserPanel wb = new BrowserPanel(this, "App info",
+                  url, "", false, false, true, null, null, false);
+              wb.setCancelButtonEnabled(false);
+            }
+            catch(Exception e){
+              Debug.debug("WARNING: could not create BrowserPanel", 1);
+              e.printStackTrace();
+            }
+          }
+          String message = msgs.toString()+(!GridPilot.ADVANCED_MODE?"":
           "Right-click on your new application/dataset to add files or create and run jobs."+
-          (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a> for more information.":"");
+          (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a> for more information.":""));
           MyUtil.showHtmlMessage(this, "Import successful", message);
         }
       }
