@@ -19,7 +19,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 /**
@@ -36,6 +35,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
 
   private VMMgr vmMgr = null;
   private String [] rteCatalogUrls;
+  private String workingDir = null;
 
   public VMForkMonitoringPanel(VMMgr _vmMgr, String [] _rteCatalogUrls) throws Exception{
     super();
@@ -51,6 +51,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("VMFork", "Ssh command"); 
     imageTable.setTable(IMAGE_FIELDS);
     instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
+    workingDir = GridPilot.getClassMgr().getConfigFile().getValue("VMFork", "working directory");
   }
   
   public String getName(){
@@ -121,7 +122,7 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
     ResThread t = new ResThread(){
           public void run(){
             try{
-              vmMgr.launchVM(imageName, memory, null);
+              vmMgr.launchVM(imageName, memory, null, workingDir);
             }
             catch(Exception e){
               GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not launch VM.", e);
