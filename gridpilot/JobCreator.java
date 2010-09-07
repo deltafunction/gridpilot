@@ -216,8 +216,10 @@ public class JobCreator{
       try{
         createDBJobDefinitions();
       }
-      catch(java.lang.Exception e){Debug.debug("Failed creating partition from "+
-          currentDatasetID+" : "+e.getMessage(),3);}
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage(
+            "Failed creating job definition of "+currentDatasetID, e);
+      }
       //statusBar.removeProgressBar(pb);
       //statusBar.removeLabel();
     }
@@ -419,7 +421,7 @@ public class JobCreator{
         Debug.debug("cstAttrNames --> "+MyUtil.arrayToString(cstAttrNames), 3);
         Debug.debug("resCstAttr --> "+MyUtil.arrayToString(resCstAttr), 3);
         Debug.debug("resJobParam --> "+MyUtil.arrayToString(resJobParam), 3);
-        Debug.debug("resOutMap[0] --> :"+MyUtil.arrayToString(resOutMap[0])+":", 3);
+        Debug.debug("resOutMap --> :"+resOutMap.length, 3);
        
         if(!dbPluginMgr.createJobDefinition(
                               dbPluginMgr.getDatasetName(id),
