@@ -137,7 +137,7 @@ public class CSPluginMgr implements MyComputingSystem{
       Debug.debug("argument types: "+MyUtil.arrayToString(csArgsType), 3);
       Debug.debug("arguments: "+MyUtil.arrayToString(csArgs), 3);
       try{
-        cs.put(csNames[i], MyUtil.loadClass(csClass, csArgsType, csArgs));
+        cs.put(csNames[i], MyUtil.loadClass(csClass, csArgsType, csArgs, logFile));
         ((MyComputingSystem) cs.get(csNames[i])).setupRuntimeEnvironments(csNames[i]);
       }
       catch(Throwable e){

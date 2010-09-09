@@ -463,55 +463,6 @@ private static String fixUrl(String _url){
    return fPanel;
  }
  
-  /**
-   * Loads class.
-   * @argument className     name of the class
-   * @argument argTypes      class names of the arguments of the class constructor
-   * @argument args          arguments of the class constructor
-   * 
-   * @throws Throwable if an exception or an error occurs during loading
-   */
-  public static Object loadClass(String className, Class<?> [] argTypes,
-     Object [] args) throws Throwable{
-    Debug.debug("Loading plugin: "+" : "+className, 2);
-    // Arguments and class name for <DatabaseName>Database
-    boolean loadfailed = false;
-    Object ret = null;
-    Debug.debug("argument types: "+arrayToString(argTypes), 3);
-    Debug.debug("arguments: "+arrayToString(args), 3);
-    try{
-      //Class newClass = this.getClass().getClassLoader().loadClass(dbClass);
-      Class<?> newClass = (new MyClassLoader()).loadClass(className);
-      ret = (newClass.getConstructor(argTypes).newInstance(args));
-      Debug.debug("plugin " + "(" + className + ") loaded, "+ret.getClass(), 2);
-    }
-    catch(Exception e){
-      Debug.debug("WARNING: failed to load class with standard method, trying findClass. "+
-          e.getMessage(), 1);
-      e.printStackTrace();
-      loadfailed = true;
-      //do nothing, will try with findClass.
-    }
-    if(loadfailed){
-      try{
-        // loading of this plug-in
-       MyClassLoader mcl = new MyClassLoader();
-       ret = (mcl.findClass(className).getConstructor(argTypes).newInstance(args)); 
-       Debug.debug("plugin " + "(" + className + ") loaded", 2);
-      }
-      catch(IllegalArgumentException iae){
-        GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + className + ".\nThe plugin constructor " +
-                          "must have one parameter (String)", iae);
-        throw iae;
-      }
-      catch(Exception e){
-        //GridPilot.getClassMgr().getLogFile().addMessage("Cannot load class " + dbClass, e);
-        throw e;
-      }
-    }
-    return ret;
-  }
-
   public static String getName(String message, String str){
 
     JPanel panel = new JPanel(new GridBagLayout());

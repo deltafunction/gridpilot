@@ -2,11 +2,11 @@ package gridpilot.wizards.run_jobs;
 
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
+import gridfactory.common.GFrame;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
 import gridpilot.DBPluginMgr;
 
-import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 
 import gridpilot.MyUtil;
@@ -43,7 +43,7 @@ import javax.swing.event.HyperlinkListener;
 
 import org.safehaus.uuid.UUIDGenerator;
 
-public class RunCommandWizard extends GPFrame{
+public class RunCommandWizard extends GFrame{
   
   private static final long serialVersionUID=-722418889258036597L;
   private JButton bSubmit = null;

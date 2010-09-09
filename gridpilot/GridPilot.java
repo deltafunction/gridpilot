@@ -614,7 +614,7 @@ public class GridPilot extends JApplet{
       try{
         String ftClass = getClassMgr().getConfigFile().getValue(FT_NAMES[i], "Class");
         getClassMgr().setFTPlugin(FT_NAMES[i],
-            (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}));
+            (FileTransfer) MyUtil.loadClass(ftClass, new Class []{}, new Object []{}, GridPilot.getClassMgr().getLogFile()));
       }
       catch(Exception e){
         // load as many FTS as possible

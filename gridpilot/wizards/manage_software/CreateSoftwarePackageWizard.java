@@ -2,12 +2,12 @@ package gridpilot.wizards.manage_software;
 
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.GFrame;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTECatalog.BaseSystem;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
 import gridfactory.common.jobrun.RTECatalog.TarPackage;
-import gridpilot.GPFrame;
 import gridpilot.GridPilot;
 import gridpilot.RteXmlParser;
 import gridpilot.MyUtil;
@@ -65,7 +65,7 @@ import org.safehaus.uuid.UUIDGenerator;
  * 
  */
 
-public class CreateSoftwarePackageWizard extends GPFrame{
+public class CreateSoftwarePackageWizard extends GFrame{
   
   private static final long serialVersionUID = 493635130266263014L;
 

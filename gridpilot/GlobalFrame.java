@@ -3,9 +3,6 @@ package gridpilot;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.net.URL;
 
 import javax.swing.*;
@@ -18,8 +15,10 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfigNode;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
+import gridfactory.common.GFrame;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 
 import gridpilot.GridPilot;
 import gridpilot.ListPanel;
@@ -32,7 +31,7 @@ import gridpilot.wizards.run_jobs.RunCommandWizard;
  * Main frame of GridPilot application.
  * This frame contains tab, more can be added dynamically.
  */
-public class GlobalFrame extends GPFrame{
+public class GlobalFrame extends GFrame{
 
   private static final long serialVersionUID = 1L;
 
@@ -51,9 +50,6 @@ public class GlobalFrame extends GPFrame{
   private JTabbedPane tabbedPane = new DnDTabbedPane();
   private MonitoringPanel monitoringPanel;
   private JMenu menuEdit = new JMenu("Edit");
-  private JMenuItem menuEditCopy = new JMenuItem("Copy (ctrl c)");
-  private JMenuItem menuEditCut = new JMenuItem("Cut (ctrl x)");
-  private JMenuItem menuEditPaste = new JMenuItem("Paste (ctrl v)");
   private JCheckBoxMenuItem cbMonitor = new JCheckBoxMenuItem("Show monitor (ctrl m)");
   private ListPanel cutPanel = null;
   private JMenuItem miDbEditRecord = new JMenuItem("Edit record");
@@ -64,15 +60,24 @@ public class GlobalFrame extends GPFrame{
   private JMenuItem miWithInputDataset = new JMenuItem("with selected input dataset(s)");
   private JMenuItem miExport = new JMenuItem();
 
-  private Object app;
-  private Class<?> appc;
-  private Class<?> lc;
-
-
   // keep track of whether or not we are cutting on the sub-panels
   public boolean cutting = false;
 
   public GlobalFrame() throws Exception{
+    URL imgURL = null;
+    ImageIcon icon;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur.png");
+      icon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur.png", 3);
+      icon = new ImageIcon();
+    }
+    setIconImage(icon.getImage());
+    //JFrame.setDefaultLookAndFeelDecorated(true);
+    statusBar = new StatusBar();
+    getContentPane().add(statusBar, BorderLayout.SOUTH);
     enableEvents(AWTEvent.WINDOW_EVENT_MASK);
     allPanels = new Vector<ListPanel>();
     if(MyUtil.onMacOSX()){
@@ -80,58 +85,14 @@ public class GlobalFrame extends GPFrame{
     }
   }
   
-  private void setMacOSMenus(){
-
-    menuEditCopy.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
-    menuEditCut.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
-    menuEditPaste.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
+  protected void setMacOSMenus(){
+    super.setMacOSMenus();
     cbMonitor.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
-    menuEditCopy.setText("Copy \t\t\t\t \u2318 c");
-    menuEditCut.setText("Cut \t\t\t\t \u2318 x");
-    menuEditPaste.setText("Paste \t\t\t\t \u2318 v");
     cbMonitor.setText("Show monitor \t\t\t\t \u2318 m");
-    
-    try{
-      app = MyUtil.loadClass("com.apple.eawt.Application", new Class[] {}, new String [] {});
-      appc = Class.forName("com.apple.eawt.Application");
-      lc = Class.forName("com.apple.eawt.ApplicationListener");
-    }
-    catch(Throwable e2){
-      e2.printStackTrace();
-    }
-    
-    // Handle quit, about and preferences
-    try{
-      Object listener = Proxy.newProxyInstance(new MyClassLoader(), new Class[] {lc},
-          new InvocationHandler() {
-         public Object invoke(Object proxy, Method method, Object[] args){
-           if(method.getName().equals("handleQuit")){
-             GridPilot.exit(0);
-           }
-           else if(method.getName().equals("handleAbout")){
-             menuHelpAbout_actionPerformed();
-             Object event = args[0];
-             Method eventSetter;
-             try{
-               eventSetter = Class.forName("com.apple.eawt.ApplicationEvent").getDeclaredMethod("setHandled", Boolean.TYPE);
-               eventSetter.invoke(event, true);
-             }
-             catch(Exception e){
-               e.printStackTrace();
-             }
-           }
-           else if(method.getName().equals("handlePreferences")){
-             menuEditPrefs_actionPerformed();
-           }
-           return null;
-         }
-       });
-      appc.getMethod("addApplicationListener", lc).invoke(app, listener);
-      appc.getDeclaredMethod("setEnabledPreferencesMenu", Boolean.TYPE).invoke(app, new Object[] {true});
-    }
-    catch(Throwable e1){
-      e1.printStackTrace();
-    }
+  }
+  
+  protected void exit(int code){
+    GridPilot.exit(0);
   }
   
   protected void initMonitoringPanel() throws Exception{
@@ -385,7 +346,7 @@ public class GlobalFrame extends GPFrame{
     panel.paste();
   }
   
-  public void menuEditPrefs_actionPerformed(){
+  protected void menuEditPrefs_actionPerformed(){
     if(prefsPanel!=null && prefsPanel.isEditing()){
       return;
     }
@@ -400,7 +361,7 @@ public class GlobalFrame extends GPFrame{
   }
 
   // Help -> About action performed
-  private void menuHelpAbout_actionPerformed(){
+  protected void menuHelpAbout_actionPerformed(){
     URL aboutURL = null;
     try{
       aboutURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "about.htm");

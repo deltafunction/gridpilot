@@ -92,7 +92,7 @@ public class DBPluginMgr extends DBCache implements Database{
       dbArgs[i+1] = configFile.getValue(dbName, parameters[i]);
     }
 
-    db = (Database) MyUtil.loadClass(dbClass, dbArgsType, dbArgs);
+    db = (Database) MyUtil.loadClass(dbClass, dbArgsType, dbArgs, logFile);
     
     // Clean all RTEs
     try{
