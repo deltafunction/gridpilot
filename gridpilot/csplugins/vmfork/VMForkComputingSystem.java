@@ -145,7 +145,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     }
     
     downloadedJobs = new HashSet<JobInfo>();
-
+    doSystemMetadata = false;
   }
   
   private void createMonitor() throws InterruptedException, InvocationTargetException {
@@ -327,7 +327,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     Debug.debug("job "+job.getIdentifier()+" has output files "+
         MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
         MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
-    return transferControl.copyToFinalDest(job, getShell(job), runDir(job));
+    return transferControl.copyToFinalDest(job, getShell(job), runDir(job), !doSystemMetadata);
   }
 
 

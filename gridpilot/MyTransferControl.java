@@ -36,9 +36,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JProgressBar;
 import javax.swing.Timer;
 
-import jonelo.jacksum.JacksumAPI;
-import jonelo.jacksum.algorithm.AbstractChecksum;
-
 import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
@@ -1376,10 +1373,7 @@ public class MyTransferControl extends TransferControl {
       if((checksum==null || checksum.equals("") || checksum.equals("-1")) &&
           !MyUtil.urlIsRemote(destination)){
         try{
-          AbstractChecksum cs = JacksumAPI.getChecksumInstance("md5");
-          cs.update(LocalStaticShell.readFile(
-              MyUtil.clearTildeLocally(MyUtil.clearFile(destination))).getBytes());
-          checksum = "md5:"+cs.getFormattedValue();
+          checksum = "md5:"+MyUtil.md5sum(destination);
         }
         catch(Exception e){
         }
