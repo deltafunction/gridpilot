@@ -733,7 +733,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     String remoteDB = configFile.getValue("Regional_DB", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
@@ -946,7 +946,7 @@ public class BeginningWizard{
     JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
     atlasLabel.setEditable(false);
     atlasLabel.setOpaque(false);
-    MyUtil.addHyperLinkListener(atlasLabel, jPanel);
+    MyUtil.addHyperLinkListener(atlasLabel);
     atlasDetails.add(atlasLabel,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1092,7 +1092,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+ngString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     csPanels[0].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1120,7 +1120,7 @@ public class BeginningWizard{
     pane = new JEditorPane("text/html", "<html>"+gLiteString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     csPanels[1].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1189,7 +1189,7 @@ public class BeginningWizard{
     pane = new JEditorPane("text/html", "<html>"+ec2String.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     csPanels[3].add(pane,
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1444,7 +1444,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     String remoteDB = configFile.getValue("My_DB_Remote", "Database");
     String host = remoteDB.replaceFirst(".*mysql://(.*)/.*","$1");
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
@@ -1631,7 +1631,7 @@ public class BeginningWizard{
     JEditorPane pane = new JEditorPane("text/html", "<html>"+confirmString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel);
+    MyUtil.addHyperLinkListener(pane);
     String homeUrl = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Grid home url");
     String [] defDirs;
     String [] names;

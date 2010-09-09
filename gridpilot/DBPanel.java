@@ -547,7 +547,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             editFile();
           }
         }
-      });  
+      });
       
       bReplicate.addActionListener(new ActionListener(){
         public void actionPerformed(ActionEvent e){

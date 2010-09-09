@@ -445,7 +445,7 @@ private static String fixUrl(String _url){
      final boolean onlyDirs,
      final boolean localFS,
      final boolean append){
-    JButton bBrowse1 = MyUtil.mkButton1("open_folder.png", append?"Append":"Browse", "Open");
+    JButton bBrowse1 = mkButton1("open_folder.png", append?"Append":"Browse", "Open");
     bBrowse1.setPreferredSize(new java.awt.Dimension(22, 22));
     bBrowse1.setSize(new java.awt.Dimension(22, 22));
     bBrowse1.addMouseListener(new MouseAdapter(){
@@ -1762,7 +1762,7 @@ private static String fixUrl(String _url){
    * @return
    */
   public static String [] removeBaseSystemAndVM(String [] rtes, String [] _osProvides){
-    Debug.debug("Removing "+MyUtil.arrayToString(_osProvides)+" and VMs from " + arrayToString(rtes), 2);
+    Debug.debug("Removing "+arrayToString(_osProvides)+" and VMs from " + arrayToString(rtes), 2);
     Vector<String> newRTEs = new Vector<String>();
     String[] osProvides;
     if(_osProvides==null){
@@ -1775,7 +1775,7 @@ private static String fixUrl(String _url){
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
       if(!checkOS(rtes[i]) && !rtes[i].startsWith(RTEMgr.VM_PREFIX) &&
-          !MyUtil.arrayContains(osProvides, rtes[i])){
+          !arrayContains(osProvides, rtes[i])){
         newRTEs.add(rtes[i]);
       }
       else{
@@ -1783,7 +1783,7 @@ private static String fixUrl(String _url){
       }
     }
     String [] ret = newRTEs.toArray(new String [newRTEs.size()]);
-    Debug.debug("Returning RTEs: " + MyUtil.arrayToString(ret), 3);
+    Debug.debug("Returning RTEs: " + arrayToString(ret), 3);
     return ret;
   }
 
@@ -2134,25 +2134,23 @@ private static String fixUrl(String _url){
     return jobInfos;
   }
 
-  public static void addHyperLinkListener(JEditorPane pane, final JPanel jPanel){
-    addHyperLinkListener(pane, jPanel, true, true);
+  public static void addHyperLinkListenerWithInternalBrowser(JEditorPane pane,  Window parentWindow){
+    addHyperLinkListenerWithInternalBrowser(pane, parentWindow, true, true);
   }
   
-  public static void addHyperLinkListener(JEditorPane pane, final JPanel jPanel, final boolean modal, final boolean cancelEnabled){
+  public static void addHyperLinkListenerWithInternalBrowser(JEditorPane pane, final Window parentWindow, final boolean modal, final boolean cancelEnabled){
     pane.addHyperlinkListener(
         new HyperlinkListener(){
         public void hyperlinkUpdate(final HyperlinkEvent e){
           if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED){
-            System.out.println("Launching browser...");
-            final Window window = (Window) SwingUtilities.getWindowAncestor(jPanel.getRootPane());
             if(modal){
-              window.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+              parentWindow.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             }
             ResThread t = new ResThread(){
               public void run(){
                 try{
                   new BrowserPanel(
-                        window,
+                        parentWindow,
                         "Browser",
                         e.getURL().toString(),
                         null,
@@ -2170,7 +2168,7 @@ private static String fixUrl(String _url){
                 }
                 try{
                   new BrowserPanel(
-                      window,
+                      parentWindow,
                       "Browser",
                       "file:~/",
                       null,
@@ -2186,8 +2184,8 @@ private static String fixUrl(String _url){
                 catch(Exception e){
                   e.printStackTrace();
                   try{
-                    window.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-                    MyUtil.showError("WARNING: could not open URL. "+e.getMessage());
+                    parentWindow.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+                    showError("WARNING: could not open URL. "+e.getMessage());
                   }
                   catch(Exception e2){
                     e2.printStackTrace();
@@ -2200,24 +2198,6 @@ private static String fixUrl(String _url){
           }
         }
       });
-  }
-
-  public static void showHtmlMessage(Window window, String title, String message) {
-    final JPanel jPanel = new JPanel(new GridBagLayout());
-    JEditorPane pane = new JEditorPane("text/html", "<html>"+message.replaceAll("\n", "<br>")+"</html>");
-    pane.setEditable(false);
-    pane.setOpaque(false);
-    MyUtil.addHyperLinkListener(pane, jPanel, false, false);
-    jPanel.add(pane);
-    ConfirmBox confirmBox = new ConfirmBox(window); 
-    try{
-      confirmBox.getConfirm(title, jPanel,
-                        new Object[] {mkOkObject(confirmBox.getOptionPane())});
-    }
-    catch(Exception e){
-      Debug.debug("Could not get confirmation, "+e.getMessage(), 1);
-    }
-
   }
 
 }
