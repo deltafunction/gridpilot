@@ -86,7 +86,7 @@ public class GlobalFrame extends GFrame{
   }
   
   protected void setMacOSMenus(){
-    super.setMacOSMenus();
+    super.setMacOSMenus(true);
     cbMonitor.setAlignmentX(StyleConstants.ALIGN_JUSTIFIED);
     cbMonitor.setText("Show monitor \t\t\t\t \u2318 m");
   }
