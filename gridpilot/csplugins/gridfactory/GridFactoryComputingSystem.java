@@ -241,7 +241,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           MyUtil.arrayToString(job.getInputFileUrls()),
           MyUtil.arrayToString(job.getExecutables()),
           Integer.toString(job.getRunningSeconds()),
-          Integer.toString(job.getRamMb()),
+          Integer.toString(job.getRamMB()),
           virtualize?"1":"-1",
           constructOutputFilesString(job),
           MyUtil.arrayToString(job.getRTEs()),

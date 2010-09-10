@@ -238,7 +238,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     else{
       job.setRTEs(rtes);
     }
-    job.setRamMb(defaultJobMB);
+    job.setRamMB(defaultJobMB);
     job.setUserInfo(user);
     String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
     String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
