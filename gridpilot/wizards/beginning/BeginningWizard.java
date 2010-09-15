@@ -85,8 +85,16 @@ public class BeginningWizard{
     int ret = -1;
     
     try{
-      if(welcome(firstRun)!=0){
-        return;
+      ret = welcome(firstRun);
+      if(ret!=0){
+        if(firstRun){
+          GridPilot.USER_CONF_FILE.delete();
+          System.out.println("Deleting new configuration file.");
+          System.exit(-1);
+        }
+        else{
+          return;
+        }
       }
       
       ret = checkDirs(firstRun);
