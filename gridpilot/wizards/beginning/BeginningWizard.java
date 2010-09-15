@@ -1397,10 +1397,10 @@ public class BeginningWizard{
     }
     if(jcbs[4].isSelected()){
       if(MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
-          !MyUtil.getJTextOrEmptyString(tfGfUrl).equals("")){
+          !MyUtil.getJTextOrEmptyString(tfGfUrl).trim().equals("")){
         configFile.setAttributes(
             new String [] {"GridFactory", "GridFactory"},
-            new String [] {"Enabled", "Submission URL"},
+            new String [] {"Enabled", "Submission URLs"},
             new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
             );
       }

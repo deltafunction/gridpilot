@@ -132,7 +132,12 @@ public class GridPilot extends JApplet{
     
     boolean askImport = false;
     try{
-      getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
+      try{
+        getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(MyUtil.onWindows()){
         userConfFileName = DEFAULT_FILE_NAME_WINDOWS;
@@ -994,7 +999,7 @@ public class GridPilot extends JApplet{
     }
     catch(Exception ee){
       String error = "WARNING: could not load external configuration file, " +
-      "using default config file.";
+         "using default config file.";
       System.out.println(error);
       CLASS_MGR.getLogFile().addMessage(error, ee);
       ee.printStackTrace();

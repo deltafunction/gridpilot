@@ -1452,13 +1452,13 @@ private static String fixUrl(String _url){
     JPanel jp = new JPanel(layout);
     JTextArea jt = new JTextArea(text);
     int longestLine = findLongestLine(text);
-    if(1.1*longestLine/2>MAX_MESSAGE_COLUMNS){
+    if(1.2*longestLine/2>MAX_MESSAGE_COLUMNS){
       Debug.debug("Fixing columns: "+text.length()+"-->"+MAX_MESSAGE_COLUMNS, 3);
       jt.setColumns(MAX_MESSAGE_COLUMNS);
     }
     else{
       Debug.debug("longestLine: "+longestLine, 3);
-      jt.setColumns((int) (1.15*longestLine/2));
+      jt.setColumns((int) (1.2*longestLine/2));
     }
     jt.setMinimumSize(new Dimension(MIN_MESSAGE_COLUMNS, 1));
     jt.setLineWrap(true);
