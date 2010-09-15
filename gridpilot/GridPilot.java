@@ -135,8 +135,8 @@ public class GridPilot extends JApplet{
       try{
         getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
       }
-      catch(Exception ee){
-        ee.printStackTrace();
+      catch(Exception eee){
+        eee.printStackTrace();
       }
       // First try and get ~/.gridpilot or Documents and Settings/<user name>/gridpilot.conf
       if(MyUtil.onWindows()){
@@ -152,7 +152,7 @@ public class GridPilot extends JApplet{
       }
       catch(Exception ee){
         System.out.println("WARNING: could not load user configuration file, " +
-                "using defaults.");
+                "using defaults from "+USER_CONF_FILE+" on "+LocalStaticShell.getOS());
         //ee.printStackTrace();
         //confFile = new ConfigFile(defaultConfFileNameWindows);
         try{
@@ -861,12 +861,17 @@ public class GridPilot extends JApplet{
   }
   
   private static void jobManagerPanelExit() {
-    MonitoringPanel mPanel = getClassMgr().getGlobalFrame().getMonitoringPanel();
-    if(mPanel!=null){
-      JobMonitoringPanel jmPanel = mPanel.getJobMonitoringPanel();
-      if(jmPanel!=null){
-        jmPanel.exit();
-      }
+    GlobalFrame gFrame = getClassMgr().getGlobalFrame();
+    if(gFrame==null){
+      return;
+    }
+    MonitoringPanel mPanel = gFrame.getMonitoringPanel();
+    if(mPanel==null){
+      return;
+    }
+    JobMonitoringPanel jmPanel = mPanel.getJobMonitoringPanel();
+    if(jmPanel!=null){
+      jmPanel.exit();
     }
   }
 
