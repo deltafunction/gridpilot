@@ -389,12 +389,16 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     <win32 name="Windows" id="176" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="32" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" runAsAdmin="false">
       <excludedLaunchers>
         <launcher id="174" />
+        <launcher id="175" />
         <launcher id="224" />
       </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
       <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
-      <exclude />
+      <exclude>
+        <entry location="gridpilot.conf" fileType="regular" />
+        <entry location="gridpilot.sh" fileType="regular" />
+      </exclude>
       <variables />
     </win32>
     <unixInstaller name="Unix Installer" id="177" mediaFileName="" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="">
@@ -415,7 +419,9 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
       <excludedComponents />
       <excludedBeans />
       <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
-      <exclude />
+      <exclude>
+        <entry location="gridpilot.bat" fileType="regular" />
+      </exclude>
       <variables />
     </macos>
     <unixArchive name="Unix Archive" id="179" mediaFileName="" installDir="GridPilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false">
@@ -430,13 +436,16 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
     </unixArchive>
     <linuxRPM name="Linux RPM" id="219" mediaFileName="" installDir="/opt/gridpilot" overridePrincipalLanguage="false" requires64bit="false" jreBitType="all" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" os="linux" arch="i386">
       <excludedLaunchers>
+        <launcher id="174" />
         <launcher id="175" />
         <launcher id="224" />
       </excludedLaunchers>
       <excludedComponents />
       <excludedBeans />
       <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
-      <exclude />
+      <exclude>
+        <entry location="gridpilot.bat" fileType="regular" />
+      </exclude>
       <variables />
       <preInstallScript mode="1" file="">
         <scriptLines />
@@ -451,12 +460,28 @@ Several class libraries bundled with GridPilot have other licenses; once GridPil
         <scriptLines />
       </postUninstallScript>
     </linuxRPM>
+    <win32 name="Windows 64bit" id="271" mediaFileName="${compiler:sys.shortName}_${compiler:sys.platform}_64bit_${compiler:sys.version}" installDir="gridpilot" overridePrincipalLanguage="false" requires64bit="true" jreBitType="64" runPostProcessor="false" postProcessor="" failOnPostProcessorError="false" includedJRE="" manualJREEntry="false" bundleType="1" jreURL="" jreFtpURL="" jreShared="false" customInstallBaseDir="" createUninstallIcon="true" contentFilesType="1" downloadURL="" runAsAdmin="false">
+      <excludedLaunchers>
+        <launcher id="174" />
+        <launcher id="175" />
+        <launcher id="224" />
+      </excludedLaunchers>
+      <excludedComponents />
+      <excludedBeans />
+      <overriddenPrincipalLanguage id="en" customLocalizationFile="" />
+      <exclude>
+        <entry location="gridpilot.conf" fileType="regular" />
+        <entry location="gridpilot.sh" fileType="regular" />
+      </exclude>
+      <variables />
+    </win32>
   </mediaSets>
   <buildIds buildAll="false">
     <mediaSet refId="176" />
     <mediaSet refId="178" />
     <mediaSet refId="179" />
     <mediaSet refId="219" />
+    <mediaSet refId="271" />
   </buildIds>
 </install4j>
 
