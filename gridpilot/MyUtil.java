@@ -1461,8 +1461,9 @@ private static String fixUrl(String _url){
       jt.setColumns((int) (1.2*longestLine/2));
     }
     jt.setMinimumSize(new Dimension(MIN_MESSAGE_COLUMNS, 1));
-    jt.setLineWrap(true);
-    jt.setWrapStyleWord(true);
+    //jt.setLineWrap(true);
+    //jt.setWrapStyleWord(true);
+    jt.setLineWrap(false);
     jt.setEditable(false);
     jp.add(jt);
     //jp.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,

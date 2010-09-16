@@ -2759,11 +2759,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return ok;
     }
     try{
-      // First try a test job.
       setJobsRefresh();
-      if(toSubmitJobDefIds.size()>1){
+      // First try a test job. - dropped - now done by doSubmit() for all submissions of several jobs.
+      /*if(toSubmitJobDefIds.size()>1){
         runFirstJob(toSubmitJobDefIds, csName);
-      }
+      }*/
       doSubmit(csName, toSubmitJobDefIds.toArray(new String [toSubmitJobDefIds.size()]));
     }
     catch(Exception e){
