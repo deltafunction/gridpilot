@@ -1092,21 +1092,11 @@ public class GlobalFrame extends GFrame{
           atLeastOneImported = true;
         }
         if(atLeastOneImported){
-          if(!GridPilot.ADVANCED_MODE && readmeAvailable){
-            try{
-              /*BrowserPanel wb = new BrowserPanel(this, "App info",
-                  url, "", false, false, true, null, null, false);
-              wb.setCancelButtonEnabled(false);*/
-              java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
-            }
-            catch(Exception e){
-              Debug.debug("WARNING: could not open URL "+url, 1);
-              e.printStackTrace();
-            }
-          }
-          String message = msgs.toString()+(!GridPilot.ADVANCED_MODE?"":
+          String message = msgs.toString()+(!readmeAvailable?"":
           "Right-click on your new application/dataset to add files or create and run jobs."+
-          (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a> for more information.":""));
+          (readmeAvailable?"\n\nSee <a href=\""+url+"\">"+url+"</a>\n" +
+          		"for more information (if you cannot open this in your standard browser,\n" +
+          		"try with the built-in GridPilot file browser).":""));
           MyUtil.showHtmlMessage(this, "Import successful", message);
         }
       }
