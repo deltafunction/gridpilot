@@ -96,7 +96,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
     rteMgr = GridPilot.getClassMgr().getRTEMgr(localRteDir, rteCatalogUrls);
-    rteMgr.fixLocalCatalog(GridPilot.class);
+    rteMgr.fixLocalCatalog(RTEMgr.class);
     transferStatusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
     termVmOnJobEnd = false;
     String tmp = configFile.getValue(csName, "enforce virtualization");

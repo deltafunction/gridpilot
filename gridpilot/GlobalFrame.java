@@ -1094,12 +1094,13 @@ public class GlobalFrame extends GFrame{
         if(atLeastOneImported){
           if(!GridPilot.ADVANCED_MODE && readmeAvailable){
             try{
-              BrowserPanel wb = new BrowserPanel(this, "App info",
+              /*BrowserPanel wb = new BrowserPanel(this, "App info",
                   url, "", false, false, true, null, null, false);
-              wb.setCancelButtonEnabled(false);
+              wb.setCancelButtonEnabled(false);*/
+              java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
             }
             catch(Exception e){
-              Debug.debug("WARNING: could not create BrowserPanel", 1);
+              Debug.debug("WARNING: could not open URL "+url, 1);
               e.printStackTrace();
             }
           }
