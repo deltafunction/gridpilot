@@ -755,8 +755,8 @@ public class SubmissionControl{
     try{
       depsOk = checkDependenceOnOtherJobs(job);
     }
-    catch (IOException e){
-      e.printStackTrace();
+    catch(Exception e){
+      //e.printStackTrace();
       return CAN_NEVER_PREPROCESS_OR_RUN;
     }
     
