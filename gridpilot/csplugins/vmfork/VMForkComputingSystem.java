@@ -13,9 +13,9 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
-import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
@@ -346,41 +346,61 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     int providesHits = 0;
     int maxProvidesHits = 0;
     String [] provides;
-    int i = 0;
+    boolean canBeProvisioned = true;
     for(Iterator<MetaPackage> it=mps.iterator(); it.hasNext();){
       mp = it.next();
       rte = mp.name;
-      ++i;
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
       // Prefer VM that provides as many as the requested rtes as possible,
       // - first try just with no basesystem
       if(rte.startsWith(RTEMgr.VM_PREFIX)){
         providesHits = 0;
+        canBeProvisioned = true;
         try{
-          if(Util.arrayContains(rtes, rte)){
+          if(MyUtil.arrayContains(rtes, rte)){
             ++providesHits;
           }
           provides = rteMgr.getProvides(rte);
           Debug.debug("Checking RTE "+rte+" --> provides: "+MyUtil.arrayToString(provides), 2);
           Debug.debug("Against: "+MyUtil.arrayToString(rtes), 2);
           for(int j=0; j<provides.length; ++j){
-            if(Util.arrayContains(rtes, provides[j])){
+            if(MyUtil.checkOS(provides[j], mp.name, mp.tags)){
+              Debug.debug("OK: "+provides[j]+" provided", 2);
+              ++providesHits;
+              continue;
+            }
+            if(MyUtil.arrayContains(rtes, provides[j])){
               Debug.debug("OK: "+provides[j]+" provided", 2);
               ++providesHits;
             }
           }
-          if(providesHits>maxProvidesHits){
-            maxProvidesHits = providesHits;
-            vmRte = rte;
+          if(providesHits<=maxProvidesHits){
+            continue;
           }
+          try{
+            job.setOpSys(rte);
+            job.setOpSysRTE(rte);
+            rteMgr.getVmRteDepends(rte, LocalStaticShell.getOS());
+            job.setOpSys(null);
+            job.setOpSysRTE(null);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+            canBeProvisioned = false;
+          }
+          if(!canBeProvisioned){
+            continue;
+          }
+          maxProvidesHits = providesHits;
+          vmRte = rte;
         }
         catch(Exception e){
-          logFile.addMessage("getProvides failed for "+rtes[i], e);
+          logFile.addMessage("getProvides failed for "+rtes, e);
         }
       }
     }
-    if(vmRte!=null && maxProvidesHits==rtes.length){
+    if(rtes.length>0 && vmRte!=null && maxProvidesHits==rtes.length){
       Debug.debug("Setting OS of job "+job.getIdentifier()+" to "+vmRte+" : "+providesHits, 2);
       job.setOpSys(vmRte);
       job.setOpSysRTE(vmRte);
