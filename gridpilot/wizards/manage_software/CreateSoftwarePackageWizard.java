@@ -34,7 +34,6 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -213,7 +212,7 @@ public class CreateSoftwarePackageWizard extends GFrame{
     String msg = 
             "First, you have to choose a name for the software package.\n" +
             "If you plan to publish it in a runtime environment catalog, you should follow the convention of\n" +
-            "of scoping the name and giving it a versions number. E.g. version 12.0.6 of the ATLAS software\n" +
+            "of scoping the name and giving it a versions number. E.g. version 14.2.23 of the ATLAS software\n" +
             "package used in High Energy Physics is named \"APPS/HEP/ATLAS-14.2.23\"\n\n";
     JLabel jlDirInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
     final JTextField jtf = new JTextField(TEXTFIELDWIDTH);
@@ -313,12 +312,13 @@ public class CreateSoftwarePackageWizard extends GFrame{
           return;
         }
         String dirStr = MyUtil.clearFile(jtf.getText().trim());
-        if(dirStr==null || dirStr.equals("") || !(new File(dirStr)).exists() || !(new File(dirStr)).isDirectory()){
+        if(dirStr==null || dirStr.equals("") ||
+            !LocalStaticShell.existsFile(dirStr) || !LocalStaticShell.isDirectory(dirStr)){
           MyUtil.showError("Directory does not exist");
           dir = null;
           return;
         }
-        dir = new File(dirStr);
+        dir = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(dirStr)));
         try{
           mkTmpDir();
         }
@@ -506,8 +506,9 @@ public class CreateSoftwarePackageWizard extends GFrame{
       }
       if(baseSystemID.equals("")){
         MyUtil.showMessage("Unresolved dependencies", "WARNING: could not resolve base system \""+
-            system+"\" in catalog(s) "+MyUtil.arrayToString(catalogXml.catalogURLs)+
-            ". Writing catalog "+catalogUrl+" anyway - with basesystem 0.");
+            system+"\" in catalog(s)\n"+
+            MyUtil.arrayToString(catalogXml.catalogURLs)+
+            "\nWriting catalog\n"+catalogUrl+"\nanyway - with basesystem 0.");
         baseSystemID = "0";
       }
       // This is just to be sure to have the highest id
@@ -764,6 +765,11 @@ public class CreateSoftwarePackageWizard extends GFrame{
         "The runtime environment has now been packaged and is ready to be uploaded to a\n" +
         "remote URL. This URL will then be published in the catalog you choose.\n\n" +
         "If you don't specify any catalog URL, the runtime environment will not be published\n\n" +
+        "Chances are that you cannot write to the default catalog URL. In this case, you're\n" +
+        "recommended to refresh the list of base systems and dependencies from this URL and\n" +
+        "then save a catalog on your local hard disk, e.g.\n" +
+        "file:~/GridPilot/runtimeEnvironments/local_rte_catalog.xml\n" +
+        "for later publication.\n\n"+
         "You must specify which base system the software is to run on. Optionally, you\n" +
         "can also specify if the runtime environment depends on other runtime environments\n\n";
     JLabel jlInstructions = new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>");
@@ -797,7 +803,7 @@ public class CreateSoftwarePackageWizard extends GFrame{
     }
     JPanel tCatalog = new JPanel();
     tCatalog.add(jtfCatalog);
-    JPanel jpUrl = MyUtil.createCheckPanel1(this, "URL to upload tarball", jtfUrl, true, true, false, false);
+    JPanel jpUrl = MyUtil.createCheckPanel1(this, "Where to upload tarball", jtfUrl, true, true, false, false);
     JPanel jpCatalog = MyUtil.createCheckPanel1(this, "Catalog URL", jtfCatalog, true, true, false, false);
     JButton bRefreshBSs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of base systems");
     JButton bRefreshRTEs = MyUtil.mkButton("refresh.png", "Refresh", "Refresh the list of runtime environments");
