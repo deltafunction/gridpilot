@@ -37,13 +37,13 @@ public class GlobalFrame extends GFrame{
 
   private static final int MAX_TAB_TITLE_LENGTH = 24;
 
-  private static final String GridPilotURL = "http://www.gridpilot.dk/";
+  private static final String GRIDPILOT_URL = "http://www.gridpilot.dk/";
 
   public static final String GPA_FILTER = "*"+GridPilot.APP_EXTENSION+"|"+GridPilot.APP_INDEX_FILE;
   
   private Vector<ListPanel> allPanels;
   private DBPanel selectedPanel;
-  private CreateEditDialog pDialog;
+  private JFrame monitor;
   private MyPreferencesPanel prefsPanel = null;
   private static int i;
 
@@ -100,13 +100,16 @@ public class GlobalFrame extends GFrame{
       new Runnable(){
         public void run(){
           try{
-            monitoringPanel = new MonitoringPanel();
             Debug.debug("Creating new monitoring dialog", 2);
-            pDialog = new CreateEditDialog(monitoringPanel,
-                false, false, false, false, false);
-            pDialog.setVisible(false);
-            pDialog.setTitle("Monitor");
-            pDialog.pack();
+            monitoringPanel = new MonitoringPanel();
+            //monitor = new CreateEditDialog(monitoringPanel,
+            //    false, false, false, false, false);
+            monitor = new GFrame();
+            monitor.add(monitoringPanel);
+            //
+            monitor.setVisible(false);
+            monitor.setTitle("Monitor");
+            monitor.pack();
           }
           catch(Exception e){
             e.printStackTrace();
@@ -114,7 +117,11 @@ public class GlobalFrame extends GFrame{
         }
       }
     );
-    pDialog.activate();
+    //monitor.activate();
+    monitoringPanel.initGUI();
+    monitor.setMinimumSize(new Dimension(monitoringPanel.getPreferredSize().width+40, monitoringPanel.getPreferredSize().height+40));
+    monitoringPanel.activate();
+    //
   }
 
   /**
@@ -165,7 +172,7 @@ public class GlobalFrame extends GFrame{
             ResThread t = (new ResThread(){
               public void run(){
                 try{
-                  BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
+                  BrowserPanel bp = new BrowserPanel(null,
                       "GridPilot File Browser", "", "", false, true, true, null, null, false);
                   bp.okSetEnabled(false);
                 }
@@ -384,12 +391,13 @@ public class GlobalFrame extends GFrame{
   // Help -> GridPilot website action performed
   private void menuWebsite_actionPerformed(){
     try{
-      BrowserPanel wb = new BrowserPanel(this, "About",
-          GridPilotURL, "", false, false, false, null, null, true);
-      wb.setCancelButtonEnabled(false);
+      //BrowserPanel wb = new BrowserPanel(this, "About",
+      //    GridPilotURL, "", false, false, false, null, null, true);
+      // wb.setCancelButtonEnabled(false);
+      java.awt.Desktop.getDesktop().browse(java.net.URI.create(GRIDPILOT_URL));
     }
     catch(Exception e){
-      Debug.debug("WARNING: could not create BrowserPanel", 1);
+      Debug.debug("WARNING: could not open URL "+GRIDPILOT_URL, 1);
       e.printStackTrace();
     }
   }
@@ -689,7 +697,7 @@ public class GlobalFrame extends GFrame{
         ResThread t = (new ResThread(){
           public void run(){
             try{
-              BrowserPanel bp = new BrowserPanel(GridPilot.getClassMgr().getGlobalFrame(),
+              BrowserPanel bp = new BrowserPanel(null,
                   "GridPilot File Browser", "", "", false, true, true, null, null, false);
               bp.okSetEnabled(false);
             }
@@ -1165,11 +1173,11 @@ public class GlobalFrame extends GFrame{
 
   public void toggleMonitoringPanel(){
     try{
-      if(pDialog.isShowing()){
-        pDialog.setVisible(false);
+      if(monitor.isShowing()){
+        monitor.setVisible(false);
       }
       else{
-        pDialog.setVisible(true);
+        monitor.setVisible(true);
       }
     }
     catch(Exception ex){
@@ -1180,7 +1188,7 @@ public class GlobalFrame extends GFrame{
 
   public void showMonitoringPanel(final int index){
     if(SwingUtilities.isEventDispatchThread()){
-      pDialog.setVisible(true);
+      monitor.setVisible(true);
       cbMonitor.setSelected(true);
       getMonitoringPanel().getTPStatLog().setSelectedIndex(index);
     }
@@ -1189,7 +1197,7 @@ public class GlobalFrame extends GFrame{
         new Runnable(){
           public void run(){
             try{
-              pDialog.setVisible(true);
+              monitor.setVisible(true);
               cbMonitor.setSelected(true);
               getMonitoringPanel().getTPStatLog().setSelectedIndex(index);
             }

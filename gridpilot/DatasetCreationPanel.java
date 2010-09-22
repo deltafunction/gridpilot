@@ -936,6 +936,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     if(datasetIDs[0].equals("-1")){
       return;
     }
+    boolean detailsVisible = detailsShown();
     String [] sourceFields = cstAttributesNames;
     String [] sourceAttr = new String[cstAttributesNames.length];
     for(int i=0; i<tcCstAttributes.length; ++i){
@@ -1050,6 +1051,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     initExecutablePanel();
     pTop.updateUI();
     
+    if(!detailsVisible){
+      showDetails(false);
+    }
+    
+  }
+  
+  private boolean detailsShown(){
+    return detailFields.iterator().next().isVisible();
   }
   
   public void showDetails(boolean show){

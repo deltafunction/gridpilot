@@ -2950,6 +2950,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    *
    */
   private void cleanupDatasets(){
+    spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     new Thread(){
       public void run(){
         // Grab semaphore
@@ -2957,8 +2958,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: table busy, cleanup not done");
           return;
         }
-        Window frame = (Window) SwingUtilities.getWindowAncestor(getRootPane());
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         boolean anyDeleted = false;
         boolean ok = true;
         String error = "";
@@ -2991,6 +2990,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               ee.printStackTrace();
               ok = false;
             }
+            spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             try{
               anyDeleted = deletefilesOfDataset(i, ids[i]);
               if(anyDeleted){
@@ -3015,7 +3015,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           e.printStackTrace();
           error = e.getMessage();
         }
-        frame.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         deleteJobDefs = null;
         cleanupJobDefs = null;
         deleteFiles = null;
@@ -3242,7 +3242,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     new Thread(){
       public void run(){
         try{
-          setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           int [] rows = tableResults.getSelectedRows();
           if(rows==null || rows.length==0){
             return;
@@ -3276,7 +3276,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               Thread.sleep(1000);
             }
           }
-          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           String msg = "Number of files: "+totalFiles+"\nTotal size: "+totalBytes+" bytes";
           String exMsg = null;
           if(totalBytes>1000L){
@@ -3293,7 +3293,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
               "Information on selected dataset(s)", msg);
         }
         catch(Exception e){
-          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           e.printStackTrace();
         }
       }
@@ -3373,7 +3373,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * Called from the right-click menu
    */
   private void exportDataset(){
-    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     new Thread(){
       public void run(){
         try{
@@ -3408,7 +3408,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
             exportingDataset = false;
           }         
-          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           exportingDataset = false;
         }
       }.start();
@@ -3579,7 +3579,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
           catch(Exception e){
           }
-          setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
           String [][] catsPfns = dbPluginMgr.getFileURLs(datasetName, selectedFileIdentifiers[i],
               findAll());
           if(catalogsColumnIndex>-1 && catsPfns!=null && catsPfns[0]!=null){
@@ -3588,7 +3588,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           if(pfnsColumnIndex>-1 && catsPfns!=null && catsPfns[1]!=null){
             tableResults.setValueAt(MyUtil.arrayToString(catsPfns[1]), selectedRows[i], pfnsColumnIndex);
           }
-          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
         GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
@@ -3617,9 +3617,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           pfnsColumnIndex = j;
         }
       }
-      setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+      spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
       pfns[i] = tableResults.getUnsortedValueAt(selectedRows[i], pfnsColumnIndex);
-      setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+      spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
     StringSelection stringSelection = new StringSelection(MyUtil.arrayToString(pfns));

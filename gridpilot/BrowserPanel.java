@@ -726,7 +726,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     
     // Fix up things if this was e.g. called from a wizard.
-    if(parent!=null && url==null || url.trim().equals("")){
+    if(parent!=null && (url==null || url.trim().equals(""))){
       Debug.debug("Resetting cursor", 2);
       parent.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
