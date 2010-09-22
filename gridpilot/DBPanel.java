@@ -3408,7 +3408,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
             exportingDataset = false;
           }         
-          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+          spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           exportingDataset = false;
         }
       }.start();
