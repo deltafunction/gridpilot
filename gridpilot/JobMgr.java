@@ -894,11 +894,13 @@ public class JobMgr{
                authorization+".\nContinue on your own risk.";
             confirmString = "<html>"+confirmString.replaceAll("\\n", "<br>")+"</html>";
             if(rows.length-i>1){
-              choice = MyUtil.showResult(null, new JLabel(confirmString),
+              choice = MyUtil.showResult(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(),
+                  new JLabel(confirmString),
                   "Confirm change status", MyUtil.OK_ALL_SKIP_ALL_OPTION, "Skip");
             }
             else{
-              choice = MyUtil.showResult(null, new JLabel(confirmString),
+              choice = MyUtil.showResult(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(),
+                  new JLabel(confirmString),
                   "Confirm change status", MyUtil.OK_SKIP_OPTION, "Cancel");
             }
           }
