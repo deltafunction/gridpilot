@@ -105,7 +105,15 @@ public class GlobalFrame extends GFrame{
             //monitor = new CreateEditDialog(monitoringPanel,
             //    false, false, false, false, false);
             monitor = new GFrame();
-            monitor.add(monitoringPanel);
+            try{
+              URL imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur.png");
+              ImageIcon icon = new ImageIcon(imgURL);
+              monitor.setIconImage(icon.getImage());
+            }
+            catch(Exception e){
+              Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur.png", 3);
+            }
+             monitor.add(monitoringPanel);
             //
             monitor.setVisible(false);
             monitor.setTitle("Monitor");

@@ -281,7 +281,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
             ResThread t = (new ResThread(){
               public void run(){
                 try{
-                  setDisplay(currentUrlBox.getSelectedItem().toString());
+                  setDisplay(/*currentUrlBox.getSelectedItem().toString()*/MyUtil.getJTextOrEmptyString(currentUrlBox));
                 }
                 catch(Exception ee){
                   statusBar.setLabel("ERROR: could not open "+currentUrlBox.getSelectedItem().toString()+
