@@ -118,7 +118,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         Debug.debug("Setting input file "+job.getInputFileUrls()[i], 3);
       }
       else{
-        Debug.debug("Input file "+job.getInputFileUrls()[i]+" not found - continuing anyway...", 3);
+        logFile.addMessage("Input file "+job.getInputFileUrls()[i]+" not found - continuing anyway...");
       }
     }
     for(int i=0; i<executableInputs.length; ++i){
@@ -355,7 +355,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       return false;
     }
     try{
-      // Do this only if not a resubmit
       setInputFiles(job);
       setOutputFiles(job);
       setRTEs(job);
