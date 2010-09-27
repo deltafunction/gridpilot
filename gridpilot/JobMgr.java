@@ -32,11 +32,10 @@ public class JobMgr{
   private Vector<MyJobInfo> toPostProcessJobs = new Vector<MyJobInfo>();
   /** All jobs for which the post-processing is in progress. */
   private Vector<MyJobInfo> postProcessingJobs = new Vector<MyJobInfo>();
- /** Maximum number of simulaneous threads for post-processing. */
+ /** Maximum number of simultaneous threads for post-processing. */
   private int maxSimultaneousPostProcessing = 5;
-  /** Delay between the begin of two submission threads. */
-  private int timeBetweenPostProcessing = 5000;
-
+  /** Delay in milliseconds between the begin of two postprocessing threads. */
+  private int timeBetweenPostProcessing = 1000;
   
   // These are shared between all jobMgrs
   private MyJTable statusTable;
@@ -493,7 +492,7 @@ public class JobMgr{
     MyJobInfo job;
 
     for(int i=0; i<monitoredjobs.size(); ++i){
-      job = (MyJobInfo) monitoredjobs.get(i);
+      job = monitoredjobs.get(i);
       //Debug.debug("adding job "+job.getName()+
       //    " : "+job.getDBStatus()+
       //    " : "+(job.getDBStatus()<1?"":jobsByDBStatus[job.getDBStatus()-1]), 3);
@@ -589,8 +588,8 @@ public class JobMgr{
     String lfn = dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString();
     // Remove jobs from status vectors
     for(int i=0; i<monitoredjobs.size(); ++i){
-      if(((MyJobInfo) monitoredjobs.get(i)).getName().equals(lfn)){
-        --jobsByDBStatus[((MyJobInfo) monitoredjobs.get(i)).getDBStatus()-1];
+      if(monitoredjobs.get(i).getName().equals(lfn)){
+        --jobsByDBStatus[monitoredjobs.get(i).getDBStatus()-1];
         monitoredjobs.remove(i);
       }
     }
@@ -731,7 +730,7 @@ public class JobMgr{
   public static MyJobInfo getJobAtRow(int row){
     Vector<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     //Debug.debug("Got jobs at row "+row+". "+submJobs.size(), 3);
-    return (MyJobInfo) submJobs.get(row);
+    return submJobs.get(row);
   }
 
   /**
@@ -1199,7 +1198,7 @@ public class JobMgr{
       return;
     }
     Debug.debug("Looking for job to post-process from "+toPostProcessJobs, 3);
-    final MyJobInfo job = (MyJobInfo) toPostProcessJobs.get(0);
+    final MyJobInfo job = toPostProcessJobs.get(0);
     if(checkProcessing(job)){
       Debug.debug("Removing job from post-processing queue "+job, 2);
       toPostProcessJobs.remove(job);

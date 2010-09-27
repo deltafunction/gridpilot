@@ -11,6 +11,7 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.PullMgr;
 import gridfactory.common.TransferInfo;
+import gridfactory.common.TransferStatusUpdateControl;
 
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -60,8 +61,9 @@ public class MyPullMgr extends PullMgr {
       // If a transfer doesn't have an ID yet, give it some time before giving up
       if(transfer==null || transfer.getTransferID()==null){
         try{
+          Thread.sleep(5000L);
           transferStatusUpdateControl.updateStatus(null);
-          Thread.sleep(10000L);
+          Thread.sleep(TransferStatusUpdateControl.TRANSFER_CHECK_WAIT_MILLIS);
         }
         catch(InterruptedException e){
           e.printStackTrace();

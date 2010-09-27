@@ -211,7 +211,7 @@ public class MyJTable extends JTable implements Table {
 
   /**
    * Sets values and column names to this table, using values and columnNames.
-   * If length of values and columnNames are incompatibles,
+   * If length of values and columnNames are incompatible,
    * nothing is changed
    * @throws Exception 
    */

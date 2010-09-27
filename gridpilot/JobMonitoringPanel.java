@@ -421,8 +421,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mShow.add(miShowOutput);
     mShow.add(miShowScripts);
 
-    statusTable.addMenuSeparator();
-    statusTable.addMenuItem(miStopUpdate);
+    //statusTable.addMenuSeparator();
+    //statusTable.addMenuItem(miStopUpdate);
     statusTable.addMenuSeparator();
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miClean);

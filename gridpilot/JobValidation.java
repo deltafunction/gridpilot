@@ -24,8 +24,8 @@ public class JobValidation{
   private ConfigFile configFile;
   private int maxSimultaneaousValidating = 3;
   private int currentSimultaneousValidating = 0;
-  private Vector toValidateJobs = new Vector();
-  private Vector waitingJobs = new Vector();
+  private Vector<MyJobInfo> toValidateJobs = new Vector<MyJobInfo>();
+  private Vector<MyJobInfo> waitingJobs = new Vector<MyJobInfo>();
   /** Delay (minimum) between the moment when GridPilot finds out job is done, and the validation. */
   private int delayBeforeValidation = 5000;
   private java.util.Timer timer = new java.util.Timer();
@@ -88,7 +88,7 @@ public class JobValidation{
   }
 
   private synchronized void delayElapsed(){
-    Debug.debug("delayElapsed for " + ((MyJobInfo) waitingJobs.get(0)).getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
+    Debug.debug("delayElapsed for " + waitingJobs.get(0).getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
     if(waitingJobs.isEmpty()){
       Debug.debug("WARNING: waitingJobs empty", 2);
       return;
@@ -113,7 +113,7 @@ public class JobValidation{
       return;
     }
     if(currentSimultaneousValidating<maxSimultaneaousValidating){
-      final MyJobInfo job = (MyJobInfo) toValidateJobs.remove(0);
+      final MyJobInfo job = toValidateJobs.remove(0);
       ++currentSimultaneousValidating;
       new Thread(){
         public void run(){
@@ -140,7 +140,7 @@ public class JobValidation{
     }
     else{
       Debug.debug("WARNING: currentSimultaneousValidation >= maxSimultaneaousValidation : "+
-          currentSimultaneousValidating+">="+maxSimultaneaousValidating, 3);
+          currentSimultaneousValidating+">="+maxSimultaneaousValidating, 1);
     }
   }
 
@@ -178,7 +178,7 @@ public class JobValidation{
    **/
   private String validate(String [] outs){
     String [] outArray = MyUtil.split(outs[0], "[\\n\\r]");
-    Vector outErrArray = new Vector();
+    Vector<String> outErrArray = new Vector<String>();
     boolean foundError = false;
     for(int i=0; i<outArray.length; ++i){
       for(int j=0; j<errorPatterns.length; ++j){
@@ -202,7 +202,7 @@ public class JobValidation{
     if(outs.length==2 && outs[1]!=null){
       errArray = MyUtil.split(outs[1], "[\\n\\r]");
     }
-    Vector errErrArray = new Vector();
+    Vector<String> errErrArray = new Vector<String>();
     for(int i=0; i<errArray.length; ++i){
       foundError = true;
       for(int k=0; k<errorAntiPatterns.length; ++k){
@@ -363,36 +363,36 @@ public class JobValidation{
     for(int i=0; i<jobDefFields.length ; ++i){
       jobDefFields[i] = jobDefFields[i].toLowerCase();
     }
-    HashSet fieldsSet = new HashSet();
+    HashSet<String> fieldsSet = new HashSet<String>();
     Collections.addAll(fieldsSet, jobDefFields);
 
     Debug.debug("attr : "+ attributes.toString() + "\nvalues : "+ values.toString(), 2);
     // We lump all non-existing attribute-values into the metaData field.
-    HashMap attrValMap = new HashMap();
+    HashMap<String, String> attrValMap = new HashMap<String, String>();
     attrValMap.put("metaData", "");
     for(int i=0; i<attributes.size(); ++i){
-      if(fieldsSet.contains(((String) attributes.get(i)).toLowerCase()) &&
-          !((String) attributes.get(i)).equalsIgnoreCase("metadata")){
-        attrValMap.put((String) attributes.get(i), (String) values.get(i));
+      if(fieldsSet.contains(attributes.get(i).toLowerCase()) &&
+          !attributes.get(i).equalsIgnoreCase("metadata")){
+        attrValMap.put(attributes.get(i), values.get(i));
       }
       else{
-        String newMeta = (String) attrValMap.get("metaData");
+        String newMeta = attrValMap.get("metaData");
         if(!newMeta.equals("")){
           newMeta += "\n";
         }
-        newMeta += (String) attributes.get(i)+": "+(String) values.get(i);
+        newMeta += attributes.get(i)+": "+values.get(i);
         attrValMap.put("metaData", newMeta);
       }
     }
     String [] attrArray = new String[attrValMap.size()];
     String [] valuesArray = new String[attrValMap.size()];
-    Object [] keys = attrValMap.keySet().toArray();
+    String [] keys = attrValMap.keySet().toArray(new String[attrValMap.keySet().size()]);
     for(int i=0; i<attrValMap.size(); ++i){
-      attrArray[i] = (String) keys[i];
-      valuesArray[i] = (String) attrValMap.get(keys[i]);
+      attrArray[i] = keys[i];
+      valuesArray[i] = attrValMap.get(keys[i]);
     }
 
-    if((attrArray.length>1 || !((String) attrValMap.get("metaData")).equals("")) &&
+    if((attrArray.length>1 || !attrValMap.get("metaData").equals("")) &&
         !dbPluginMgr.updateJobDefinition(job.getIdentifier(), attrArray, valuesArray)){
       logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
                          "attributes : " + MyUtil.arrayToString(attrArray) + "\n" +
