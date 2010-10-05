@@ -96,7 +96,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     
-    if(shell==null || shell.getOS().toLowerCase().startsWith("windows")){
+    if(shell==null || shell.getOSName().toLowerCase().startsWith("windows")){
       basicOSRTES = new String [] {"Windows"};
     }
     
@@ -251,7 +251,7 @@ public class ForkComputingSystem implements MyComputingSystem{
         String depends = "";
         String provides = "";
         try{
-          depends = mgr.getOS()+(mgr.getProvides()==null?"":(" "+MyUtil.arrayToString(mgr.getProvides())));
+          depends = mgr.getOSName()+(mgr.getProvides()==null?"":(" "+MyUtil.arrayToString(mgr.getProvides())));
         }
         catch(Exception e1){
           depends = "";
@@ -432,7 +432,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     try{
       ForkScriptGenerator scriptGenerator = new ForkScriptGenerator(((MyJobInfo) job).getCSName(), runDir(job),
-          ignoreBaseSystemAndVMRTEs, shell.getOS().toLowerCase().startsWith("windows"));
+          ignoreBaseSystemAndVMRTEs, shell.getOSName().toLowerCase().startsWith("windows"));
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }

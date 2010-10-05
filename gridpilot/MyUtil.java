@@ -1567,16 +1567,16 @@ private static String fixUrl(String _url){
     try{
       dbMgr.createRuntimeEnv(
           new String [] {"name", "computingSystem"},
-          new String [] {LocalStaticShell.getOS(), csName});
+          new String [] {LocalStaticShell.getOSName(), csName});
       // Find the ID of the newly created RTE and tag it for deletion
-      String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(LocalStaticShell.getOS(), csName);
+      String [] rteIds = dbMgr.getRuntimeEnvironmentIDs(LocalStaticShell.getOSName(), csName);
       for(int j=0; j<rteIds.length; ++j){
         toDeleteRtes.put(rteIds[j], dbMgr.getDBName());
       }
     }
     catch(Exception e){
       e.printStackTrace();
-      logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+      logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOSName()+
           " on "+csName, e);
     }
   }
@@ -1608,7 +1608,7 @@ private static String fixUrl(String _url){
       }
       catch(Exception e){
         e.printStackTrace();
-        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOSName()+
             " on "+csName, e);
       }
     }
@@ -1804,9 +1804,10 @@ private static String fixUrl(String _url){
       rtes.add(rteNames[i]);
     }
     HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(
-       rtes, job.getOpSys(), shell==null?null:shell.getOS(), ignoreCatalogInconsistencies);
+       rtes, job.getOpSys(), shell==null?null:shell.getOSName(), ignoreCatalogInconsistencies);
     String vmOs = depsMap.keySet().iterator().next();
     Vector<String> deps = depsMap.get(vmOs);
+    deps.remove(vmOs);
     InstancePackage ip = null;
     String name = null;
     String os = null;

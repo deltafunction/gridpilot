@@ -99,7 +99,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     if(host!=null){
       try{
         Shell thisShell = getShell(host);
-        if(thisShell.getOS().toLowerCase().startsWith("windows")){
+        if(thisShell.getOSName().toLowerCase().startsWith("windows")){
           commandSuffix = ".bat";
         }
       }

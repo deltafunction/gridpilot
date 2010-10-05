@@ -877,7 +877,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
       catch(Exception e){
         e.printStackTrace();
-        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOS()+
+        logFile.addMessage("WARNING: could not create RTE for local OS "+LocalStaticShell.getOSName()+
             " on "+csName, e);
       }
     }

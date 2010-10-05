@@ -111,12 +111,14 @@ public class MyJobInfo extends JobInfo{
   public String toString(){
     return "\nJob # " + this.getIdentifier()+ "\n" +
         "  Name \t: " + getName() + "\n" +
-        "  cs \t: " + getCSName() + "\n" +
+        "  Computing system \t: " + getCSName() + "\n" +
         "  JobId \t: " + getJobId() + "\n" +
         "  Host \t: " + getHost() + "\n" +
-        "  Status DB \t: " + gridpilot.DBPluginMgr.getStatusName(getDBStatus()) + "\n" +
+        "  Status (DB) \t: " + gridpilot.DBPluginMgr.getStatusName(getDBStatus()) + "\n" +
         "  Status \t: " + getStatus() + "\n" +
-        "  Status internal \t: "+ getCSStatus() + "\n" +
+        "  Status (internal) \t: "+ getCSStatus() + "\n" +
+        "  OS \t: "+ getOpSys() + "\n" +
+        "  OS RTE \t: "+ getOpSysRTE() + "\n" +
         "  StdOut \t: " + getOutTmp() + "\n" +
         "  StdErr \t: " + getErrTmp() + "\n";
   }

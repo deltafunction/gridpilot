@@ -16,6 +16,7 @@ import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
+import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
@@ -206,7 +207,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
-    Debug.debug("Job depends on "+MyUtil.arrayToString(rtes), 2);
+    Debug.debug("Job depends on "+MyUtil.arrayToString(rtes)+"<--"+job.getOpSysRTE()+" : "+job.getOpSys(), 2);
     String transID = dbPluginMgr.getJobDefExecutableID(job.getIdentifier());
     String [] transInputFiles = dbPluginMgr.getExecutableInputs(transID);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
@@ -229,11 +230,12 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
         MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
     setBaseSystemName(rtes, job);
+    Debug.debug("OpSys of "+job.getName()+" <-- "+job.getOpSys()+" : "+job.getOpSysRTE(), 2);
     if(job.getOpSysRTE()!=null){
       String [] reducedRTEList = MyUtil.removeBaseSystemAndVM(rtes, rteMgr.getProvides(job.getOpSysRTE()));
       Debug.debug("Job dependencies --> "+MyUtil.arrayToString(reducedRTEList), 2);
       job.setRTEs(reducedRTEList);
-      Debug.debug("Job dependencies --> "+MyUtil.arrayToString(job.getRTEs()), 2);
+      Debug.debug("Job dependencies now --> "+MyUtil.arrayToString(job.getRTEs()), 2);
     }
     else{
       job.setRTEs(rtes);
@@ -247,20 +249,22 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
     boolean ok = true;
     
+
     if(!downloadedJobs.contains(job)){
       if(!pullMgr.checkRequirements(job, virtEnforce)){
         throw new Exception("Requirement(s) could not be satisfied. "+job);
       }
+      Debug.debug("OpSys for "+job.getName()+" <-- "+job.getOpSys()+" : "+job.getOpSysRTE(), 2);
       // Check if any VMs have been launched from VMForkMonitoringPanel
       includeManuallyBootedVMs();
-      Debug.debug("Will download input files for job "+job.getName()+" / "+job.getIdentifier(), 3);
+      Debug.debug("Will download input files for job "+job.getName()+" / "+job.getIdentifier(), 2);
       pullMgr.startDownloadInputs(job);
       waitForInputFilesDownload(job);
       downloadedJobs.add(job);
     }
-    
+
     ok = ok && gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
-    
+   
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){
       // There may still be hosts booting or unbooted - flag them as failed and return false
@@ -333,12 +337,21 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
 
   
   /**
-   * If a VM RTE provides all of the requested RTEs, set this as the
-   * opsys and opSysRTE.
+   * If one of the 'rtes' is a VM RTE, set this as opSys and opSysRTE of the job.
+   * Otherwise, if a VM RTE provides all of the requested RTEs, set this as the
+   * opSys and opSysRTE.
    * @param rtes requested RTEs
    * @param job the job in question
    */
   private void setBaseSystemName(String [] rtes, JobInfo job){
+    for(int i=0; i<rtes.length; ++i){
+      if(rteMgr.isVM(rtes[i])){
+        job.setOpSys(rtes[i]);
+        job.setOpSysRTE(rtes[i]);
+        Debug.debug("Base system already set to "+job.getOpSys()+"<--"+Util.arrayToString(rtes), 2);
+        return;
+      }
+    }
     Set<MetaPackage> mps = rteMgr.getRTECatalog().getMetaPackages();
     MetaPackage mp;
     String rte;
@@ -381,13 +394,15 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
           try{
             job.setOpSys(rte);
             job.setOpSysRTE(rte);
-            rteMgr.getVmRteDepends(rte, LocalStaticShell.getOS());
-            job.setOpSys(null);
-            job.setOpSysRTE(null);
+            rteMgr.getVmRteDepends(rte, LocalStaticShell.getOSName());
           }
           catch(Exception e){
             e.printStackTrace();
             canBeProvisioned = false;
+          }
+          finally{
+            job.setOpSys(null);
+            job.setOpSysRTE(null);
           }
           if(!canBeProvisioned){
             continue;

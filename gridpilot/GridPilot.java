@@ -152,7 +152,7 @@ public class GridPilot extends JApplet{
       }
       catch(Exception ee){
         System.out.println("WARNING: could not load user configuration file, " +
-                "using defaults from "+USER_CONF_FILE+" on "+LocalStaticShell.getOS());
+                "using defaults from "+USER_CONF_FILE+" on "+LocalStaticShell.getOSName());
         //ee.printStackTrace();
         //confFile = new ConfigFile(defaultConfFileNameWindows);
         try{
