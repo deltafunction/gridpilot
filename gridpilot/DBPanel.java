@@ -1623,7 +1623,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
         };
         rt.start();
-        MyUtil.waitForThread(rt, "import", fileCatalogTimeout, "importFiles", GridPilot.getClassMgr().getLogFile());
+        // Causes deadlock
+        //MyUtil.waitForThread(rt, "import", fileCatalogTimeout, "importFiles", GridPilot.getClassMgr().getLogFile());
       }
     });
     JMenuItem miViewFiles = new JMenuItem("Show file(s)");
