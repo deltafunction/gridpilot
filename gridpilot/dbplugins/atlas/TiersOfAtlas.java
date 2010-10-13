@@ -46,7 +46,7 @@ public class TiersOfAtlas {
       else{
         toaURL = new URL(toaLocation);
       }
-      // Check if the URL is available - if not, don't overwrite cache.
+      // Check if the URL is available and write to tmp file - if not, don't overwrite cache.
       try{
         BufferedReader in = new BufferedReader(new InputStreamReader(toaURL.openStream()));
         PrintWriter out = new PrintWriter(new FileWriter(tmpFile)); 
@@ -62,14 +62,14 @@ public class TiersOfAtlas {
       }
       if(_localCacheFile==null || _localCacheFile.trim().equals("")){
         if(!tmpFile.exists() || tmpFile.length()<1000){
-          throw new IOException("ERROR: "+toaURL+" not available.");
+          throw new IOException("ERROR: "+toaURL+" not available and no old cache file present.");
         }
         toaFile = tmpFile;
       }
       else{
         toaFile = new File(Util.clearTildeLocally(Util.clearFile(_localCacheFile)));
         if(!tmpFile.exists() || tmpFile.length()<1000){
-          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: "+toaURL+" not available.");
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: "+toaURL+" not available. Using old cache file.");
         }
         else{
           toaFile.delete();

@@ -1155,7 +1155,7 @@ public class ATLASDatabase extends DBCache implements Database{
     GlobusURL catalogUrl = new GlobusURL(catalogServer);
     if(catalogUrl.getProtocol().equals("lfc")){
       activateProxySsl();
-      return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, guid, findAll, false)).lookup();
+      return (new LFCLookupPFN(this, lfcConfig, catalogServer, dsn, lfn, guid, findAll, true)).lookup();
     }
     else if(catalogUrl.getProtocol().equals("mysql")){
       activateSsl();

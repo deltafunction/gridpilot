@@ -109,7 +109,7 @@ public class MySSL extends SSL{
       }
     }
     Debug.debug("Activating SSL with password "+GridPilot.KEY_PASSWORD, 2);
-    super.activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR);
+    super.activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR, GridPilot.TRUSTSTORE_FILE);
     credential = super.getCredential();
     sslOk = true;
   }

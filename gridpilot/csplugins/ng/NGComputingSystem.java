@@ -10,8 +10,6 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.Vector;
 
-import javax.swing.JOptionPane;
-
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
@@ -53,6 +51,7 @@ public class NGComputingSystem implements MyComputingSystem{
   public static final String NG_STATUS_PREPARING = "PREPARING" ;
   public static final String NG_STATUS_FINISHING = "FINISHING" ;
   public static final String NG_STATUS_FINISHED = "FINISHED" ;
+  public static final String NG_STATUS_EXECUTED = "EXECUTED" ;
   public static final String NG_STATUS_DELETED = "DELETED" ;
   public static final String NG_STATUS_CANCELLING = "CANCELLING";
   public static final String NG_STATUS_SUBMITTING = "SUBMITTING";

@@ -60,7 +60,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
     ignoreBaseSystemAndVMRTEs = _ignoreBaseSystemAndVMRTEs;
     try{
-       String stdoutExW = configFile.getValue(csName, "Stdout exclude words");
+      String stdoutExW = configFile.getValue(csName, "Stdout exclude words");
       stdoutExcludeWords = splitPhrases(stdoutExW);
     }
     catch(Exception e){
@@ -68,7 +68,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
     try{
       String stderrExW = configFile.getValue(csName, "Stderr exclude words");
-     stderrExcludeWords = splitPhrases(stderrExW);
+      stderrExcludeWords = splitPhrases(stderrExW);
     }
     catch(Exception e){
       e.printStackTrace();

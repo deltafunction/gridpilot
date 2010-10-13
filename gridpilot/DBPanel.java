@@ -1975,7 +1975,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         msg += " " + ids[i];
       }
       msg += "?</html>";
-      final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", true);
+      final JCheckBox cbCleanup = new JCheckBox("Delete physical file(s)", false);
       ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
       try{
         int choice = confirmBox.getConfirm("Confirm delete",
@@ -3174,7 +3174,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       return deleteFiles?2:3;
     }
     ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()); 
-    JCheckBox cbCleanup = new JCheckBox("Delete physical file"+(numFiles>1?"s":""), true);
+    JCheckBox cbCleanup = new JCheckBox("Delete physical file"+(numFiles>1?"s":""), false);
     String title = "Confirm delete file(s)";
     String msg = "Do you want to delete the "+(numFiles>1?numFiles+" ":"")+"file"+(numFiles>1?"s":"")+" of dataset "+name+"?";
     int choice = -1;

@@ -913,7 +913,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           fName += "/";
         }
       }
-      if(!MyUtil.filterMatches(fName, filter)){
+      if(!MyUtil.filterMatches(fName, filter) && !MyUtil.filterMatches(myBucket.getName(), filter)){
         continue;
       }
       if(fName.endsWith("/")){
@@ -964,7 +964,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
           fName += "/";
         }
       }
-      if(!MyUtil.filterMatches(fName, filter)){
+      if(!MyUtil.filterMatches(fName, filter) && !MyUtil.filterMatches(path+fName, filter)){
         continue;
       }
       if(fName.endsWith("/")){

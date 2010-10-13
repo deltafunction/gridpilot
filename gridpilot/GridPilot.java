@@ -98,6 +98,7 @@ public class GridPilot extends JApplet{
   public static String PROXY_DIR = "~/.globus/usercert.pem";
   public static String KEY_PASSWORD = null;
   public static String CA_CERTS_DIR = null;
+  public static String TRUSTSTORE_FILE = "~/GridPilot/truststore.jks";
   public static String DATE_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss";
   public static String [] FIXED_JOB_ATTRIBUTES = {"number", "name"};
   public static String BROWSER_HISTORY_FILE = null;
@@ -428,6 +429,8 @@ public class GridPilot extends JApplet{
           "WARNING: you have not specified any CA certificates. " +
           "A default set will be used.");
     }
+    TRUSTSTORE_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Truststore file");
     VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
        "Voms directory");
     if(VOMS_DIR==null){

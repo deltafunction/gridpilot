@@ -644,6 +644,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
       if(!localPath.startsWith("/")){
         localPath = "/" + localPath;
       }
+      localPath = localPath.replaceAll("//+", "/");
     } 
     String host = globusUrl.getHost();
     int port = globusUrl.getPort();
@@ -661,7 +662,8 @@ public class GSIFTPFileTransfer implements FileTransfer {
       if(localPath.length()>1){
         gridFtpClient.changeDir(localPath.substring(0, localPath.length()-1));
       }
-      Debug.debug("Current dir: "+gridFtpClient.getCurrentDir(), 3);
+      String cDir = gridFtpClient.getCurrentDir();
+      Debug.debug("Current dir: "+cDir, 3);
       final ByteArrayOutputStream received2 = new ByteArrayOutputStream(100000);
       DataSink dataSink = new DataSink(){
         public void write(Buffer buffer) 
@@ -680,20 +682,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.list("", "", dataSink);
       textArr = MyUtil.split(received2.toString(), "\n");
       String line = null;
-      boolean onlyDirs = false;
       if(filter==null || filter.equals("")){
         filter = "*";
-      }
-      else{
-        onlyDirs = filter.endsWith("/");
-        if(onlyDirs){
-          filter = filter.substring(0, filter.length()-1);
-        }
       }
       if(statusBar!=null){
         statusBar.setLabel("Filtering...");
       }
-      Debug.debug("Filter is "+filter, 3);
       Debug.debug("Filtering with "+filter, 3);
       Vector<String> textVector = new Vector<String>();
       Integer directories = new Integer(0);
@@ -702,7 +696,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         line = textArr[i].toString();
         Debug.debug(line, 3);
         parseLine(gridFtpClient, textVector, directories, files,
-            line, filter, onlyDirs);
+            line, filter, cDir);
       }
       if(statusBar!=null){
         statusBar.setLabel(directories+" directories, "+files+" files");
@@ -723,14 +717,14 @@ public class GSIFTPFileTransfer implements FileTransfer {
   }
   
   private void parseLine(GridFTPClient gridFtpClient, Vector<String> textVector,
-      Integer directories, Integer files,
-      String line, String filter, boolean onlyDirs) {
+      Integer directories, Integer files, String line, String filter, String cDir) {
     // Here we are assuming that there are no file names with spaces
     // on the gridftp server...
     // TODO: improve
     if(line.length()==0 || line.matches("total \\d+")){
       return;
     }
+    boolean onlyDir = filter.endsWith("/");
     String [] entryArr = MyUtil.split(line);
     String fileName = entryArr[entryArr.length-1];
     String bytes = null;
@@ -762,19 +756,21 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
     Debug.debug("bytes: "+bytes, 3);
     // If server is nice enough to provide file information, use it
-    if(!MyUtil.filterMatches(fileName, filter)){
-      return;
-    }
     if(line.matches("d[rwxsS-]* .*") ||
         /*BNL style*/line.matches("d\\? +.*")){
-      textVector.add(fileName+"/");
-      ++directories;
+      fileName = fileName+"/";
+      if(MyUtil.filterMatches(fileName, filter) || MyUtil.filterMatches(cDir+"/"+fileName, filter)){
+        textVector.add(fileName);
+        ++directories;
+      }
       return;
     }
-    else if(!onlyDirs && line.matches("-[rwxsS-]* .*") ||
-        /*BNL style*/line.matches("-\\? +.*")){
-      textVector.add(fileName+" "+bytes);
-      ++files;
+    else if(!onlyDir && line.matches("-[rwxsS-]* .*") ||
+      /*BNL style*/line.matches("-\\? +.*")){
+      if(MyUtil.filterMatches(fileName, filter) || MyUtil.filterMatches(cDir+"/"+fileName, filter)){
+        textVector.add(fileName+" "+bytes);
+        ++files;
+      }
       return;
     }
     try{
@@ -783,15 +779,20 @@ public class GSIFTPFileTransfer implements FileTransfer {
       Debug.debug("Checking file/directory information the slow way...", 2);
       gridFtpClient.changeDir(fileName);
       gridFtpClient.goUpDir();
-      textVector.add(fileName+"/");
-      ++directories;
+      fileName = fileName+"/";
+      if(MyUtil.filterMatches(fileName, filter) || MyUtil.filterMatches(cDir+"/"+fileName, filter)){
+        textVector.add(fileName);
+        ++directories;
+      }
     }
     catch(Exception e){
-      if(onlyDirs){
+      if(onlyDir){
         return;
       }
-       textVector.add(fileName+" "+bytes);
-       ++files;
+      if(MyUtil.filterMatches(fileName, filter) || MyUtil.filterMatches(cDir+"/"+fileName, filter)){
+        textVector.add(fileName+" "+bytes);
+        ++files;
+      }
     }
   }
 

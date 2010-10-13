@@ -1443,7 +1443,7 @@ private static String fixUrl(String _url){
   }
 
   public static Object mkSkipAllObject(JOptionPane pane){
-    return mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", "Skip all", "Skip all");
+    return mkButton(pane, GridPilot.ICONS_PATH + "cancel.png", "Cancel all", "Cancel all");
   }
 
   private static void showMessage0(Window parent, String title, String text){

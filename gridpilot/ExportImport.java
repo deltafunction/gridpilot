@@ -5,9 +5,11 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.Util;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.sql.SQLException;
 import java.util.Vector;
 
@@ -15,6 +17,8 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+
+import org.globus.util.GlobusURL;
 
 public class ExportImport {
   
@@ -516,6 +520,10 @@ public class ExportImport {
     DBRecord dataset = dbPluginMgr.getDataset(datasetID);
     String outputLocation = (String) dataset.getValue("outputLocation");
     String [][] importFiles = getImportFiles(outputLocation);
+    if(importFiles[0].length==0){
+      MyUtil.showMessage("No files imported", "No files found.\n\n");
+      return;
+    }
     regUrls = importFiles[0];
     regSizes = importFiles[1];
     regBaseURL = importFiles[2][0];
@@ -577,17 +585,38 @@ public class ExportImport {
         ":"+MyUtil.arrayToString(wb.getLastSizes()), 2);
     String [][] ret0 = new String [2][];
     String [][] ret = new String [3][];
+    String filter = wb.getFilter();
+    boolean prependedStar = false;
+    if(!filter.startsWith("*")){
+      prependedStar = true;
+      filter = "*"+filter;
+    }
+    // First find all files matching *filter, then chop off basedir/ and match on filter
     if(cbRecursive.isSelected() /*&& MyUtil.isLocalFileName(wb.getLastURLs()[0])*/){
-      ret0 = MyTransferControl.findAllFiles(wb.getLastURLs(), wb.getLastSizes(), wb.getFilter());
+      ret0 = MyTransferControl.findAllFiles(wb.getLastURLs(), wb.getLastSizes(), filter);
     }
     else{
-      ret0 = findFiles(wb.getLastURLs(), wb.getLastSizes());
+      ret0 = findFiles(wb.getLastURLs(), wb.getLastSizes(), filter);
     }
-    ret[0] = new String[ret0[0].length];
-    ret[1] = ret0[1];
-    ret[2] = new String[ret0[0].length];
+    Vector<String> retVec0 = new Vector<String>();
+    Vector<String> retVec1 = new Vector<String>();
+    String path;
+    String fileName;
     for(int i=0; i<ret0[0].length; ++i){
-      ret[0][i] = fixLocalFile(ret0[0][i]);
+      path = ret0[0][i].replaceFirst(startURL, "");
+      fileName = ret0[0][i].replaceFirst("^.*/([^/]+)$", "$1");
+      if(!prependedStar ||
+         Util.filterMatches(fileName, wb.getFilter()) || Util.filterMatches(path, wb.getFilter())){
+        retVec0.add(ret0[0][i]);
+        retVec1.add(ret0[0][i]);
+      }
+    }
+    Debug.debug("Found "+ret0[0].length+" further matched to "+retVec0.size(), 2);
+    ret[0] = new String[retVec0.size()];
+    ret[1] = retVec1.toArray(new String[retVec1.size()]);
+    ret[2] = new String[retVec0.size()];
+    for(int i=0; i<ret[0].length; ++i){
+      ret[0][i] = fixLocalFile(retVec0.get(i));
       ret[2][i] = wb.getLastURL();
     }
     //GridPilot.getClassMgr().getStatusBar().setLabel("");
@@ -603,11 +632,19 @@ public class ExportImport {
     return fil;
   }
 
-  private static String[][] findFiles(String[] lastUrlsList, String[] lastSizesList) {
+  private static String[][] findFiles(String[] lastUrlsList, String[] lastSizesList, String filter) {
     Vector<String> files = new Vector<String>();
     Vector<String> sizes = new Vector<String>();
+    String path = null;
     for(int i=0; i<lastUrlsList.length; ++i){
-      if(!lastUrlsList[i].endsWith("/")){
+      try{
+        path = (new GlobusURL(lastUrlsList[i])).getPath();
+      }
+      catch (MalformedURLException e) {
+        e.printStackTrace();
+        path = null;
+      }
+      if(!lastUrlsList[i].endsWith("/") && MyUtil.filterMatches(path, filter)){
         files.add(lastUrlsList[i]);
         sizes.add(lastSizesList[i]);
       }

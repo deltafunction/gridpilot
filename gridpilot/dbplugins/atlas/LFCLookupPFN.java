@@ -34,7 +34,7 @@ public class LFCLookupPFN extends LookupPFN {
     guid = _guid;
     tryDli = _tryDli;
     lfcServer = new LFCServer(lfcConfig, new URI(catalogServer));
-    Debug.debug("Created new LFCServer from ID "+lfcServer.getConfig().globusCredential.getIdentity(), 1);
+    Debug.debug("Created new LFCServer from ID "+lfcServer.getConfig().globusCredential.getIdentity(), 3);
     host = catalogUrl.getHost();
     /*e.g. "http://lfc-atlas.cern.ch:8085", "http://lxb1941.cern.ch:8085"
            "http://lfc-atlas-test.cern.ch:8085" */

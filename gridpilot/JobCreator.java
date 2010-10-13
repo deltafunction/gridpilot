@@ -318,11 +318,11 @@ public class JobCreator{
     int choice;
     if(showThis){
       if(lastPartition - currentPartition + datasetIdentifiers.length - dsIndex > 1){       
-        choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
+        choice = showResult(currentPartition, lastPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
            MyUtil.OK_ALL_SKIP_ALL_OPTION);
       }
       else{
-        choice = showResult(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
+        choice = showResult(currentPartition, lastPartition, resCstAttr, resJobParam, resOutMap, resStdOut,
            MyUtil.OK_SKIP_OPTION);
       }
       Debug.debug("Choice: "+choice, 2);
@@ -402,6 +402,7 @@ public class JobCreator{
     String exeName = null;
     String exeVersion = null;
     String id = "-1";
+    int defsNum = vPartition.size();
     synchronized(semaphoreDBCreate){
       while(!vPartition.isEmpty()){
         int part = ((Integer) vPartition.remove(0)).intValue();
@@ -410,7 +411,7 @@ public class JobCreator{
         resOutMap = vOutMap.remove(0);
         resStdOut  = vStdOut.remove(0);
 
-        statusBar.setLabel("Creating job definition # " + part);
+        statusBar.setLabel("Creating job definition # " + part+" out of "+defsNum);
         statusBar.incrementProgressBarValue(pb, 1);
 
         exeName = dbPluginMgr.getDatasetExecutableName(currentDatasetID);
@@ -1327,12 +1328,12 @@ public class JobCreator{
     return res;
   }
   
-  private int showResult(final int currentPartition, final String [] resCstAttr, final String [] resJobParam,
+  private int showResult(final int currentPartition, final int lastPartition, final String [] resCstAttr, final String [] resJobParam,
       final String [][] resOutMap, final String [] resStdOut, final int showOption){
     MyResThread rt = new MyResThread(){
       int ret;
       public void run(){
-        ret = showResult0(currentPartition, resCstAttr, resJobParam, resOutMap, resStdOut, showOption);
+        ret = showResult0(currentPartition, lastPartition, resCstAttr, resJobParam, resOutMap, resStdOut, showOption);
       }
       public int getIntRes(){
         return ret;
@@ -1348,7 +1349,7 @@ public class JobCreator{
     return rt.getIntRes();
   }
     
-  private int showResult0(int currentPartition, String [] resCstAttr, String [] resJobParam,
+  private int showResult0(int currentPartition, int lastPartition, String [] resCstAttr, String [] resJobParam,
                          String [][] resOutMap, String [] resStdOut, int showOption){
 
     Debug.debug("showing results for confirmation", 3);
@@ -1449,7 +1450,7 @@ public class JobCreator{
                                       (int)sp.getHorizontalScrollBar().getPreferredSize().getHeight() + 5));
 
     Debug.debug("creating dialog", 3);
-    return MyUtil.showResult(parent, sp, "Job definition # "+currentPartition, showOption,
+    return MyUtil.showResult(parent, sp, "Job definition # "+currentPartition+ " / "+lastPartition, showOption,
         showOption==MyUtil.OK_SKIP_OPTION?"Cancel":"Skip");
     
   }

@@ -1875,7 +1875,7 @@ public class MyTransferControl extends TransferControl {
     String fileOrDir;
     String size;
     for(int i=0; i<urlsList.length; ++i){
-      Debug.debug("Adding "+urlsList[i], 3);
+      Debug.debug("Checking:: "+urlsList[i], 3);
       if(urlsList[i].endsWith("/")){
         filesAndDirs = ft.find(new GlobusURL(urlsList[i]), filter);
         for(Iterator<String> it=filesAndDirs.iterator(); it.hasNext();){
@@ -1884,21 +1884,24 @@ public class MyTransferControl extends TransferControl {
           size = fileOrDirArr[fileOrDirArr.length-1];
           fileOrDir = urlsList[i]+fileOrDirAndSize.replaceFirst(size+"\\s*$", "").trim();
           if(!onlyFiles || !fileOrDir.endsWith("/")){
-            Debug.debug("Adding: "+fileOrDir, 3);
+            Debug.debug("Adding file: "+fileOrDir, 3);
             files.add(fileOrDir);
             sizes.add(size);
           }
         }
         // If the directory is not in the list returned, add itself
         if(!onlyFiles && !files.contains(urlsList[i])){
-          Debug.debug("Adding:: "+urlsList[i], 3);
+          Debug.debug("Adding this dir: "+urlsList[i], 3);
           files.add(urlsList[i]);
           sizes.add(urlsList[i]);
         }
       }
       else{
-        files.add(urlsList[i]);
-        sizes.add(sizesList[i]);
+        if(Util.filterMatches((new GlobusURL(urlsList[i])).getPath(), filter) ||
+           Util.filterMatches(urlsList[i].replaceFirst("^.*/([^/]+)$", "$1"), filter)){
+          files.add(urlsList[i]);
+          sizes.add(sizesList[i]);
+        }
       }
     };
     String[][] ret = new String[2][files.size()];

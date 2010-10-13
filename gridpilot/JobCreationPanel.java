@@ -605,7 +605,21 @@ public class JobCreationPanel extends CreateEditPanel{
     if(inputName!=null && !inputName.trim().equals("") && inputDB!=null && !inputDB.trim().equals("")){
       DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
       String inputID = sourceMgr.getDatasetID(inputName);
-      if(inputID!=null){
+      if(sourceMgr.getDataset(inputID)==null){
+        if(askCreateDataset(inputDB, inputID, inputName)){
+          try{
+            String nameField = MyUtil.getNameField(sourceMgr.getDBName(), "dataset");
+            sourceMgr.createDataset("dataset", new String [] {nameField}, new String [] {inputName});
+          }
+          catch(Exception e){
+            MyUtil.showError(SwingUtilities.getWindowAncestor(this),
+                "ERROR: could create dataset "+inputName);
+            throw e;
+          }
+        }
+      }
+      inputID = sourceMgr.getDatasetID(inputName);
+      if(inputID!=null && !inputID.equals("-1")){
         inputFiles = sourceMgr.getFiles(inputID);
         if(inputFiles==null || inputFiles.size()==0){
           if(askImportFiles(inputDB, inputID, inputName)){
@@ -639,6 +653,27 @@ public class JobCreationPanel extends CreateEditPanel{
     };
     rt.start();
     MyUtil.waitForThread(rt, "import", fileCatalogTimeout, "importFiles", GridPilot.getClassMgr().getLogFile());
+  }
+
+  private boolean askCreateDataset(String inputDB, String inputID, String inputName) throws IOException {
+    String [] choices = new String[] {"Yes", "no", "Cancel job creation"};
+    ConfirmBox confirmBox = new ConfirmBox((Window) SwingUtilities.getRoot(this));
+    String message = "The input dataset "+inputName+" does not exist in the database " + inputDB + ".\n\n" +
+        "Would you like to create this dataset?\n";
+    int choice = -1;
+    try{
+      choice = confirmBox.getConfirm("Create dataset?", message, choices, 0);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(choice<0 || choice==1){
+      return false;
+    }
+    else if(choice==2){
+      throw new IOException("Job creation cancelled");
+    }
+    return (choice==0);
   }
 
   private boolean askImportFiles(String inputDB, String inputID, String inputName) throws IOException {

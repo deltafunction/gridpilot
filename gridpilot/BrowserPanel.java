@@ -1957,6 +1957,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     // display max 500 entries
     // TODO: make this configurable
     int maxEntries = 500;
+    boolean maxExceeded = textVector.size()>maxEntries;
     int length = textVector.size()<maxEntries ? textVector.size() : maxEntries;
     String name = null;
     String bytes = null;
@@ -2019,7 +2020,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       (port>0?(":"+port):"")+localPath+"../\">../</a><br>\n";
     }
     htmlText += text;
-    if(textVector.size()>maxEntries){
+    if(maxExceeded){
       htmlText += "<br>\n...<br>\n...<br>\n...<br>\n";
     }
     htmlText += "\n</html>";
@@ -2029,8 +2030,8 @@ public class BrowserPanel extends JDialog implements ActionListener{
     // if we don't get an exception, the directory got read...
     //thisUrl = (new File(localPath)).toURL().toExternalForm();
     thisUrl = url;
-    statusBar.setLabel(directories+" director"+(directories==1?"y":"ies")+", " +
-        files+" file"+(files==1?"":"s"));
+    statusBar.setLabel(directories+(maxExceeded?"+":"")+" director"+(directories==1?"y":"ies")+", " +
+        files+(maxExceeded?"+":"")+" file"+(files==1?"":"s"));
     bDownload.setEnabled(listedUrls!=null && listedUrls.size()>0);
     bRegister.setEnabled(allowRegister && listedUrls!=null && listedUrls.size()>0);
     setUrl(thisUrl);
