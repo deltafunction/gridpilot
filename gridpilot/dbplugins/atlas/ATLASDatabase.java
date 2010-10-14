@@ -1665,6 +1665,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     Vector<String> locations = getOrderedLocations(vuid);
     String [] locationsArray = locations.toArray(new String[locations.size()]);
     PFNResult res = new PFNResult();
+    if(getStop() || !findPFNs){
+      return res;
+    }
     try{
       Debug.debug("Checking locations "+MyUtil.arrayToString(locationsArray), 3);
       for(int i=0; i<locationsArray.length; ++i){
@@ -1694,7 +1697,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
               fallbackServer = toa.getFileCatalogServer(locationsArray[i], false);
             }
           }
-          if(catalogServer==null){
+          if(catalogServer==null || catalogServer.trim().equals("")){
             logFile.addMessage("WARNING: could not find catalog server for "+
                 locationsArray[i]);
             continue;

@@ -2,6 +2,8 @@ package gridpilot.wizards.beginning;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -10,12 +12,16 @@ import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.Security;
+import java.util.Collections;
+import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
@@ -24,11 +30,15 @@ import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
 
 import gridpilot.GridPilot;
+import gridpilot.JExtendedComboBox;
 import gridpilot.MySSL;
 import gridpilot.MyUtil;
+import gridpilot.dbplugins.atlas.TiersOfAtlas;
 
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -440,8 +450,8 @@ public class BeginningWizard{
               new Insets(5, 5, 5, 5), 0, 0)) ;
     }
     String msg = "GridPilot needs a few directories to store information. Below you see the default paths.\n" +
-    "If you choose to click 'skip', the directories will not be created and GridPilot will not function\n" +
-    "properly. If the directories already exist you can safely click 'skip'.";
+    "If you click 'skip' and the default directories don't exist, they will not be created and GridPilot\n" +
+    "will not function properly. You should therefore usually click 'continue'.";
     jPanel.add(new JLabel("<html>"+msg.replaceAll("\n", "<br>")+"</html>" ),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -572,7 +582,7 @@ public class BeginningWizard{
   private int checkCertificate(boolean firstRun) throws Exception{
     String confirmString =
       "To access grid resources you need a valid grid certificate and a corresponding key.\n\n" +
-      "If you don't have one, please get one from your grid certificate authority (and run this wizard again).\n" +
+      "If you don't have one, please get one from a grid certificate authority (and run this wizard again).\n" +
       "GridPilot can still be started, but you can only run jobs and access files on your local machine or\n" +
       "machines to which you have ssh access.\n\n" +
       "The fields below are pre-filled with the standard locations of grid credentials on a Linux system. If your\n" +
@@ -747,11 +757,11 @@ public class BeginningWizard{
     // TODO: now we assume that mysql always runs on port 3306 - generalize.
     host = host.replaceFirst("(.*):\\d+", "$1");
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
-    lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1").replaceAll(" ", "_");
+    lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1").replaceAll(" +", "");
     String lfcPath = "/users/"+lfcUser+"/";
     JTextField tfLfcPath = new JTextField(TEXTFIELDWIDTH);
     String toaPath = "~/GridPilot/TiersOfATLASCache.txt";
-    JTextField tfHomeSite = new JTextField(TEXTFIELDWIDTH);
+    JComponent tfHomeSite = createAtlasSitesField();
     JTextField tfTOAPath = new JTextField(TEXTFIELDWIDTH);
     String [] defDirs = new String [] {"",
                                        "www.gridpilot.dk",
@@ -913,11 +923,12 @@ public class BeginningWizard{
           new String [] {"Initial panels", "Enabled"},
           new String [] {initalPanels+" ATLAS:dataset", "yes"}
           );
-      if(tfHomeSite.getText()!=null && !tfHomeSite.getText().trim().equals("")){
+      String homeSite = MyUtil.getJTextOrEmptyString(tfHomeSite);
+      if(homeSite!=null && !homeSite.trim().equals("")){
         configFile.setAttributes(
             new String [] {"ATLAS"},
             new String [] {"Home site"},
-            new String [] {tfHomeSite.getText().trim()}
+            new String [] {homeSite.trim()}
             );
       }
       configFile.setAttributes(
@@ -931,7 +942,7 @@ public class BeginningWizard{
     return choice;
   }
 
-  private JPanel createAtlasPanel(JPanel jPanel, JTextField tfHomeSite, JTextField tfLfcPath,
+  private JPanel createAtlasPanel(JPanel jPanel, Component tfHomeSite, JTextField tfLfcPath,
       String lfcPath, JTextField tfTOAPath, String toaPath, final JCheckBox cbAtlas, final ConfirmBox confirmBox) {
     JPanel row = null;
     final JPanel atlasDetails = new JPanel(new GridBagLayout());
@@ -940,13 +951,8 @@ public class BeginningWizard{
     "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
     "site acronyms from the file " +
     "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
-    " - e.g. NDGFT1DISK, CSCS, FZKDISK, LYONDISK, CERNCAF\n" +
-    "or CERNPROD.\n\n" +
-    "In order to be able to write ATLAS file catalog entries, a \"home site\" must be specified\n" +
-    "where you have write access, either via a user name and password given in the URL, like e.g.\n" +
-    "mysql://dq2user:dqpwd@my.regional.server:3306/localreplicas,\n" +
-    "or via your certificate, in which case you should give no user name or password in the URL, e.g.\n" +
-    "mysql://my.regional.server:3306/localreplicas.\n" +
+    " - e.g. UNICPH-NBI_LOCALGROUPDISK.\n\n" +
+    "In order to be able to write ATLAS file catalog, you must have write access to your \"home site\".\n\n" +
     "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
     "you want to save your datasets.\n\n" +
     "If you don't understand the above or don't have write access to a remote file catalog, you can\n" +
@@ -962,7 +968,6 @@ public class BeginningWizard{
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Home catalog site: "), BorderLayout.WEST);
     row.add(new JLabel("   "), BorderLayout.EAST);
-    tfHomeSite.setText("");
     row.add(tfHomeSite, BorderLayout.CENTER);
     atlasDetails.add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
@@ -1023,6 +1028,88 @@ public class BeginningWizard{
       }
     });
     return atlasDetails;
+  }
+
+  private JComponent createAtlasSitesField() {
+    TiersOfAtlas toa = new TiersOfAtlas(TOA_URL, null);
+    String[] sites;
+    try{
+      sites = toa.getAllLocalGroupDisks();
+      JExtendedComboBox sitesBox = new JExtendedComboBox();
+      sitesBox.setAutoscrolls(true);
+      ((JExtendedComboBox) sitesBox).addItem("");
+      for(int i=0; i<sites.length; ++i){
+        ((JExtendedComboBox) sitesBox).addItem(sites[i]);
+      }
+      ((JExtendedComboBox) sitesBox).setEditable(true);
+      sitesBox.updateUI();
+      return sitesBox;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return new JTextField(TEXTFIELDWIDTH);
+  }
+
+  private JComponent createNGClustersField() {
+    String[] sites;
+    try{
+      sites = findAllNGSites();
+      JExtendedComboBox sitesBox = new JExtendedComboBox();
+      sitesBox.setAutoscrolls(true);
+      ((JExtendedComboBox) sitesBox).addItem("");
+      for(int i=0; i<sites.length; ++i){
+        ((JExtendedComboBox) sitesBox).addItem(sites[i]);
+      }
+      ((JExtendedComboBox) sitesBox).setEditable(true);
+      sitesBox.updateUI();
+      return sitesBox;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return new JTextField(TEXTFIELDWIDTH);
+  }
+
+  private String[] findAllNGSites() {
+    // Pretty hacky - TODO: consider asking the info system directly
+    Vector<String> ret = new Vector<String>();
+    try{
+      URL monitorURL = new URL("http://www.nordugrid.org/monitor/");
+      String line = null;
+      String inLine = null;
+      BufferedReader in = new BufferedReader(new InputStreamReader(monitorURL.openStream()));
+      StringBuffer lb = new StringBuffer();
+      String sitePattern = ".*clusdes\\.php\\?host=([\\w\\-\\.]+)\\&.*";
+      String site;
+      while((inLine = in.readLine())!=null){
+        inLine = inLine.trim();
+        // take care of "lines" split on multiple lines
+        if(inLine.length()==0){
+          continue;
+        }
+        else if(lb.length()>0){
+          lb.append(inLine);
+          line = lb.toString();
+          lb.setLength(0);
+        }
+        else{
+          line = inLine;
+        }
+        if(line.matches(sitePattern)){
+          site = line.replaceFirst(sitePattern, "$1");
+          if(!ret.contains(site)){
+            Debug.debug("Adding site "+site, 1);
+            ret.add(site);
+          }
+        }
+      }
+      Collections.sort(ret);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return ret.toArray(new String [ret.size()]);
   }
 
   /* Configure computing systems
@@ -1092,8 +1179,8 @@ public class BeginningWizard{
       "your certificate) must be member of one of the virtual organizations of NorduGrid.\n\n" +
       "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
       "typically save you a significant amount of time when submitting jobs. The field must be filled with\n" +
-      "a space-separated list of host names. If you leave it empty all available resources will be queried\n" +
-      "on each job submission. You can find a list of participating clusters at " +
+      "a space-separated list of front-end host names. If you leave it empty all available resources will be\n" +
+      "queried on each job submission. You can find a list of participating clusters at " +
       "<a href=\"http://www.nordugrid.org/monitor/\">www.nordugrid.org</a>.\n"+
     "You can find a list of virtual organizations at " +
     "<a href=\"http://www.nordugrid.org/NorduGridVO/\">www.nordugrid.org/NorduGridVO/</a>.\n\n";
@@ -1107,9 +1194,30 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Clusters: "), BorderLayout.WEST);
+    final JPanel jpClusters = new JPanel();
     JTextField tfClusters = new JTextField(TEXTFIELDWIDTH);
     tfClusters.setText("");
-    row.add(tfClusters, BorderLayout.CENTER);
+    jpClusters.add(tfClusters);
+    JButton bClusters = new JButton("Get list");
+    bClusters.setToolTipText("Query ARC information system for list of all cluster front-end names.");
+    bClusters.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        confirmBox.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        (new Thread(){
+          public void run(){
+            JComponent cbClusters = createNGClustersField();
+            if(cbClusters!=null){
+              jpClusters.remove(0);
+              jpClusters.add(cbClusters, 0);
+              jpClusters.updateUI();
+            }
+            confirmBox.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+        }).start();
+      }
+    });
+    jpClusters.add(bClusters);
+    row.add(jpClusters, BorderLayout.CENTER);
     csPanels[0].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1317,13 +1425,20 @@ public class BeginningWizard{
     }
 
     // Set configuration values
-    if(jcbs[0].isSelected() /*&& tfClusters.getText()!=null && !tfClusters.getText().equals("")*/){
+    String cluster = null;
+    try{
+      cluster = MyUtil.getJTextOrEmptyString(((JComponent) jpClusters.getComponent(0)));
+    }
+    catch(Exception ee){
+      ee.printStackTrace();
+    }
+    if(jcbs[0].isSelected()){
       configFile.setAttributes(
           new String [] {"NG", "NG"},
           new String [] {"Enabled", "Clusters"},
-          new String [] {"yes", tfClusters.getText()==null?"":tfClusters.getText().trim()}
+          new String [] {"yes", cluster==null?"":cluster.trim()}
           );
-      if(tfClusters.getText()==null || tfClusters.getText().trim().equals("")){
+      if(cluster==null || cluster.trim().equals("")){
         MyUtil.showMessage("No clusters defined",
             "WARNING: you have not defined any NorduGrid  clusters.\n" +
             "This may causes submission to NorduGrid to be very slow as all clusters\n" +
@@ -1619,8 +1734,8 @@ public class BeginningWizard{
         "When running jobs on a grid it is useful to have the jobs upload output files to a directory on a server\n" +
         "that's always on-line.\n\n" +
         "For this to be possible GridPilot needs to know a URL on a " +
-        "<a href=\""+HTTPS_HOWTO_URL+"\">gridftp or https server</a> where you have\n" +
-        "read/write permission with the grid certificate you specified previously.\n\n" +
+        "gridftp or <a href=\""+HTTPS_HOWTO_URL+"\">https server</a> where you have\n" +
+        "read/write permission with the certificate you specified previously.\n\n" +
         "If you don't know any such URL or you don't understand the above, you may use the default grid home URL\n" +
         "given below. But please notice that this is but a temporary solution and that the files on this location may\n" +
         "be read, overwritten or deleted at any time.\n\n"+

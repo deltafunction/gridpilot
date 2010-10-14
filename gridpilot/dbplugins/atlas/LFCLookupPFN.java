@@ -154,7 +154,7 @@ public class LFCLookupPFN extends LookupPFN {
       Debug.debug("Found "+MyUtil.arrayToString(pfns), 3);
     }
     catch(Exception e){
-      //e.printStackTrace();
+      e.printStackTrace();
       ee = e;
     }
     if(pfns!=null){

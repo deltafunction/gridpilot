@@ -117,6 +117,7 @@ public class MySSL extends SSL{
   public void activateProxySSL() throws IOException, GeneralSecurityException {
     activateProxySSL(null);
   }
+
   public void activateProxySSL(Window frame) throws IOException, GeneralSecurityException {
     if(proxyOk){
       Debug.debug("Proxy already ok", 3);

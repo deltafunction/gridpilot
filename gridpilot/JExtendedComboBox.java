@@ -23,7 +23,7 @@ public class JExtendedComboBox extends JComboBox{
     super();
   }
   
-  public JExtendedComboBox(Vector vector){
+  public JExtendedComboBox(Vector<?> vector){
     super(vector);
   }
   
@@ -40,6 +40,7 @@ public class JExtendedComboBox extends JComboBox{
     }
     int width = (int)getPreferredSize().getWidth();
     int height = 0;
+    int maxHeight = 600;
     int vPad = 2;
     int vOffset = 0;
     if(getItemCount()>0){
@@ -61,7 +62,8 @@ public class JExtendedComboBox extends JComboBox{
         hOffset += scrollpane.getVerticalScrollBar().getWidth();
       }    
     }
-    Debug.debug("Setting preferred height: "+popup.getPreferredSize().height+
+    height = height>maxHeight?maxHeight:height;
+    Debug.debug("Setting preferred height: "+height+" <-- "+popup.getPreferredSize().height+
         " : "+fm.getHeight() + " : " + getItemCount(), 3);
     popup.setPreferredSize(new Dimension(width+hOffset,
         /*popup.getPreferredSize().height*/height+vOffset));
