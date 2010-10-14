@@ -52,7 +52,7 @@ public class JobDefCreator{
       switch(choice){
         case 0  : skip = false;  break;  // OK
         case 1  : skip = true;   break; // Skip
-        default : skip = true;  // other (closing the dialog). Same action than "Skip all"
+        default : skip = true;  // other (closing the dialog). Same action as "Skip all"
       }
     }
     if(!skip){
