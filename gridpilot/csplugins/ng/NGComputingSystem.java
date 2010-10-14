@@ -1382,11 +1382,14 @@ public class NGComputingSystem implements MyComputingSystem{
 
     // status
     String status = getValueOf("Status", line);
-    Debug.debug("Got Status: "+status, 2);
+    Debug.debug("Got Status: "+job.getCSStatus()+"-->"+status, 2);
     if(status==null){
-      job.setCSStatus(NG_STATUS_ERROR);
-      Debug.debug(
-          "Status not found for job " + job.getName() +" : \n" + line, 2);
+      // If the job already has another status than wait, it has not just been submitted;
+      // flag it with status ERROR
+      if(job.getCSStatus()!=null && !job.getCSStatus().trim().equals("") && !job.getCSStatus().equals(MyJobInfo.CS_STATUS_WAIT)){
+        job.setCSStatus(NG_STATUS_ERROR);
+      }
+      Debug.debug("Status not found for job " + job.getName() +" : \n" + line, 2);
       return true;
     }
     else{

@@ -177,11 +177,12 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         GridBagConstraints.NONE,
         new Insets(30, 10, 0, 0), 0, 0));
 
-    pOptions.add(bLoadMyJobs, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
-        GridBagConstraints.WEST,
-        GridBagConstraints.NONE,
-        new Insets(10, 10, 0, 0), 0, 0));
-
+    if(GridPilot.ADVANCED_MODE){
+      pOptions.add(bLoadMyJobs, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
+          GridBagConstraints.WEST,
+          GridBagConstraints.NONE,
+          new Insets(10, 10, 0, 0), 0, 0));
+    }
 
     bLoadJobs.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
