@@ -108,7 +108,13 @@ public class TiersOfAtlas {
     if(!preferHttp && fileCatalogs.containsKey(_siteAcronym)){
       return fileCatalogs.get(_siteAcronym);
     }
-    if(preferHttp && httpFileCatalogs.containsKey(_siteAcronym)){
+    else if(preferHttp && httpFileCatalogs.containsKey(_siteAcronym)){
+      return httpFileCatalogs.get(_siteAcronym);
+    }
+    else if(fileCatalogs.containsKey(_siteAcronym)){
+      return fileCatalogs.get(_siteAcronym);
+    }
+    else if(httpFileCatalogs.containsKey(_siteAcronym)){
       return httpFileCatalogs.get(_siteAcronym);
     }
     
@@ -131,10 +137,10 @@ public class TiersOfAtlas {
     String cServer = catalogServer.toString().trim();
     String hcServer = httpCatalogServer.toString().trim();
     if(!cServer.equals("")){
-      fileCatalogs.put(siteAcronym.toString().trim(), catalogServer.toString());
+      fileCatalogs.put(_siteAcronym, catalogServer.toString());
     }
     if(!hcServer.equals("")){
-      httpFileCatalogs.put(siteAcronym.toString().trim(), httpCatalogServer.toString());
+      httpFileCatalogs.put(_siteAcronym, httpCatalogServer.toString());
     }
     return cServer;
   }
