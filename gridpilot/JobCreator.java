@@ -295,7 +295,7 @@ public class JobCreator{
   }
 
   private int prepareJobDefs(int currentPartition, int lastPartition, int[][] eventSplits, int dsIndex) {
-    statusBar.setLabel("Preparing job definition # " + currentPartition);
+    statusBar.setLabel("Preparing job definition # " + currentPartition+ " / "+lastPartition);
     int partitionCount = 0;
     boolean skipAll = false;
     boolean skip = false;

@@ -2214,7 +2214,8 @@ public class DBPluginMgr extends DBCache implements Database{
             String newName = (String) newExecutable.getValue(nameField);
             String oldVersion = (String) oldExecutable.getValue(versionField);
             String newVersion = (String) newExecutable.getValue(versionField);
-            if(!oldName.equals(newName) || !oldVersion.equals(newVersion)){
+            if(newName!=null && oldName!=null && oldVersion!=null && newVersion!=null &&
+                (!oldName.equals(newName) || !oldVersion.equals(newVersion))){
               DBResult datasets = db.select("SELECT "+datasetIdField+" FROM dataset WHERE " +
                   datasetExecutableNameField+" = "+oldName+" AND "+datasetExecutableVersionField+" = "+oldVersion,
                   datasetIdField, true);

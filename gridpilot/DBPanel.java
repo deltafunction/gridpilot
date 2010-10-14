@@ -3405,10 +3405,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             }
           }
           catch(Exception e){
-            String error = "ERROR: could not export dataset";
+            String error = "ERROR: could not export dataset. See the log for details.";
             Debug.debug(error, 1);
             GridPilot.getClassMgr().getStatusBar().setLabel(error);
             GridPilot.getClassMgr().getLogFile().addMessage(error, e);
+            MyUtil.showError(error);
             exportingDataset = false;
           }         
           spTableResults.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
