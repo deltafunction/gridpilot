@@ -2171,9 +2171,9 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       for(int i=ids.length-1; i>=0; i--){
         boolean success = dbPluginMgr.deleteJobDefinition(ids[i], cleanup);
         if(!success){
-          String msg = "Deleting job definition "+ids[i]+" failed";
+          String msg = "Problem deleting job definition "+ids[i];
           Debug.debug(msg, 1);
-          GridPilot.getClassMgr().getStatusBar().setLabel(msg);
+          //GridPilot.getClassMgr().getStatusBar().setLabel(msg);
           GridPilot.getClassMgr().getLogFile().addMessage(msg);
           continue;
         }
@@ -3100,7 +3100,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             "output files and stdout/stderr of jobs"), true);
     int choice = -1;
     String title = "Confirm delete job definition"+(numJobs>1?"s":"");
-    String msg =  "Do you want to delete the "+(numJobs>1?numJobs+" ":"")+"job definition"+(numJobs>1?"s":"")+" of dataset "+name+"?";
+    String msg =  "Do you want to delete the "+(numJobs>1?numJobs+" ":"")+"job definition"+(numJobs>1?"s":"")+
+       " of the dataset\n\n"+name+" ?";
     Debug.debug("Buttons with icons? "+MyUtil.BUTTON_DISPLAY, 3);
     if(dsNum<1){
       choice = confirmBox.getConfirm(title, msg,
@@ -3176,7 +3177,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()); 
     JCheckBox cbCleanup = new JCheckBox("Delete physical file"+(numFiles>1?"s":""), false);
     String title = "Confirm delete file(s)";
-    String msg = "Do you want to delete the "+(numFiles>1?numFiles+" ":"")+"file"+(numFiles>1?"s":"")+" of dataset "+name+"?";
+    String msg = "Do you want to delete the "+(numFiles>1?numFiles+" ":"")+"file"+(numFiles>1?"s":"")+
+       " of the dataset\n\n"+name+" ?";
     int choice = -1;
     if(dsNum<1){
       choice = confirmBox.getConfirm(title, msg,

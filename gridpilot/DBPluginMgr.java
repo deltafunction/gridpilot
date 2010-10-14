@@ -13,6 +13,7 @@ import org.safehaus.uuid.UUIDGenerator;
 import com.mysql.jdbc.NotImplemented;
 
 import gridfactory.common.ConfigFile;
+import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBCache;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
@@ -2117,6 +2118,9 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            if(!checkDatasetRename(datasetID, datasetName, fields, values)){
+              return;
+            }
             db.clearError();
             res = db.updateDataset(datasetID, datasetName, fields, values);
           }
@@ -2126,6 +2130,34 @@ public class DBPluginMgr extends DBCache implements Database{
                                " from plugin " + dbName + " " +
                                datasetID, t);
           }
+        }
+        private boolean checkDatasetRename(String datasetID, String datasetName, String [] fields, String [] values) {
+          try{
+            DBRecord newDataset = new DBRecord(fields, values);
+            String nameField = MyUtil.getNameField(dbName, "dataset");
+            String newName = (String) newDataset.getValue(nameField);
+            Debug.debug("Checking for rename "+datasetName+"<->"+newName, 1);
+            if(!datasetName.equals(newName)){
+              String idField = MyUtil.getIdentifierField(dbName, "dataset");
+              DBResult jobDefs = db.getJobDefinitions(datasetID, new String [] {idField}, null, null);
+              DBResult files = db.getFiles(datasetID);
+              if(jobDefs!=null && !jobDefs.isEmpty() || files!=null && !files.isEmpty()){
+                String msg = "The dataset\n\n"+datasetName+"\n\nis not empty.\n\nPlease \"Clean\" it before renaming.";
+                ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+                try{
+                  confirmBox.getConfirm("Cannot rename dataset", msg, new Object[] {"Cancel"}, 0);
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                }
+                return false;
+              }
+            }
+          }
+          catch(Exception e) {
+            e.printStackTrace();
+          }
+          return true;
         }
         public boolean getBoolRes(){
           return res;
@@ -2155,6 +2187,9 @@ public class DBPluginMgr extends DBCache implements Database{
         }
         public void run(){
           try{
+            if(!checkExecutableRename(executableID, fields, values)){
+              return;
+            }
             db.clearError();
             res = db.updateExecutable(executableID, fields, values);
           }
@@ -2164,6 +2199,46 @@ public class DBPluginMgr extends DBCache implements Database{
                                " from plugin " + dbName + " " +
                                executableID, t);
           }
+        }
+        private boolean checkExecutableRename(String executableID,
+            String[] fields, String[] values) {
+          try{
+            String datasetIdField = MyUtil.getIdentifierField(dbName, "dataset");
+            String datasetExecutableNameField = MyUtil.getDatasetExecutableReference(dbName)[1];
+            String datasetExecutableVersionField = MyUtil.getDatasetExecutableVersionReference(dbName)[1];
+            String nameField = MyUtil.getNameField(dbName, "executable");
+            String versionField = MyUtil.getVersionField(dbName, "executable");
+            DBRecord oldExecutable = db.getExecutable(executableID);
+            DBRecord newExecutable = new DBRecord(fields, values);
+            String oldName = (String) oldExecutable.getValue(nameField);
+            String newName = (String) newExecutable.getValue(nameField);
+            String oldVersion = (String) oldExecutable.getValue(versionField);
+            String newVersion = (String) newExecutable.getValue(versionField);
+            if(!oldName.equals(newName) || !oldVersion.equals(newVersion)){
+              DBResult datasets = db.select("SELECT "+datasetIdField+" FROM dataset WHERE " +
+                  datasetExecutableNameField+" = "+oldName+" AND "+datasetExecutableVersionField+" = "+oldVersion,
+                  datasetIdField, true);
+              if(datasets!=null && !datasets.isEmpty()){
+                int choice = -1;
+                String msg = "There are dataset(s) that use "+oldName+" version "+oldVersion+
+                ". Are you sure you want to rename?\n\n" +
+                "If you choose yes, you should edit the following dataset(s) to match the new" +
+                "executable name/version:\n\n"+MyUtil.arrayToString(datasets.values[0]);
+                ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+                try{
+                  choice = confirmBox.getConfirm("Confirm rename executable", msg, new Object[] {"Yes, go ahead", "Cancel"}, 1);
+                }
+                catch(Exception e){
+                  e.printStackTrace();
+                }
+                return choice==0;
+              }
+            }
+          }
+          catch(Exception e) {
+            e.printStackTrace();
+          }
+          return true;
         }
         public boolean getBoolRes(){
           return res;
@@ -2284,14 +2359,16 @@ public class DBPluginMgr extends DBCache implements Database{
         try{
           if(cleanup){
             res = purgeJobFiles(jobDefID);
+            boolean purgeOk = deleteJobDefinition(jobDefID);
+            res = res && purgeOk;
           }
-          res = res && deleteJobDefinition(jobDefID);
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              jobDefID, t);
+          res = false;
         }
       }
       public boolean getBoolRes(){
