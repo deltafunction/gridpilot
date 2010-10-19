@@ -145,7 +145,7 @@ public class GlobalFrame extends GFrame{
     statusBar.setLabel("GridPilot welcomes you!");
     container.add(tabbedPane, BorderLayout.CENTER);
     container.validate();
-    selectedPanel = getActiveDBPanel();
+    getActiveDBPanel();
 
    /**
     * Detect click over X in tab
@@ -449,6 +449,7 @@ public class GlobalFrame extends GFrame{
    * Called when selected tab changes
    */
   private void tabbedSelected(ChangeEvent e){
+    getActiveDBPanel();
     if(selectedPanel!=null){
       ((ListPanel)selectedPanel).panelHidden();
       ((ListPanel)selectedPanel).panelShown();
@@ -502,7 +503,7 @@ public class GlobalFrame extends GFrame{
 
       public void menuSelected(MenuEvent e) {
         // Refresh active elements of the menu
-        selectedPanel = getActiveDBPanel();
+        getActiveDBPanel();
         selectedPanel.fileMenuSelected();
       }
     });
@@ -823,7 +824,7 @@ public class GlobalFrame extends GFrame{
               Debug.debug("Could not add panel ", 1);
               ex.printStackTrace();
             }
-            selectedPanel = getActiveDBPanel();
+            getActiveDBPanel();
           }
         });
         mDB.add(miNewTab);
@@ -849,7 +850,7 @@ public class GlobalFrame extends GFrame{
               Debug.debug("Could not add panel ", 1);
               ex.printStackTrace();
             }
-            selectedPanel = getActiveDBPanel();
+            getActiveDBPanel();
           }
         });
         mDB.add(miNewTab);
@@ -877,7 +878,7 @@ public class GlobalFrame extends GFrame{
               Debug.debug("Could not add panel ", 1);
               ex.printStackTrace();
             }
-            selectedPanel = getActiveDBPanel();
+            getActiveDBPanel();
           }
         });
         mDB.add(miNewTab);
@@ -904,7 +905,7 @@ public class GlobalFrame extends GFrame{
               Debug.debug("Could not add panel ", 1);
               ex.printStackTrace();
             }
-            selectedPanel = getActiveDBPanel();
+            getActiveDBPanel();
           }
         });
         mDB.add(miNewTab);

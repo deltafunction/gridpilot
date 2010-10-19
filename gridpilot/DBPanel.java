@@ -977,7 +977,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
 
   /**
-   * Listen for enter key in text field
+   * Listen for enter key in search text field
    */
   private void setEnterKeyListener() {
     selectPanel.addListenerForEnter(new KeyAdapter(){
@@ -985,6 +985,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // Change the text on the search button
         bSearch.setText(SEARCH_TEXT);
         bSearch.setToolTipText(SEARCH_MOUSEOVER_TEXT);
+        // Search
         switch(e.getKeyCode()){
           case KeyEvent.VK_ENTER:
             cursor = -1;
@@ -1002,6 +1003,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             });     
             t.start();
         }
+        // Pasting text in search text field - this means we do presumably not
+        // have a DB record in the clipboard
         if(KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("c") ||
             KeyEvent.getKeyText(e.getKeyCode()).equalsIgnoreCase("x")){
           if(MyUtil.isModifierDown(e)){
@@ -1020,7 +1023,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
   public void panelShown(){
     boolean rowsAreSelected = tableResults.getSelectedRows().length>0;
-    Debug.debug("panelShown - selected "+rowsAreSelected, 1);
+    Debug.debug("panelShown - selected "+rowsAreSelected+" : "+tableResults.getSelectedRows().length, 1);
     menuEditCopy.setEnabled(rowsAreSelected);
     menuEditCut.setEnabled(rowsAreSelected);
     // Check if clipboard is of the form "db table id1 id2 id3 ..."
@@ -4053,9 +4056,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       records = MyUtil.split(clip);
     }
     if(records.length<3){
+      Debug.debug("Too little info "+records.length, 1);
       return;
     }
     if(!clipboardOwned){
+      Debug.debug("Clipboard not owned", 1);
       return;
     }
     boolean ok = true;
@@ -4074,13 +4079,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         catch(Exception e){
           ok = false;
           String error = "ERROR: could not insert record: "+
-          db+", "+table+", "+dbName+", "+tableName+", "+records[i];
+             db+", "+table+", "+dbName+", "+tableName+", "+records[i];
           GridPilot.getClassMgr().getLogFile().addMessage(error, e);
           e.printStackTrace();
         }
       }
     }
     catch(Exception e){
+      e.printStackTrace();
       return;
     }
     // If records were inserted in target table and we're cutting,
@@ -4136,17 +4142,19 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         id = rest.substring(0, index);
         name = datasetName;
       }
-      // Get the name of the dataset from the source db
-      String dsName = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
-      // See if the name exists in the destination db
+      else{
+        // Get the name of the dataset from the source db
+        name = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
+      }
+      // See if the id or the  name exists in the destination db
       String testDsName = null;
       try{
         testDsName = GridPilot.getClassMgr().getDBPluginMgr(dbName).getDatasetName(id);
       }
       catch(Exception e){
       }
-      Debug.debug("Dataset name: "+dbName+"-->"+dsName+"-->"+testDsName, 2);
-      if(testDsName!=null && !testDsName.equals("-1")){            
+      Debug.debug("Dataset name: "+dbName+"-->"+name+"-->"+testDsName, 2);
+      if(testDsName!=null && !testDsName.equals("-1") && !testDsName.trim().equals("")){            
         name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+testDsName);
         if(name==null || name.equals("")){
           return;
@@ -4306,6 +4314,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private void insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
       String name, String id) throws Exception{
+    Debug.debug("Will insert dataset "+name+" : "+id+"-->"+dataset, 2);
     boolean ok = false;
     try{
       // If there are no executables in source or target, there's no point
@@ -4315,10 +4324,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       else{
         // Check if referenced executable exists     
-        String sourceExeName = sourceMgr.getDatasetExecutableName(
-            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")).toString());
-        String sourceExeVersion = sourceMgr.getDatasetExecutableVersion(
-            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")).toString());          
+        String sourceExeName = sourceMgr.getDatasetExecutableName((String)
+            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")));
+        String sourceExeVersion = sourceMgr.getDatasetExecutableVersion((String)
+            dataset.getValue(MyUtil.getIdentifierField(sourceMgr.getDBName(), "dataset")));          
         DBResult targetExecutable = dbPluginMgr.getExecutables();
         Vector<DBRecord> transVec = new Vector<DBRecord>();
         for(int i=0; i<targetExecutable.values.length; ++i){
@@ -4411,7 +4420,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(sourceMgr.getDBName().equals(dbPluginMgr.getDBName())){
           Debug.debug("Clearing id", 3);
           dataset.setValue(MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset"),
-              "''");
+              /*"''"*/"");
         }
         else if(sourceMgr.isFileCatalog()){
           Debug.debug("Setting id "+id, 3);

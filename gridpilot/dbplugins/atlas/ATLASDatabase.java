@@ -52,7 +52,7 @@ import gridpilot.MyUtil;
 
 public class ATLASDatabase extends DBCache implements Database{
   
-  public final static String DQ2_API_VERSION = "3_0";
+  public final static String DQ2_API_VERSION = "0_3_0";
   
   private String dq2Server;
   private String dq2Port;
@@ -431,7 +431,7 @@ public class ATLASDatabase extends DBCache implements Database{
             //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
             //ret = readGetUrl(new URL(url));
             //ret = URLDecoder.decode(ret, "utf-8");
-            str = dq2Access.getDatasets("['"+vuid+"']").trim();
+            str = dq2Access.getDatasetsByVUIDs("['"+vuid+"']").trim();
           }
           catch(Exception e){
             Debug.debug("WARNING: search returned an error "+str, 1);
@@ -2342,8 +2342,8 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     
     clearCacheEntries("dataset");
     
-    Debug.debug("Creating dataset "+MyUtil.arrayToString(fields)+
-        " --> "+MyUtil.arrayToString(values), 2);
+    Debug.debug("Creating dataset "+MyUtil.arrayToString(fields, ":")+
+        " --> "+MyUtil.arrayToString(values, ":"), 2);
     
     String dsn = null;
     String vuid = null;
@@ -2361,11 +2361,11 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         if(fields[i].equalsIgnoreCase("dsn")){
           dsn = (String) values[i];
         }
-        if(fields[i].equalsIgnoreCase("vuid") &&
-            values[i]!=null && !values[i].toString().equals("")){
+        else if(fields[i].equalsIgnoreCase("vuid") &&
+            values[i]!=null && !values[i].toString().trim().equals("")){
           vuid = (String) values[i];
         }
-        else if(values[i]!=null && !values[i].toString().equals("") &&
+        else if(values[i]!=null && !values[i].toString().trim().equals("") &&
             !values[i].toString().equals("''")){
           fieldStrings.add(fields[i]);
           valueStrings.add((String) values[i]);
@@ -2378,12 +2378,10 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       if(getStop()){
         return false;
       }
-      vuid = dq2Access.createDataset(dsn, vuid, null);
+      vuid = dq2Access.createDataset(dsn, null, vuid);
     }
     catch(Exception e){
-      error = "ERROR: could not connect to DQ2 dataset at "+dq2Server+" on port "+dq2SecurePort+
-      " and with path "+dq2Path;
-      logFile.addMessage(error, e);
+      appendError(e.getMessage());
       return false;
     }
     if(valueStrings.size()>0){

@@ -6,7 +6,6 @@ import java.net.URLDecoder;
 import gridfactory.common.Debug;
 import gridfactory.common.ResThread;
 import gridpilot.GridPilot;
-import gridpilot.MySSL;
 import gridpilot.MyUtil;
 
 import org.safehaus.uuid.UUIDGenerator;
@@ -19,50 +18,41 @@ public class DQ2Access {
 
   //private WebServiceConnection wsPlain;
   private SecureWebServiceConnection wsSecure;
-  private String baseUrl="dq2/";
 
   private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  //private final String createDatasetURL = "ws_repository/rpc";
   // delete all files of this dataset in DQ2
   private final String deleteDatasetURL = "ws_content/rpc?operation=deleteDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   // delete all locations of this dataset in DQ2
   private final String deleteDatasetURL1 = "ws_location/rpc";
   // Clears all dataset, dataset versions and dataset metadata for the given dataset
   private final String deleteDatasetURL2 = "ws_repository/rpc";
+  // Delete subscriptions to this dataset
+  private final String deleteDatasetURL3 = "ws_subscription/rpc";
   private final String getLocationsURL = "ws_location/rpc?operation=queryDatasetLocations&API="+ATLASDatabase.DQ2_API_VERSION;
-  private final String getDatasetsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API="+ATLASDatabase.DQ2_API_VERSION;
+  //private final String getLocationsURL = "ws_location/rpc";
+  private final String getDatasetsByVUIDsURL = "ws_repository/rpc?operation=queryDatasetByVUIDs&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String getDatasetsByNameURL = "ws_repository/rpc?operation=queryDatasetByName&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String getFilesURL = "ws_content/rpc?operation=queryFilesInDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   private boolean checkingProxy = false;
   private boolean proxyOk = false;
+  
   /**
    * Instantiates a DQ2Acces object
-   * @param httpServer insecure DQ2WebServer   
-   * @param httpPort insecure Server Port
-   * @param httpsServer secure DQ2WebServer
-   * @param httpsPort secure Server Port
+   * @param host secure DQ2WebServer
+   * @param host secure Server Port
+   * @param path path on the server
    */
-  public DQ2Access(/*String httpServer, int httpPort,*/
-      String httpsServer, int httpsPort)
-  {
-    new DQ2Access(httpsServer, httpsPort, baseUrl);
-  }
-  public DQ2Access(/*String httpServer, int httpPort,*/
-      String httpsServer, int httpsPort, String path)
-  {
-    try 
-    {
-      //wsPlain = new WebServiceConnection(httpServer, httpPort, baseUrl);
-            Debug.debug("New web service connection: "+httpsServer+" - "+httpsPort+" - "+path, 1);
-      wsSecure = new SecureWebServiceConnection(httpsServer, httpsPort, path);
-      wsSecure.trustWrongHostName();
-      wsSecure.trustAllCerts();
-      wsSecure.init();
+  public DQ2Access(String host, int port, String path) {
+    try{
+      Debug.debug("New web service connection: "+host+" - "+port+" - "+path, 1);
+      wsSecure = new SecureWebServiceConnection(host, port, path);
     }
-    catch (Exception e)
-    {
+    catch (Exception e){
       e.printStackTrace();
     }
   }
@@ -88,7 +78,6 @@ public class DQ2Access {
         }
         try{
           GridPilot.getClassMgr().getSSL().getGridCredential();
-          wsSecure.loadLocalProxyCertificate(MySSL.getProxyFile().getAbsolutePath());
         }
         catch(Exception ee){
           ee.printStackTrace();
@@ -107,15 +96,23 @@ public class DQ2Access {
    * @param vuidString The vuid of the DataSet to be located
    * returns the raw response from the DQ2 web server  
    */
-  public String getDatasets(String vuidString) throws Exception
-  {
+  public String getDatasetsByVUIDs(String vuidString) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String keys[]={"vuids"};
     String values[]={vuidString};
-    Debug.debug("Finding datasets with web service on "+getDatasetsURL, 1);
-    String response = wsSecure.post(getDatasetsURL, keys, values);
-    //Debug.debug("Response from web service: "+response, 3);
+    Debug.debug("Finding datasets with web service on "+getDatasetsByVUIDsURL, 1);
+    String response = wsSecure.post(getDatasetsByVUIDsURL, keys, values);
+    return response;
+  }
+
+  private String getDatasetsByName(String dsnString) throws Exception {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
+    String keys[]={"dsn"};
+    String values[]={dsnString};
+    Debug.debug("Finding datasets with web service on "+getDatasetsByNameURL, 1);
+    String response = wsSecure.get(getDatasetsByNameURL, keys, values);
     return response;
   }
 
@@ -128,8 +125,8 @@ public class DQ2Access {
   {
     Debug.debug("Checking proxy", 3);
     checkProxy();
-    String keys[]={"vuids"};
-    String values[]={vuidsString};
+    String keys[]={"vuids"/*, "API", "operation"*/};
+    String values[]={vuidsString/*, ATLASDatabase.DQ2_API_VERSION, "queryDatasetLocations"*/};
     Debug.debug("Finding dataset locations with web service on "+getLocationsURL, 1);
     // Try 3 times.
     String response = null;
@@ -153,8 +150,7 @@ public class DQ2Access {
    * @param vuid The VUID of the DataSet
    * returns the raw response from the DQ2 web server  
    */
-  public String getDatasetFiles(String vuidsString) throws Exception
-  {
+  public String getDatasetFiles(String vuidsString) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String keys[]={"vuids"};
@@ -166,12 +162,12 @@ public class DQ2Access {
 
   /**
    * creates Dataset
-   * @param dsn The Name of the DataSet to be created
-   * @param vuid The ID of the DataSet to be created
+   * @param dsn name of the dataset to be created
+   * @param duid ID of the dataset to be created
+   * @param vuid ID of the dataset to be created
    * NOTICE: this does not work: the vuid is ignored
    */
-  public String createDataset(String dsn, String duid, String vuid) throws Exception
-  {
+  public String createDataset(String dsn, String duid, String vuid) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     /*
@@ -183,6 +179,11 @@ public class DQ2Access {
     data="API=3_0"
     data="tuid=ac25f251-2afd-493e-a642-102e7c908135"
     data="operation=addDataset"
+    
+    curl -i --silent --max-time 600  --max-redirs 5  -H "User-Agent: dqcurl"  
+    -H "TUID: 9dd66285-da07-11df-9812-90fba62a3218"  --key /tmp/x509up_u9649  
+    --cert /tmp/x509up_u9649  -k  --url 'https://atlddmcat.cern.ch:443//dq2/ws_repository/rpc' 
+    -d "vuid=e54b3d7a-da06-11df-8787-90fba62a3208&duid=e54b3bae-da06-11df-b36c-90fba62a3208&update=yes&dsn=user.forellan.ganga.JD.191919.ZmumuGamma_atlfast2_recon.D3PD.jid000293&API=0_3_0&operation=addDataset"
     */
     if(vuid==null || vuid.equals("")){
       vuid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
@@ -190,8 +191,8 @@ public class DQ2Access {
     if(duid==null || duid.equals("")){
       duid = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
     }
-    String keys[] = {"dsn", "duid", "vuid"};
-    String values[] = {dsn, duid, vuid};
+    String keys[] = {"dsn", "vuid", "duid"/*, "update", "API", "operation"*/};
+    String values[] = {dsn, vuid, duid/*, "yes", ATLASDatabase.DQ2_API_VERSION, "addDataset"*/};
     Debug.debug("Creating dataset with web service on "+createDatasetURL, 1);
     String response = wsSecure.post(createDatasetURL, keys, values);
     String ret = parseVuid(URLDecoder.decode(response, "utf-8"));
@@ -215,8 +216,7 @@ public class DQ2Access {
    * @throws Exception 
    */
   public boolean addLFNsToDataset(String vuid, String[] lfns, String[] guids,
-        String[] sizes, String [] checkSums) throws Exception
-  {
+        String[] sizes, String [] checkSums) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     if (lfns.length!=guids.length) 
@@ -250,8 +250,8 @@ public class DQ2Access {
       data.append("}");
     }
         data.append("]");
-    String keys[]={"files","vuid","vuids","update"};
-    String values[]={data.toString(),vuid,"[]","yes"};
+    String keys[]={"files", "vuid",  "vuids","update", "operation", "API"};
+    String values[]={data.toString(), vuid, "[]", "yes", "addFilesToDataset", ATLASDatabase.DQ2_API_VERSION};
         
     wsSecure.post(addFilesToDatasetURL, keys, values);
     return true;
@@ -259,25 +259,38 @@ public class DQ2Access {
 
   /**
    * deletes a Dataset
-   * @param lfn Logical Dataset Name of the Dataset to erase
+   * @param dsn Logical Dataset Name of the Dataset to erase
+   * @param vuid ID of the Dataset to erase
    */
-  public boolean deleteDataset(String dsn, String vuid) throws Exception
-  {
+  public boolean deleteDataset(String dsn, String vuid) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     // Delete from each catalog
-    String [] keys= new String [] {"vuids"};
-    String [] values = new String [] {"['"+vuid+"']"};
+    String [] keys;
+    String [] values;
     Debug.debug("Deleting "+dsn, 2);
     Debug.debug(" on "+deleteDatasetURL+" : "+wsSecure.protocolname, 2);
-    wsSecure.post(deleteDatasetURL, keys, values);
-    keys = new String [] {"operation", "API", "vuids"};
+    String duid = getDuid(dsn);
+    if(duid!=null && !duid.equals("")){
+      keys = new String [] {"operation", "API", "uids"};
+      values = new String [] {"deleteDatasetSubscriptions", ATLASDatabase.DQ2_API_VERSION, "['"+vuid+"', '"+duid+"']"};
+      wsSecure.post(deleteDatasetURL3, keys, values);
+    }
+    /*keys = new String [] {"operation", "API", "vuids"};
     values = new String [] {"deleteDataset", ATLASDatabase.DQ2_API_VERSION, "['"+vuid+"']"};
-    wsSecure.get(deleteDatasetURL1, keys, values);
+    wsSecure.get(deleteDatasetURL1, keys, values);*/
+    keys = new String [] {"vuids"};
+    values = new String [] {"['"+vuid+"']"};
+    wsSecure.post(deleteDatasetURL, keys, values);
     keys = new String [] {"operation", "API", "dsn"};
     values = new String [] {"trashDataset", ATLASDatabase.DQ2_API_VERSION, dsn};
     wsSecure.get(deleteDatasetURL2, keys, values);
     return true;
+  }
+
+  private String getDuid(String dsn) throws Exception {
+    String response = getDatasetsByName(dsn);
+    return parseDuid(response);
   }
 
   /**
@@ -286,8 +299,7 @@ public class DQ2Access {
    * @param complete set the complete Status to yes (true) or no(false)
    */
   public boolean registerLocation(String vuid, String dsn, boolean complete, String location)
-     throws Exception
-  {
+     throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String com;
@@ -303,14 +315,25 @@ public class DQ2Access {
    * parses one vuid out of a dq2 output
    * @param toParse String output from dq webserice access
    */
-  public String parseVuid(String toParse)
-  {
+  public String parseVuid(String toParse) {
     // We have to parse something like
     // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
     Debug.debug("Parsing "+toParse, 3);
     String ret = toParse.replaceFirst(".*'vuid': '([^']+)'.*", "$1");
     Debug.debug("--> "+ret, 3);
-    return(ret);
+    return ret.trim();
+  }
+
+  public String parseDuid(String toParse) {
+    // We have to parse something like
+    // {'version': 1, 'vuid': '709b2ae9-f827-4800-b577-e3a38a763983', 'duid': 'b98adabc-c7f5-4354-a0ac-7d65d95c2f16'}
+    Debug.debug("Parsing "+toParse, 3);
+    String ret = toParse.replaceFirst(".*'duid': '([^']+)'.*", "$1");
+    if(ret.equals(toParse)){
+      ret = "";
+    }
+    Debug.debug("--> "+ret, 3);
+    return ret.trim();
   }
 
   /**
@@ -320,8 +343,7 @@ public class DQ2Access {
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
-  public void deleteFromSite(String vuid, String site) throws Exception
-  {
+  public void deleteFromSite(String vuid, String site) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String [] keys= null;
@@ -346,8 +368,7 @@ public class DQ2Access {
    * @param vuid    Dataset identifier
    * @param site    Site name
    */
-  public void deleteFiles(String vuid, String [] guids) throws Exception
-  {
+  public void deleteFiles(String vuid, String [] guids) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
     String [] keys = new String [] {"vuid", "guids"};

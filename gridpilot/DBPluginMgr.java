@@ -1972,7 +1972,7 @@ public class DBPluginMgr extends DBCache implements Database{
           res = db.createDataset(table, fields, values);
         }
         catch(Throwable t){
-          db.appendError(t.getMessage());
+          db.appendError(t.getMessage()+":"+t.getCause());
           logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
                              " from plugin " + dbName + " " +
                              values.toString(), t);
@@ -1989,6 +1989,14 @@ public class DBPluginMgr extends DBCache implements Database{
       return t.getBoolRes();
     }
     else{
+      try{
+        if(!db.getError().isEmpty()){
+          logFile.addMessage( "ERROR from plugin " + dbName + " "+db.getError());
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
       return false;
     }
   }
@@ -2137,7 +2145,8 @@ public class DBPluginMgr extends DBCache implements Database{
             String nameField = MyUtil.getNameField(dbName, "dataset");
             String newName = (String) newDataset.getValue(nameField);
             Debug.debug("Checking for rename "+datasetName+"<->"+newName, 1);
-            if(!datasetName.equals(newName)){
+            if(datasetName!=null && !datasetName.equals("") &&
+               newName!=null && !newName.equals("") && !datasetName.equals(newName)){
               String idField = MyUtil.getIdentifierField(dbName, "dataset");
               DBResult jobDefs = db.getJobDefinitions(datasetID, new String [] {idField}, null, null);
               DBResult files = db.getFiles(datasetID);
@@ -2214,8 +2223,10 @@ public class DBPluginMgr extends DBCache implements Database{
             String newName = (String) newExecutable.getValue(nameField);
             String oldVersion = (String) oldExecutable.getValue(versionField);
             String newVersion = (String) newExecutable.getValue(versionField);
-            if(newName!=null && oldName!=null && oldVersion!=null && newVersion!=null &&
+            if(newName!=null && !newName.equals("") && oldName!=null && !oldName.equals("") &&
+                oldVersion!=null && !oldVersion.equals("") && newVersion!=null && !newVersion.equals("") &&
                 (!oldName.equals(newName) || !oldVersion.equals(newVersion))){
+              Debug.debug("Possible renaming problem: "+oldName+":"+newName+":"+oldVersion+":"+newVersion, 1);
               DBResult datasets = db.select("SELECT "+datasetIdField+" FROM dataset WHERE " +
                   datasetExecutableNameField+" = "+oldName+" AND "+datasetExecutableVersionField+" = "+oldVersion,
                   datasetIdField, true);

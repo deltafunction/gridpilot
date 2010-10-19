@@ -1086,7 +1086,7 @@ private static String fixUrl(String _url){
    */
   public static String getIdentifierField(String dbName, String table){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" identifier");
-    if(ret==null || ret.equals("")){
+    if(ret==null || ret.trim().equals("")){
       ret = "identifier";
     }
     //Debug.debug("Identifier for "+dbName+" - "+table+" : "+ret, 2);
@@ -1098,7 +1098,7 @@ private static String fixUrl(String _url){
    */
   public static String getNameField(String dbName, String table){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" name");
-    if(ret==null || ret.equals("")){
+    if(ret==null || ret.trim().equals("")){
       ret = "name";
     }
     //Debug.debug("Name for "+dbName+" - "+table+" : "+ret, 2);
@@ -1110,7 +1110,7 @@ private static String fixUrl(String _url){
    */
   public static String getFileSizeField(String dbName){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Bytes field");
-    if(ret==null || ret.equals("")){
+    if(ret==null || ret.trim().equals("")){
       ret = "bytes";
     }
     return ret;
@@ -1121,7 +1121,7 @@ private static String fixUrl(String _url){
    */
   public static String getChecksumField(String dbName){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, "Checksum field");
-    if(ret==null || ret.equals("")){
+    if(ret==null || ret.trim().equals("")){
       ret = "checksum";
     }
     return ret;
@@ -1132,7 +1132,7 @@ private static String fixUrl(String _url){
    */
   public static String getVersionField(String dbName, String table){
     String ret = GridPilot.getClassMgr().getConfigFile().getValue(dbName, table+" version");
-    if(ret==null || ret.equals("")){
+    if(ret==null || ret.trim().equals("")){
       ret = "version";
     }
     //Debug.debug("Version for "+dbName+" - "+table+" : "+ret, 2);
