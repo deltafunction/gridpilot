@@ -2004,7 +2004,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         if(!getWorking()){
           return;
         }
-        boolean anyDeleted = doDeleteFiles(ids, cleanup);
+        boolean anyDeleted = doDeleteFilesOfDataset(ids, cleanup);
         stopWorking();
         if(anyDeleted){
           refresh();
@@ -2014,7 +2014,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     workThread.start();
   }
 
-  private boolean doDeleteFiles(String[] _ids, boolean cleanup) {
+  private boolean doDeleteFilesOfDataset(String[] _ids, boolean cleanup) {
     boolean anyDeleted = false;
     
     HashMap<String, Vector<String>> datasetNameAndIds = new HashMap<String, Vector<String>>();
@@ -2215,10 +2215,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    pDialog.setTitle(GridPilot.getRecordDisplayName(tableName));
  }
 
-  /**
-   *  Delete datasets. Returns HashSet of identifier strings.
-   *  From AtCom1.
-   */
   protected void deleteDatasets(){
     statusBar.setLabel("Deleting dataset(s).");
     workThread = new ResThread(){
@@ -2249,7 +2245,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(!datasetIdentifiers[i].equals("-1")){
         if(!okAll){
           ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame()/*,"",""*/); 
-          cbCleanup = new JCheckBox("Delete job definitions", true);    
+          cbCleanup = new JCheckBox("Delete associated job definition(s) and file(s)", true);    
           if(i<1){
             try{
               choice = confirmBox.getConfirm("Confirm delete",
@@ -2269,16 +2265,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
             try{
               choice = confirmBox.getConfirm("Confirm delete",
                                    "Really delete dataset/dataset "+datasetIdentifiers[i]+"?",
-                                   dbPluginMgr.isJobRepository() ?
                                    new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
                                                  MyUtil.mkSkipObject(confirmBox.getOptionPane()),
                                                  MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
                                                  MyUtil.mkSkipAllObject(confirmBox.getOptionPane()),
-                                                 cbCleanup} :
-                                     new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
-                                                   MyUtil.mkSkipObject(confirmBox.getOptionPane()),
-                                                   MyUtil.mkOkAllObject(confirmBox.getOptionPane()),
-                                                   MyUtil.mkSkipAllObject(confirmBox.getOptionPane())});
+                                                 cbCleanup});
               }
             catch(java.lang.Exception e){
               Debug.debug("Could not get confirmation, "+e.getMessage(),1);
@@ -2295,9 +2286,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         }
         if(!skip || okAll){
           Debug.debug("deleting dataset # " + datasetIdentifiers[i], 2);
-          boolean isJobRep = dbPluginMgr.isJobRepository();
-          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i],
-              isJobRep && cbCleanup.isSelected())){
+          if(dbPluginMgr.deleteDataset(datasetIdentifiers[i], cbCleanup.isSelected())){
             deleted.add(datasetIdentifiers[i]);
             statusBar.setLabel("Dataset # " + datasetIdentifiers[i] + " deleted.");
           }
@@ -3168,7 +3157,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       for(int i=0; i<files.values.length; ++i){
         fileIds[i] = (String) files.get(i).getValue(idField);
       }
-      ok = ok && doDeleteFiles(fileIds, cleanupFiles);
+      ok = ok && doDeleteFilesOfDataset(fileIds, cleanupFiles);
     }
     return ok;
   }
@@ -4066,6 +4055,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     boolean ok = true;
     String db = records[0];
     String table = records[1];
+    Integer rememberedChoice = records.length>1?-2:-1;
     try{
       // this can stay null for other than datasets and files
       for(int i=2; i<records.length; ++i){
@@ -4074,7 +4064,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         // Only datasets have unique names.
         try{
           Debug.debug("Pasting "+records[i], 2);
-          pasteRecord(records[i], db, table);
+          pasteRecord(records[i], db, table, rememberedChoice);
         }
         catch(Exception e){
           ok = false;
@@ -4094,7 +4084,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     if(GridPilot.getClassMgr().getGlobalFrame().cutting){
       Debug.debug("Deleting "+(records.length-2)+" rows", 2);
       statusBar.setLabel(
-      "Deleting job definition(s). Please wait...");
+      "Deleting source record(s). Please wait...");
       JProgressBar pb = new JProgressBar();
       statusBar.setProgressBar(pb);
       statusBar.setProgressBarMax(pb, records.length-2);
@@ -4123,11 +4113,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     GridPilot.getClassMgr().getGlobalFrame().refreshCutPanel();
   }
   
-  private void pasteRecord(String record, String db, String table) throws Exception {
+  private void pasteRecord(String record, String db, String table, Integer rememberedChoice) throws Exception {
     String id = record;
     // this can stay null for other than files
     String datasetName = null;
-    String name = null;
+    String srcName = null;
+    String newName = null;
     if(tableName.equalsIgnoreCase("dataset")){
       // Now, DQ2 cannot even lookup dataset names from ID...
       // Another ugly hack: we pass both id and name
@@ -4140,11 +4131,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         String rest = record.substring(index+4);
         index = rest.indexOf("'::'");
         id = rest.substring(0, index);
-        name = datasetName;
+        srcName = datasetName;
       }
       else{
         // Get the name of the dataset from the source db
-        name = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
+        srcName = GridPilot.getClassMgr().getDBPluginMgr(db).getDatasetName(id);
       }
       // See if the id or the  name exists in the destination db
       String testDsName = null;
@@ -4153,10 +4144,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       }
       catch(Exception e){
       }
-      Debug.debug("Dataset name: "+dbName+"-->"+name+"-->"+testDsName, 2);
+      Debug.debug("Dataset name: "+dbName+"-->"+srcName+"-->"+testDsName, 2);
       if(testDsName!=null && !testDsName.equals("-1") && !testDsName.trim().equals("")){            
-        name = MyUtil.getName("Cannot overwrite, please give new name", "new-"+testDsName);
-        if(name==null || name.equals("")){
+        newName = MyUtil.getName("Cannot overwrite, please give new name", testDsName+"-copy");
+        if(newName==null || newName.trim().equals("")){
           return;
         }
       }
@@ -4169,10 +4160,13 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       datasetName = record.substring(1, index);
       String rest = record.substring(index+4);
       index = rest.indexOf("'::'");
-      name = rest.substring(0, index);
+      srcName = rest.substring(0, index);
       id = rest.substring(index+4, rest.length()-1);
     }
-    insertRecord(db, table, id, name, datasetName);
+    if(newName==null){
+      newName = srcName;
+    }
+    insertRecord(db, table, id, srcName, newName, datasetName, rememberedChoice);
   }
 
   /**
@@ -4183,13 +4177,14 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    * @param sourceTable
    * @param targetDB
    * @param targetTable
-   * @param id
-   * @param name
-   * @param datasetName    only relevant for job definitions and files
+   * @param srdId
+   * @param srcName
+   * @param newName
+   * @param srcDatasetName    only relevant for job definitions and files
    * @throws Exception
    */
   private void insertRecord(String sourceDB, String sourceTable,
-      String id, String name, String datasetName) throws Exception{
+      String srdId, String srcName, String newName, String srcDatasetName, Integer rememberedChoice) throws Exception{
     
     DBPluginMgr sourceMgr = GridPilot.getClassMgr().getDBPluginMgr(sourceDB);
     
@@ -4197,11 +4192,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
 
     if(tableName.equalsIgnoreCase("jobDefinition")){
       try{
-        record = sourceMgr.getJobDefinition(id);
+        record = sourceMgr.getJobDefinition(srdId);
         insertJobDefinition(sourceMgr, record);
       }
       catch(Exception e){
-        String msg = "ERROR: job definition "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: job definition "+srdId+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4211,11 +4206,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("dataset")){
       try{
-        record = sourceMgr.getDataset(id);
-        insertDataset(record, sourceMgr, name, id);
+        record = sourceMgr.getDataset(srdId);
+        insertDataset(record, sourceMgr, srcName, newName, srdId, rememberedChoice);
       }
       catch(Exception e){
-        String msg = "ERROR: dataset "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: dataset "+srdId+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4225,11 +4220,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("executable")){
       try{
-        record = sourceMgr.getExecutable(id);
+        record = sourceMgr.getExecutable(srdId);
         insertExecutable(record, sourceMgr);
       }
       catch(Exception e){
-        String msg = "ERROR: executable "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: executable "+srdId+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4239,11 +4234,11 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("runtimeEnvironment")){
       try{
-        record = sourceMgr.getRuntimeEnvironment(id);
+        record = sourceMgr.getRuntimeEnvironment(srdId);
         insertRuntimeEnvironment(record);
       }
       catch(Exception e){
-        String msg = "ERROR: runtime environment "+id+" could not be created, "+sourceDB+
+        String msg = "ERROR: runtime environment "+srdId+" could not be created, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4253,10 +4248,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     else if(tableName.equalsIgnoreCase("file")){
       try{
-        insertFile(sourceMgr, name, datasetName, id);
+        insertFile(sourceMgr, newName, srcDatasetName, srcDatasetName, srdId);
       }
       catch(Exception e){
-        String msg = "ERROR: file "+id+" could not be inserted, "+sourceDB+
+        String msg = "ERROR: file "+srdId+" could not be inserted, "+sourceDB+
         "."+sourceTable+"->"+dbName+"."+tableName+". "+e.getMessage();
         Debug.debug(msg, 1);
         statusBar.setLabel(msg);
@@ -4287,8 +4282,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     return true;
   }
   
-  private boolean insertFile(DBPluginMgr sourceMgr, String name, String datasetName,
-      String fileID) throws Exception{
+  private boolean insertFile(DBPluginMgr sourceMgr, String name, String srcDatasetName,
+      String destDatasetname, String fileID) throws Exception{
     if(!dbPluginMgr.isFileCatalog()){
       ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
       String msg = "Cannot create file(s) in virtual table.";
@@ -4299,7 +4294,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       // Check if parent dataset exists - NO, not necessary, it will be created...
       /*String targetDatasetId = dbPluginMgr.getDatasetID(datasetName);
       if(!targetDatasetId.equals("-1")){*/
-        dbPluginMgr.createFil(sourceMgr, datasetName, name, fileID);
+        dbPluginMgr.createFil(sourceMgr, srcDatasetName, destDatasetname, name, fileID);
       /*}
       else{
         throw(new Exception("ERROR: Parent dataset for file "+
@@ -4313,8 +4308,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void insertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
-      String name, String id) throws Exception{
-    Debug.debug("Will insert dataset "+name+" : "+id+"-->"+dataset, 2);
+      String srcName, String newName, String srcId, Integer rememberedChoice) throws Exception{
+    Debug.debug("Will insert dataset "+srcName+" : "+srcId+"-->"+dataset, 2);
     boolean ok = false;
     try{
       // If there are no executables in source or target, there's no point
@@ -4350,16 +4345,72 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     // If this is a job-only database (no file catalog) we deny creating
     // orphaned datasets (data provenance enforcement).
-    if(!ok && (!dbPluginMgr.isFileCatalog() || dbPluginMgr.isJobRepository())){
+    if(!ok && !dbPluginMgr.isFileCatalog() && dbPluginMgr.isJobRepository()){
       String error = "ERROR: executable for dataset does not exist.";
       throw(new Exception(error));
     }
-    boolean success = doInsertDataset(dataset, sourceMgr, name, id);
+    boolean success = doInsertDataset(dataset, sourceMgr, newName, srcId);
     if(!success){
       throw(new Exception("ERROR: "+dbPluginMgr.getError()));
     }
+    // Now register any files of the source dataset with the destination dataset.
+    if(rememberedChoice==0 || rememberedChoice<0 && getCopyFilesConfirm(srcName, newName, rememberedChoice)){
+      copyFilesOfDataset(srcId, srcName, newName, sourceMgr);
+    }
   }
   
+  private void copyFilesOfDataset(String id, String srcDatasetName, String newDatasetName, DBPluginMgr sourceMgr) {
+    try{
+      DBResult srcFiles = sourceMgr.getFiles(id);
+      String fileIdField = MyUtil.getIdentifierField(sourceMgr.getDBName(), "file");
+      String fileNameField = MyUtil.getNameField(sourceMgr.getDBName(), "file");
+      DBRecord srcFile;
+      String fileName;
+      String fileID;
+      for(Iterator<DBRecord> it = srcFiles.iterator(); it.hasNext();){
+        srcFile = it.next();
+        fileID = (String) srcFile.getValue(fileIdField);
+        fileName = (String) srcFile.getValue(fileNameField);
+        insertFile(sourceMgr, fileName, srcDatasetName, newDatasetName, fileID);
+      }
+    }
+    catch(Exception e){
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not register files of dataset " +
+          srcDatasetName+" / "+id+" in destination "+dbName+":"+newDatasetName, e);
+    }
+  }
+
+  private boolean getCopyFilesConfirm(String srcDatasetName, String newDatasetName, Integer rememberedChoice) {
+    String msg = "Do you want to copy the file record(s) of the source dataset\n"+
+    srcDatasetName+"\nto the new dataset\n"+newDatasetName+"\n in the database "+dbName;
+    final JCheckBox cbRememberChoice = new JCheckBox("Apply for all", true);
+    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+    try{
+      int choice = confirmBox.getConfirm("Confirm copy file(s)",
+          msg,
+          rememberedChoice==-2?
+          new Object[] {
+             MyUtil.mkButton(confirmBox.getOptionPane(), GridPilot.ICONS_PATH + "cancel.png", "Yes", "Yes"),
+             MyUtil.mkButton(confirmBox.getOptionPane(), GridPilot.ICONS_PATH + "cancel.png", "No", "No")}:
+          new Object[] {
+              MyUtil.mkButton(confirmBox.getOptionPane(), GridPilot.ICONS_PATH + "cancel.png", "Yes", "Yes"),
+              MyUtil.mkButton(confirmBox.getOptionPane(), GridPilot.ICONS_PATH + "cancel.png", "No", "No"),
+              cbRememberChoice},
+          0);
+      if(cbRememberChoice.isSelected()){
+        rememberedChoice = choice;
+      }
+      if(choice==0){
+        return true;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
+    return false;
+  }
+
   private boolean doInsertDataset(DBRecord dataset, DBPluginMgr sourceMgr,
       String name, String id) throws Exception{
     String [] targetFields = dbPluginMgr.getFieldNames("dataset");

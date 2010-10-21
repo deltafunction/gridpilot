@@ -2878,11 +2878,12 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
       catch(Exception ee){
       }
-      if(existingID!=null && !existingID.equals("-1") && !existingID.equals("")){
+      if(existingID!=null && !existingID.equals("-1") && !existingID.trim().equals("")){
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
-          existingID+"!="+datasetID+". Using "+existingID+".";
-          GridPilot.getClassMgr().getLogFile().addInfo(error);
+             existingID+"!="+datasetID+". Using "+existingID+".";
+          //GridPilot.getClassMgr().getLogFile().addInfo(error);
+          Debug.debug(error, 3);
           datasetID = existingID;
         }
         datasetExists = true;
@@ -2925,15 +2926,33 @@ public class HSQLDBDatabase extends DBCache implements Database{
         existingID = getFileID(lfn);
       }
       catch(Exception ee){
+        //ee.printStackTrace();
       }
       if(existingID!=null && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(fileID)){
           error = "WARNING: file "+lfn+" already registered with id "+
-          existingID+"!="+fileID+". Using "+existingID+".";
+             existingID+"!="+fileID;
           GridPilot.getClassMgr().getLogFile().addMessage(error);
-          fileID = existingID;
+          //fileID = existingID;
         }
-        fileExists = true;
+        else{
+          // If the file is registered with another dataset, generate a new ID to register with this dataset
+          String alreadyAssignedDatasetName = null;
+          try{
+            alreadyAssignedDatasetName = getFileDataset(existingID);
+          }
+          catch(Exception ee){
+            //ee.printStackTrace();
+          }
+          if(alreadyAssignedDatasetName!=null && !alreadyAssignedDatasetName.equals(datasetName)){
+            fileID  = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+            String message = "Generated new UUID "+fileID+" for file";
+            GridPilot.getClassMgr().getLogFile().addInfo(message);
+          }
+          else{
+            fileExists = true;
+          }
+        }
       }
     }
     catch(Exception e){
@@ -2953,9 +2972,8 @@ public class HSQLDBDatabase extends DBCache implements Database{
         GridPilot.getClassMgr().getStatusBar().setLabel("Created new file "+lfn);
       }
       catch(Exception e){
-        error = "ERROR: could not create file "+lfn;
+        error = "WARNING: could not create file "+lfn;
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-        fileExists =false;
       }
     }
     // Otherwise, just add the url.
@@ -3256,6 +3274,23 @@ public class HSQLDBDatabase extends DBCache implements Database{
     else{
       return null;
     }
+  }
+  
+  private synchronized String getFileDataset(String guid){
+    String ret = null;
+    if(isFileCatalog()){
+      ret = MyUtil.getValues(dbName, "t_meta", "guid", guid, new String [] {"dsname"})[0][0];
+    }
+    else if(isJobRepository()){
+      // an auto-incremented integer is of no use... Except for when pasting:
+      // then we need it to get the pfns.
+      String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+      String datasetField = MyUtil.getJobDefDatasetReference(dbName)[1];
+      ret = MyUtil.getValues(dbName, "jobDefinition", idField, guid,
+          new String [] {datasetField})[0][0];
+    }
+    Debug.debug("Got dataset name "+ret+" for file "+guid, 2);
+    return ret;
   }
   
   private String dbEncode(String value){

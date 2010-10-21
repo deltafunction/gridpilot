@@ -67,7 +67,7 @@ public class MySQLDatabase extends DBCache implements Database {
   private boolean jobRepository = false;
   private String connectTimeout = null;
   private String socketTimeout = null;
-  private HashMap tableFieldNames = new HashMap();
+  private HashMap<String, String []> tableFieldNames = new HashMap<String, String []>();
   private boolean stop = false;
   private ConfigFile configFile = null;
   private String dbName;
@@ -372,9 +372,9 @@ public class MySQLDatabase extends DBCache implements Database {
       if(tableFieldNames.get(table)==null){
         return null;
       }
-      ret = new String[((String []) tableFieldNames.get(table)).length];
+      ret = new String[tableFieldNames.get(table).length];
       for(int i=0; i<ret.length; ++i){
-        ret[i] = ((String []) tableFieldNames.get(table))[i];
+        ret[i] = tableFieldNames.get(table)[i];
       }
       Debug.debug("returning fields: "+MyUtil.arrayToString(ret), 3);
       return ret;
@@ -419,7 +419,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String req = "SELECT "+idField+" from executable where "+nameField+" = '"+exeName + "'"+
     " AND "+versionField+" = '"+exeVersion+"'";
     String id = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     try{
       DBResult rset = executeQuery(dbName, req);
       while(rset.moveCursor()){
@@ -447,7 +447,7 @@ public class MySQLDatabase extends DBCache implements Database {
       return "-1";
     }
     else{
-      return (String) vec.get(0);
+      return vec.get(0);
     }
   }
 
@@ -626,7 +626,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String nameField = MyUtil.getNameField(dbName, "executable");
     String req = "SELECT "+idField+" FROM "+
        "executable WHERE "+nameField+" = '"+executable+"' AND version = '"+version+"'";
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
@@ -792,7 +792,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String [] tables = MyUtil.getTableNames(req);
     String [] fields = null;
     String [] tmpFields = null;
-    Vector fieldsSet = new Vector();
+    Vector<String> fieldsSet = new Vector<String>();
     if(withStar){
       for(int i=0; i<tables.length; ++i){
         tmpFields = getFieldNames(tables[i]);
@@ -813,8 +813,8 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     fields = new String [fieldsSet.size()];
     int count = 0;
-    for(Iterator it=fieldsSet.iterator(); it.hasNext();){
-      fields[count] = (String) it.next();
+    for(Iterator<String> it=fieldsSet.iterator(); it.hasNext();){
+      fields[count] = it.next();
       ++count;
     }
     Debug.debug("found fields: "+MyUtil.arrayToString(fields), 2);
@@ -933,7 +933,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       Debug.debug(">> "+req, 3);
       DBResult rset = executeQuery(dbName, req);
-      Vector datasetVector = new Vector();
+      Vector<DBRecord> datasetVector = new Vector<DBRecord>();
       while(rset.moveCursor()){
         String values[] = new String[datasetFields.length];
         for(int i=0; i<datasetFields.length;i++){
@@ -947,7 +947,7 @@ public class MySQLDatabase extends DBCache implements Database {
         Debug.debug("ERROR: No dataset with id "+datasetID, 1);
       }
       else{
-        dataset = ((DBRecord) datasetVector.get(0));
+        dataset = datasetVector.get(0);
       }
       if(datasetVector.size()>1){
         Debug.debug("WARNING: More than one ("+rset.values.length+") dataset found with id "+datasetID, 1);
@@ -978,7 +978,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String nameField = MyUtil.getNameField(dbName, "dataset");
     String req = "SELECT "+idField+" from dataset where "+nameField+" = '"+datasetName + "'";
     String id = null;
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     try{
       Debug.debug(">>> sql string was: "+req, 3);
       DBResult rset = executeQuery(dbName, req);
@@ -1007,7 +1007,7 @@ public class MySQLDatabase extends DBCache implements Database {
       return "-1";
     }
     else{
-      return (String) vec.get(0);
+      return vec.get(0);
     }
   }
 
@@ -1031,7 +1031,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       Debug.debug(">> "+req, 3);
       DBResult rset = executeQuery(dbName, req);
-      Vector runtimeEnvironmentVector = new Vector();
+      Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.moveCursor()){
@@ -1047,14 +1047,14 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         //Debug.debug("Adding value "+jt[0], 3);
         runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
-        //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+runtimeEnvironmentVector.get(i).getAt(0), 3);
         ++i;
       }
       if(i==0){
         Debug.debug("ERROR: No runtime environment found with id "+runtimeEnvironmentID, 1);
       }
       else{
-        pack = ((DBRecord) runtimeEnvironmentVector.get(0));
+        pack = runtimeEnvironmentVector.get(0);
       }
       if(i>1){
         Debug.debug("WARNING: More than one ("+rset.values.length+") runtime environment found with id "+runtimeEnvironmentID, 1);
@@ -1082,7 +1082,7 @@ public class MySQLDatabase extends DBCache implements Database {
     try{
       Debug.debug(">> "+req, 3);
       DBResult rset = executeQuery(dbName, req);
-      Vector executableVector = new Vector();
+      Vector<DBRecord> executableVector = new Vector<DBRecord>();
       String [] jt = new String[executableFields.length];
       int i = 0;
       while(rset.moveCursor()){
@@ -1098,14 +1098,14 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         //Debug.debug("Adding value "+jt[0], 3);
         executableVector.add(new DBRecord(executableFields, jt));
-        //Debug.debug("Added value "+((DBRecord) executableVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+executableVector.get(i).getAt(0), 3);
         ++i;
       }
       if(i==0){
         Debug.debug("ERROR: No executable found with id "+executableID, 1);
       }
       else{
-        executable = ((DBRecord) executableVector.get(0));
+        executable = executableVector.get(0);
       }
       if(i>1){
         Debug.debug("WARNING: More than one ("+rset.values.length+") executable found with id "+executableID, 1);
@@ -1140,7 +1140,7 @@ public class MySQLDatabase extends DBCache implements Database {
       req += " FROM runtimeEnvironment";
       Debug.debug(req, 3);
       rset = executeQuery(dbName, req);
-      Vector runtimeEnvironmentVector = new Vector();
+      Vector<DBRecord> runtimeEnvironmentVector = new Vector<DBRecord>();
       String [] jt = new String[runtimeEnvironmentFields.length];
       int i = 0;
       while(rset.moveCursor()){
@@ -1156,12 +1156,12 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         //Debug.debug("Adding value "+jt[0], 3);
         runtimeEnvironmentVector.add(new DBRecord(runtimeEnvironmentFields, jt));
-        //Debug.debug("Added value "+((DBRecord) runtimeEnvironmentVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+runtimeEnvironmentVector.get(i).getAt(0), 3);
         ++i;
       }
       allRuntimeEnvironmentRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
-        allRuntimeEnvironmentRecords[j] = ((DBRecord) runtimeEnvironmentVector.get(j));
+        allRuntimeEnvironmentRecords[j] = runtimeEnvironmentVector.get(j);
         Debug.debug("Added value "+allRuntimeEnvironmentRecords[j].values[0], 3);
       }
     }
@@ -1189,7 +1189,7 @@ public class MySQLDatabase extends DBCache implements Database {
       req += " FROM executable";
       Debug.debug(req, 3);
       rset = executeQuery(dbName, req);
-      Vector executableVector = new Vector();
+      Vector<DBRecord> executableVector = new Vector<DBRecord>();
       String [] jt = new String[executableFields.length];
       int i = 0;
       while(rset.moveCursor()){
@@ -1205,12 +1205,12 @@ public class MySQLDatabase extends DBCache implements Database {
         }
         //Debug.debug("Adding value "+jt[0], 3);
         executableVector.add(new DBRecord(executableFields, jt));
-        //Debug.debug("Added value "+((DBRecord) executableVector.get(i)).getAt(0), 3);
+        //Debug.debug("Added value "+executableVector.get(i).getAt(0), 3);
         ++i;
       }
       allExecutableRecords = new DBRecord[i];
       for(int j=0; j<i; ++j){
-        allExecutableRecords[j] = ((DBRecord) executableVector.get(j));
+        allExecutableRecords[j] = executableVector.get(j);
         Debug.debug("Added value "+allExecutableRecords[j].values[0], 3);
       }
     }
@@ -1228,7 +1228,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String req = "SELECT *";
     req += " FROM jobDefinition where "+idField+" = '"+
     jobDefinitionID + "'";
-    Vector jobdefv = new Vector();
+    Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
@@ -1269,7 +1269,7 @@ public class MySQLDatabase extends DBCache implements Database {
           jobDefinitionID, 1);
       return null;
     }
-    DBRecord def = (DBRecord)jobdefv.get(0);
+    DBRecord def = jobdefv.get(0);
     jobdefv.removeAllElements();
     return def;
   }
@@ -1319,7 +1319,7 @@ public class MySQLDatabase extends DBCache implements Database {
       }
       req += ")";
     }
-    Vector jobdefv = new Vector();
+    Vector<DBRecord> jobdefv = new Vector<DBRecord>();
     Debug.debug(req, 2);
     try{
       DBResult rset = executeQuery(dbName, req);
@@ -1552,7 +1552,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String idField = MyUtil.getIdentifierField(dbName, "dataset");
     Object [] values = new Object [_values.length];
     String nonMatchedStr = "";
-    Vector matchedFields = new Vector();
+    Vector<String> matchedFields = new Vector<String>();
     boolean match = false;
     for(int i=0; i<fields.length; ++i){
       match = false;
@@ -2162,7 +2162,7 @@ public class MySQLDatabase extends DBCache implements Database {
     String versionField = MyUtil.getVersionField(dbName, "executable");
     String req = "SELECT "+idField+", "+versionField+" FROM "+
     "executable WHERE "+nameField+" = '"+executable+"'";
-    Vector vec = new Vector();
+    Vector<String> vec = new Vector<String>();
     Debug.debug(req, 2);
     String version;
     try{
@@ -2182,7 +2182,7 @@ public class MySQLDatabase extends DBCache implements Database {
     catch(Exception e){
       Debug.debug(e.getMessage(), 1);
     }
-    Vector vec1 = new Vector();
+    Vector<String> vec1 = new Vector<String>();
     if(vec.size()>0){
       Collections.sort(vec);
       vec1.add(vec.get(0));
@@ -2194,7 +2194,7 @@ public class MySQLDatabase extends DBCache implements Database {
     }
     String [] ret = new String[vec1.size()];
     for(int i=0; i<vec1.size(); ++i){
-      ret[i] = (String) vec1.get(i);
+      ret[i] = vec1.get(i);
     }
     return ret;
   }
@@ -2264,7 +2264,7 @@ public class MySQLDatabase extends DBCache implements Database {
     // If the file catalog tables (t_pfn, t_lfn, t_meta) are present,
     // we use them.
     if(isFileCatalog()){
-      Vector fieldsVector = new Vector();
+      Vector<String> fieldsVector = new Vector<String>();
       Debug.debug("file fields: "+MyUtil.arrayToString(fields), 3);
       // first some special fields; we lump all pfname's into the same pfname field
       for(int i=0; i<fields.length; ++i){
@@ -2312,8 +2312,8 @@ public class MySQLDatabase extends DBCache implements Database {
             " FROM file WHERE guid = "+fileID, "guid", true);
       for(int i=0; i<fieldsVector.size(); ++i){
         try{
-          file.setValue((String) fieldsVector.get(i),
-              (String) res.getValue(0, (String) fieldsVector.get(i)));
+          file.setValue(fieldsVector.get(i),
+              (String) res.getValue(0, fieldsVector.get(i)));
         }
         catch(Exception e){
           Debug.debug("WARNING: could not set field "+fieldsVector.get(i)+". "+e.getMessage(), 2);
@@ -2437,8 +2437,9 @@ public class MySQLDatabase extends DBCache implements Database {
       if(existingID!=null && !existingID.equals("-1") && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(datasetID)){
           error = "WARNING: dataset "+datasetName+" already registered with id "+
-          existingID+"!="+datasetID+". Using "+existingID+".";
-          GridPilot.getClassMgr().getLogFile().addInfo(error);
+            existingID+"!="+datasetID;
+          //GridPilot.getClassMgr().getLogFile().addInfo(error);
+          Debug.debug(error, 3);
           datasetID = existingID;
         }
         datasetExists = true;
@@ -2484,21 +2485,38 @@ public class MySQLDatabase extends DBCache implements Database {
         existingID = getFileID(lfn);
       }
       catch(Exception ee){
+        //ee.printStackTrace();
       }
       if(existingID!=null && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(fileID)){
           error = "WARNING: file "+lfn+" already registered with id "+
-          existingID+"!="+fileID+". Using "+existingID+".";
+             existingID+"!="+fileID;
           GridPilot.getClassMgr().getLogFile().addMessage(error);
-          fileID = existingID;
+          //fileID = existingID;
         }
-        fileExists = true;
+        else{
+          // If the file is registered with another dataset, generate a new ID to register with this dataset
+          String alreadyAssignedDatasetName = null;
+          try{
+            alreadyAssignedDatasetName = getFileDataset(existingID);
+          }
+          catch(Exception ee){
+            //ee.printStackTrace();
+          }
+          if(alreadyAssignedDatasetName!=null && !alreadyAssignedDatasetName.equals(datasetName)){
+            fileID  = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
+            String message = "Generated new UUID "+fileID+" for file";
+            GridPilot.getClassMgr().getLogFile().addInfo(message);
+          }
+          else{
+            fileExists = true;
+          }
+        }
       }
     }
     catch(Exception e){
       fileExists =false;
-    }
-    
+    }    
     // If the file does not exist, create it - with the url.
     if(!fileExists){
       Debug.debug("Creating file "+lfn, 2);
@@ -2512,9 +2530,8 @@ public class MySQLDatabase extends DBCache implements Database {
         fileExists = true;
       }
       catch(Exception e){
-        error = "ERROR: could not create file "+lfn;
+        error = "WARNING: could not create file "+lfn;
         GridPilot.getClassMgr().getLogFile().addMessage(error, e);
-        fileExists =false;
       }
     }
     // Otherwise, just add the url.
@@ -2676,6 +2693,23 @@ public class MySQLDatabase extends DBCache implements Database {
     else{
       return null;
     }
+  }
+  
+  private synchronized String getFileDataset(String guid){
+    String ret = null;
+    if(isFileCatalog()){
+      ret = MyUtil.getValues(dbName, "t_meta", "guid", guid, new String [] {"dsname"})[0][0];
+    }
+    else if(isJobRepository()){
+      // an auto-incremented integer is of no use... Except for when pasting:
+      // then we need it to get the pfns.
+      String idField = MyUtil.getIdentifierField(dbName, "jobDefinition");
+      String datasetField = MyUtil.getJobDefDatasetReference(dbName)[1];
+      ret = MyUtil.getValues(dbName, "jobDefinition", idField, guid,
+          new String [] {datasetField})[0][0];
+    }
+    Debug.debug("Got dataset name "+ret+" for file "+guid, 2);
+    return ret;
   }
   
   private static String dbEncode(String str){

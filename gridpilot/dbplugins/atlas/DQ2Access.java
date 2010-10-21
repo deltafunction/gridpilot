@@ -16,10 +16,10 @@ import org.safehaus.uuid.UUIDGenerator;
  */
 public class DQ2Access {
 
-  //private WebServiceConnection wsPlain;
   private SecureWebServiceConnection wsSecure;
 
-  private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  //private final String addFilesToDatasetURL = "ws_content/rpc?operation=addFilesToDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String addFilesToDatasetURL = "ws_content/rpc";
   private final String createDatasetURL = "ws_repository/rpc?operation=addDataset&API="+ATLASDatabase.DQ2_API_VERSION;
   //private final String createDatasetURL = "ws_repository/rpc";
   // delete all files of this dataset in DQ2
@@ -250,8 +250,8 @@ public class DQ2Access {
       data.append("}");
     }
         data.append("]");
-    String keys[]={"files", "vuid",  "vuids","update", "operation", "API"};
-    String values[]={data.toString(), vuid, "[]", "yes", "addFilesToDataset", ATLASDatabase.DQ2_API_VERSION};
+    String keys[]={"files", "vuid", "update", "API", "vuids", "operation"};
+    String values[]={data.toString(), vuid,  "yes", ATLASDatabase.DQ2_API_VERSION, "['"+vuid+"']", "addFilesToDataset"};
         
     wsSecure.post(addFilesToDatasetURL, keys, values);
     return true;
@@ -371,8 +371,8 @@ public class DQ2Access {
   public void deleteFiles(String vuid, String [] guids) throws Exception {
     Debug.debug("Checking proxy", 3);
     checkProxy();
-    String [] keys = new String [] {"vuid", "guids"};
-    String [] values = new String [] {vuid, "['" + MyUtil.arrayToString(guids, "', '") + "']"};
+    String [] keys = new String [] {"vuid", "vuids", "guids"};
+    String [] values = new String [] {vuid, "['"+vuid+"']", "['" + MyUtil.arrayToString(guids, "', '") + "']"};
     wsSecure.post(deleteFilesURL, keys, values);
   }
 

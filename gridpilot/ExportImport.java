@@ -608,7 +608,7 @@ public class ExportImport {
       if(!prependedStar ||
          Util.filterMatches(fileName, wb.getFilter()) || Util.filterMatches(path, wb.getFilter())){
         retVec0.add(ret0[0][i]);
-        retVec1.add(ret0[0][i]);
+        retVec1.add(ret0[1][i]);
       }
     }
     Debug.debug("Found "+ret0[0].length+" further matched to "+retVec0.size(), 2);

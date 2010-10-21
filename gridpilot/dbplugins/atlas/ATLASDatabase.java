@@ -1181,9 +1181,11 @@ public class ATLASDatabase extends DBCache implements Database{
   private void deleteLFNs(String _catalogServer, String [] lfns)
      throws Exception {
    if(_catalogServer.toLowerCase().startsWith("mysql:")){
+     activateSsl();
      deleteLFNsInMySQL(_catalogServer, lfns);
    }
    else if(_catalogServer.toLowerCase().startsWith("lfc:")){
+     activateProxySsl();
      deleteLFNsInLFC(_catalogServer, lfns);
    }
    else{
@@ -1323,22 +1325,23 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   
   /**
    * Registers an array of SURLs for the given file name (lfn).
-   * The catalog server string must be of the form
+   * In the case of MySQL, the catalog server string must be of the form
    * mysql://dsdb-reader:dsdb-reader1@db1.usatlas.bnl.gov:3306/localreplicas.
    * @throws URISyntaxException 
    * @throws LFCException 
    */
 
-  private void registerLFNs(String _catalogServer, String [] guids,
+  private void registerLFNs(String _catalogServer, String path, String [] guids,
       String [] lfns, String [] pfns, String [] sizes,
-      String [] checksums)
-     throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException, LFCException {
+      String [] checksums) throws Exception {
     if(_catalogServer.toLowerCase().startsWith("mysql:")){
+      activateSsl();
       registerLFNsInMySQL(_catalogServer, guids, lfns, pfns, sizes,
           checksums);
     }
     else if(_catalogServer.toLowerCase().startsWith("lfc:")){
-      registerLFNsInLFC(_catalogServer, guids, lfns, pfns, sizes,
+      activateProxySsl();
+      registerLFNsInLFC(_catalogServer, path, guids, lfns, pfns, sizes,
           checksums);
     }
     else{
@@ -1348,7 +1351,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
   }
 
-  private void registerLFNsInLFC(String _catalogServer, String [] guids,
+  private void registerLFNsInLFC(String _catalogServer, String path, String [] guids,
       String [] lfns, String [] pfns, String [] sizes,
       String [] checksums)
      throws RemoteException, ServiceException, MalformedURLException, SQLException, URISyntaxException, LFCException {
@@ -1357,10 +1360,13 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
     LFCServer lfcServer = new LFCServer(lfcConfig, new URI(_catalogServer));
     lfcServer.connect();
+    // Make sure the directory exists
+    lfcServer.mkdir(path);
     int colonIndex;
     String chksumType;
     String chksum;
     long size;
+    String fullName;
     for(int i=0; i<lfns.length; ++i){
       try{
         size = -1L;
@@ -1368,6 +1374,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           size = Long.parseLong(sizes[i]);
         }
         catch(Exception ee){
+          ee.printStackTrace();
         }
         chksumType = null;
         chksum = null;
@@ -1382,7 +1389,10 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
             chksum = checksums[i];
           }
         }
-        lfcServer.register(new URI(pfns[i]), lfns[i], size);
+        fullName = path+lfns[i];
+        Debug.debug("Registering file in LFC: "+pfns[i]+":"+fullName+":"+size, 2);
+        lfcServer.register(new URI(pfns[i]), fullName, size);
+        Debug.debug("Setting size of file in LFC: "+guids[i]+":"+size+":"+chksumType+":"+chksum, 2);
         lfcServer.setFileSize(guids[i], size, chksumType, chksum);
       }
       catch(Exception e){
@@ -2232,10 +2242,11 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
     }
     
+    String dqSize = "-1";
     if(datasetExists){
       if(size!=null && !size.equals("") && !size.endsWith("L")){
         // The DQ2 conventions seems to be that the file size is like e.g. 41943040L 
-        size = size+"L";
+        dqSize = size+"L";
       }
       if(checksum!=null && !checksum.equals("") && !checksum.matches("\\w+:.*")){
         // If no type is given, we assume it's an md5 sum.
@@ -2247,7 +2258,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       String shortLfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
       String [] guids = new String[] {guid};
       String [] lfns = new String[] {shortLfn};
-      String [] sizes = new String[] {size};
+      String [] sizes = new String[] {dqSize};
       String [] checksums = new String[] {checksum};
       try{
         Debug.debug("Registering new lfn " +shortLfn+
@@ -2256,15 +2267,15 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
-        ". Registration of "+lfn+" in DQ2 NOT done";
+           ". Registration of "+lfn+" in DQ2 NOT done";
         GridPilot.getClassMgr().getStatusBar().setLabel("Registration of " +lfn+
-        " with DQ2 FAILED!");
-        logFile.addMessage(error, e);
+           " with DQ2 FAILED!");
+        //logFile.addMessage(error, e);
         throw e;
       }
     }
     
-    // Register in home MySQL catalog.
+    // Register in home catalog.
     boolean catalogRegOk = true;
     try{
       try{
@@ -2278,9 +2289,14 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           if(!path.equals("")){
             path = (path.startsWith("/")?"":"/")+path+((path.endsWith("/")?"":"/"));
           }
-          
         }
-        registerLFNs(toa.getFileCatalogServer(homeSite, false), new String [] {guid},
+        String catalog = toa.getFileCatalogServer(homeSite, false);
+        String cPath = catalog.replaceFirst(":([^:]+)$", "$1");
+        if(cPath.equals(catalog)){
+          cPath = "";
+        }
+        String basePath = "/"+cPath+(cPath.endsWith("/")?"":"/");
+        registerLFNs(catalog, basePath+path, new String [] {guid},
             new String [] {lfn}, new String [] {url},
             new String [] {size}, new String [] {checksum});
       }

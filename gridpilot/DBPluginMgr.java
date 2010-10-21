@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.DataFormatException;
@@ -1812,8 +1813,8 @@ public class DBPluginMgr extends DBCache implements Database{
    * values immediately grabbable from the source table, then look up
    * the file locations. 
    */
-  public void createFil(DBPluginMgr sourceMgr, String datasetName, String name,
-      String id) throws Exception{
+  public void createFil(DBPluginMgr sourceMgr, String srcDatasetName, String destDatasetName, String name,
+      String srcFileId) throws Exception{
   
     // In case the file was copied from a virtual table from a job repository,
     // strip the extension off when querying for the identifier.
@@ -1825,13 +1826,13 @@ public class DBPluginMgr extends DBCache implements Database{
       }  
     }
     
-    String datasetID = sourceMgr.getDatasetID(datasetName);
+    String srcDatasetID = sourceMgr.getDatasetID(srcDatasetName);
     //String id = sourceMgr.getFileID(datasetName, fileName);
-    String [] urls = sourceMgr.getFileURLs(datasetName, id, true)[1];
-    Debug.debug("Creating new file "+id+":"+name+" in dataset "+
-        datasetID+":"+datasetName+" with PFNs: "+MyUtil.arrayToString(urls), 2);
+    String [] urls = sourceMgr.getFileURLs(srcDatasetName, srcFileId, true)[1];
+    Debug.debug("Creating new file "+srcFileId+":"+name+" from dataset "+
+        srcDatasetID+" in "+destDatasetName+" with PFNs: "+MyUtil.arrayToString(urls), 2);
     
-    String uuid = id;
+    String uuid = srcFileId;
     // In case the file was copied from a virtual table from a job repository,
     // generate new GUID
     if(!sourceMgr.isFileCatalog() && sourceMgr.isJobRepository()){
@@ -1840,32 +1841,32 @@ public class DBPluginMgr extends DBCache implements Database{
       GridPilot.getClassMgr().getLogFile().addInfo(message);
     }
     
-    String size = sourceMgr.getFileBytes(datasetName, id);
-    String checksum = sourceMgr.getFileChecksum(datasetName, id);
+    String size = sourceMgr.getFileBytes(srcDatasetName, srcFileId);
+    String checksum = sourceMgr.getFileChecksum(srcDatasetName, srcFileId);
     
     boolean ok = true;
     boolean finalOk = true;
     if(urls.length==0){
       logFile.addMessage("WARNING: no URLs for file "+name+". Inserting anyway.");
-      Debug.debug("Registering new file: "+datasetID+":"+datasetName+":"+uuid+":"+name+":"+":"+
+      Debug.debug("Registering new file from "+srcDatasetID+" in "+destDatasetName+" as "+uuid+":"+name+":"+":"+
           size+":"+checksum, 2);
-      registerFileLocation(datasetID, datasetName, uuid, name, "",
+      registerFileLocation(srcDatasetID, destDatasetName, uuid, name, "",
           size, checksum, false);
       finalOk = true;
     }
     else{
       for(int i=0; i<urls.length; ++i){
         try{
-          Debug.debug("Registering new file: "+datasetID+":"+datasetName+":"+uuid+":"+name+":"+urls[i]+":"+
+          Debug.debug("Registering new file: "+srcDatasetID+":"+destDatasetName+":"+uuid+":"+name+":"+urls[i]+":"+
               size+":"+checksum, 2);
-          registerFileLocation(datasetID, datasetName, uuid, name, urls[i],
+          registerFileLocation(srcDatasetID, destDatasetName, uuid, name, urls[i],
               size, checksum, false);
           finalOk = finalOk || ok;
           ok = true;
         }
         catch(Exception e){
           logFile.addMessage("ERROR: could not register "+urls[i]+" for file "+
-              name+" in dataset "+datasetName, e);
+              name+" in dataset "+destDatasetName, e);
           ok = false;
         }
       }
@@ -2519,15 +2520,32 @@ public class DBPluginMgr extends DBCache implements Database{
             }
             // Otherwise, clean up with deleteJobDefsFromDataset and purgeFilesFromDataset
             boolean ok = true;
-            if(isJobRepository() && cleanup){
-              purgeJobFilesFromDataset(datasetID);
-              purgeFilesFromDataset(datasetID);
-              ok = deleteJobDefsFromDataset(datasetID);
+            if(cleanup){
+              // The files may belong to another dataset - so make sure we actually want to delete the physical files
+              int choice = -1;
+              String msg = "Do you want to delete any physical file(s) of the dataset "+datasetID+"?";
+              ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+              try{
+                choice = confirmBox.getConfirm("Confirm delete", msg, new Object[] {"Yes, go ahead", "No, but delete any file records", "Keep any file record(s)"}, 1);
+              }
+              catch(Exception e){
+                e.printStackTrace();
+              }
+              if(choice==2 || choice==-1){
+                return;
+              }
+              if(isJobRepository()){
+                purgeJobFilesFromDataset(datasetID);
+                ok = deleteJobDefsFromDataset(datasetID);
+              }
+              if(choice==0){
+                purgeFilesFromDataset(datasetID);
+              }
               ok = ok && deleteFiles(datasetID, null);
               if(!ok){
-                Debug.debug("ERROR: Deleting job definitions of dataset #"+
+                Debug.debug("ERROR: Deleting file(s) of dataset # "+
                     datasetID+" failed."+" Please clean up by hand.", 1);
-                String error = "ERROR: Deleting job definitions of dataset #"+
+                String error = "ERROR: Deleting file(s) of dataset # "+
                    datasetID+" failed."+" Please clean up by hand.";
                 throw new IOException(error);
               }
@@ -3214,7 +3232,7 @@ public class DBPluginMgr extends DBCache implements Database{
 
   public synchronized void registerFileLocation(final String datasetID,
       final String datasetName, final String fileID, final String lfn,
-      final String url, final String size, final String checksum, final boolean datasetComplete){
+      final String url, final String size, final String checksum, final boolean datasetComplete) throws Exception{
     
     ResThread t = new ResThread(){
       public void requestStop(){
@@ -3228,21 +3246,21 @@ public class DBPluginMgr extends DBCache implements Database{
           db.clearError();
           db.registerFileLocation(datasetID, datasetName, fileID, lfn, url, size, checksum, datasetComplete);
         }
-        catch(Throwable t){
-          db.appendError(t.getMessage());
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + dbName, t);
+        catch(Exception e){
+          db.appendError(e.getMessage());
+          //logFile.addMessage("Exception from plugin " + dbName, e);
+          setException(e);
         }
       }
     };
   
     t.start();
   
-    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
-      return;
+    if(!MyUtil.myWaitForThread(t, dbName, dbTimeOut, "registerFileLocation")){
+      throw new TimeoutException("Timed out registering file "+lfn+(t.getException()!=null?t.getException().getMessage():""));
     }
-    else{
-      return;
+    if(t.getException()!=null){
+      throw t.getException();
     }
   }
 
@@ -3572,7 +3590,7 @@ public class DBPluginMgr extends DBCache implements Database{
     }
   }
 
-  private void importFile(String pfn, String size, String datasetName, String datasetID, String regBaseURL) {
+  private void importFile(String pfn, String size, String datasetName, String datasetID, String regBaseURL) throws Exception {
     int lastSlash = pfn.lastIndexOf("/");
     String lfn = pfn;
     if(lastSlash>-1){
