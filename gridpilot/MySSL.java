@@ -125,7 +125,7 @@ public class MySSL extends SSL{
     }
     Debug.debug("Activating proxy SSL with password "+GridPilot.KEY_PASSWORD, 2);
     initalizeCACertsDir();
-    initalizeVomsDir();
+    GridPilot.VOMS_DIR = setupDefaultVomsDir(GridPilot.VOMS_DIR);
     getGridCredential(frame);
     //super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
@@ -159,12 +159,6 @@ public class MySSL extends SSL{
     CoGProperties.setDefault(prop);
     Debug.debug("COG defaults now:\n"+CoGProperties.getDefault(), 3);
     Debug.debug("COG defaults file:\n"+CoGProperties.configFile, 3);
-  }
-  
-  private void initalizeVomsDir() {
-    if(GridPilot.VOMS_DIR==null || GridPilot.VOMS_DIR.equals("")){
-      GridPilot.VOMS_DIR = setupDefaultVomsDir();
-    }
   }
   
   public String getDN(){
@@ -230,7 +224,7 @@ public class MySSL extends SSL{
     }
   }
   
-  private String setupDefaultVomsDir() {
+  private String setupDefaultVomsDir(String _vomsdir) {
     try{
       // try and see if SSl.class was loaded from a jar
       boolean fromJar = false;
@@ -238,23 +232,27 @@ public class MySSL extends SSL{
         fromJar = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0;
       }
       catch(Exception e){
+        e.printStackTrace();
         Debug.debug("this class NOT loaded from jar.", 2);
       }
-      // if so, extract vomsdir to the tmp dir
+      File myVomsdir;
+      // if so, extract vomsdir to the vomsdir dir
       if(fromJar){
-        // get a temp name
-        File tmpFile = File.createTempFile(/*prefix*/"GridPilot-vomsdir", /*suffix*/"");
-        String tmpDir = tmpFile.getAbsolutePath();
-        tmpFile.delete();
-        tmpFile.mkdirs();
-        File par = new File(tmpFile, "resources");
-        File vomsdir = new File(par, "vomsdir");
-        vomsdir.mkdirs();
-        MyUtil.extractFromJAR("/resources/vomsdir", tmpFile, this.getClass());
-        // have the diretory deleted on exit
-        GridPilot.addTmpFile(tmpDir, new File(tmpDir));
-        GridPilot.getClassMgr().getLogFile().addInfo("Created tmp VOMS dir "+vomsdir);
-        return vomsdir.getAbsolutePath();
+        if(_vomsdir!=null && !_vomsdir.trim().equals("")){
+          myVomsdir = new File(clearTildeLocally(clearFile(_vomsdir)));
+          if(!LocalStaticShell.existsFile(_vomsdir) || LocalStaticShell.listFiles(_vomsdir).length==0){
+            LocalStaticShell.mkdir(_vomsdir);
+            File tmpDir =  mkTmpVomsDir();
+            LocalStaticShell.copyDirectory(tmpDir, myVomsdir);
+          }
+        }
+        else{
+          // If no voms dir given, use a temp dir
+          myVomsdir = mkTmpVomsDir();
+        }
+        // have the directory deleted on exit
+        GridPilot.getClassMgr().getLogFile().addInfo("Set up tmp VOMS dir "+myVomsdir.getAbsolutePath());
+        return myVomsdir.getAbsolutePath();
       }
       // otherwise, just use the directory
       else{
@@ -278,6 +276,18 @@ public class MySSL extends SSL{
     }
   }
   
+  private File mkTmpVomsDir() throws IOException {
+    File tmpFile = File.createTempFile(/*prefix*/"GridPilot-vomsdir", /*suffix*/"");
+    tmpFile.delete();
+    tmpFile.mkdirs();
+    File parentDir = new File(tmpFile, "resources");
+    File myVomsdir = new File(parentDir, "vomsdir");
+    myVomsdir.mkdirs();
+    GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
+    MyUtil.extractFromJAR("/resources/vomsdir", myVomsdir, this.getClass());
+    return myVomsdir;
+  }
+
   private String [] getFirstCheckCredentials(){
     String [] credentials;
     String password;
@@ -481,8 +491,8 @@ public class MySSL extends SSL{
           credential = new GlobusGSSCredentialImpl(cred, GSSCredential.INITIATE_AND_ACCEPT);
         }
         else{
-          String vomsDir = GridPilot.VOMS_DIR==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.VOMS_DIR));
-          String caCertsDirStr = caCertsDir==null?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
+          String vomsDir = GridPilot.VOMS_DIR==null||GridPilot.VOMS_DIR.trim().equals("")?null:MyUtil.clearTildeLocally(MyUtil.clearFile(GridPilot.VOMS_DIR));
+          String caCertsDirStr = caCertsDir==null||caCertsDir.trim().equals("")?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
           
           // This works with gLite and ARC
           Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile, 2);
