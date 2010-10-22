@@ -335,21 +335,30 @@ public class ExportImport {
         choicesVec.add(GridPilot.DB_NAMES[i]);
       }
     }
-    choicesVec.add("none (cancel)");
-    String [] choices = choicesVec.toArray(new String[choicesVec.size()]);
-    ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
-    int choice = confirmBox.getConfirm("Import in database",
-        "<html>This will import the dataset(s) and executable(s) contained in<br>"+
-        importFile+"<br>in the chosen database.<br>" +
-        "Any file(s) associated with the executable(s) will be copied to<br>" +
-        executableDirectory + "/.<br><br>" +
-        "Non-existing local output location(s) will be set to<br>" +
-        dataDirectory + "/.<br><br>" +
-        "Choose database to use.<br></html>", choices);
-    if(choice<0 || choice>=choices.length-1){
+    String dbName;
+    if(choicesVec.size()==0){
       return null;
     }
-    String dbName = choices[choice];
+    else if(choicesVec.size()==1){
+      dbName = choicesVec.get(0);
+    }
+    else{
+      choicesVec.add("none (cancel)");
+      String [] choices = choicesVec.toArray(new String[choicesVec.size()]);
+      ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+      int choice = confirmBox.getConfirm("Import in database",
+          "<html>This will import the dataset(s) and executable(s) contained in<br>"+
+          importFile+"<br>in the chosen database.<br>" +
+          "Any file(s) associated with the executable(s) will be copied to<br>" +
+          executableDirectory + "/.<br><br>" +
+          "Non-existing local output location(s) will be set to<br>" +
+          dataDirectory + "/.<br><br>" +
+          "Choose database to use.<br></html>", choices);
+      if(choice<0 || choice>=choices.length-1){
+        return null;
+      }
+      dbName = choices[choice];
+    }
     DBPluginMgr mgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     // Download the import file, unpack it in a tmp dir
     File tmpDir = downloadAndUnpack(importFile);

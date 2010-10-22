@@ -262,6 +262,9 @@ public class BeginningWizard{
           }
         }
         else{
+          GridPilot.KEY_PASSWORD = MySSL.TEST_KEY_PASSWORD;
+          // Disable any VOMS server that may have been set in the preferences
+          GridPilot.VOMS_SERVER_URL = null;
           return;
         }
       }
@@ -271,8 +274,7 @@ public class BeginningWizard{
       		"Please fix this and rerun this wizard.");
     }
     // Set up key and cert.
-    // If setupTestCredentials returns false, test credentials are used.
-    if(!MySSL.setupTestCredentials(certDir, useTestCreds, GridPilot.class)){
+    if(MySSL.setupTestCredentials(certDir, useTestCreds, GridPilot.class) && useTestCreds){
       GridPilot.KEY_PASSWORD = MySSL.TEST_KEY_PASSWORD;
       // Disable any VOMS server that may have been set in the preferences
       GridPilot.VOMS_SERVER_URL = null;

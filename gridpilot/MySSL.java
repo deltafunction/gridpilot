@@ -282,9 +282,9 @@ public class MySSL extends SSL{
     tmpFile.mkdirs();
     File parentDir = new File(tmpFile, "resources");
     File myVomsdir = new File(parentDir, "vomsdir");
-    myVomsdir.mkdirs();
+    //myVomsdir.mkdirs();
     GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
-    MyUtil.extractFromJAR("/resources/vomsdir", myVomsdir, this.getClass());
+    MyUtil.extractFromJAR("/resources/vomsdir", tmpFile, this.getClass());
     return myVomsdir;
   }
 
