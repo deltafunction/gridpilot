@@ -38,7 +38,7 @@ public class TestDatasets {
    */
   protected void createAll(){
     try{
-      if(!GridPilot.IS_FIRST_RUN){
+      if(!GridPilot.IS_SETUP_RUN){
         GridPilot.splashShow("Checking test executables");
       }
     }

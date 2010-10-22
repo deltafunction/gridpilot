@@ -193,20 +193,24 @@ public class ATLASDatabase extends DBCache implements Database{
       return;
     }
     GridPilot.getClassMgr().getSSL().activateSSL();
-    GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
-    lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
-    Debug.debug("Created new LFCConfig from ID "+lfcConfig.globusCredential.getIdentity(), 1);
+    //GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
+    //lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+    //Debug.debug("Created new LFCConfig from ID "+lfcConfig.globusCredential.getIdentity(), 1);
     sslActivated = true;
+    if(GridPilot.IS_FIRST_RUN){
+      proxySslActivated = false;
+    }
   }
   
   protected void activateProxySsl() throws Exception{
     if(proxySslActivated){
       return;
     }
-    GridPilot.getClassMgr().getSSL().activateProxySSL();
+    GridPilot.getClassMgr().getSSL().activateProxySSL(null, true);
     GSSCredential credential = GridPilot.getClassMgr().getSSL().getGridCredential();
     lfcConfig.globusCredential = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
     Debug.debug("Created new LFCConfig from ID "+lfcConfig.globusCredential.getIdentity(), 1);
+    //sslActivated = false;
     proxySslActivated = true;
   }
 

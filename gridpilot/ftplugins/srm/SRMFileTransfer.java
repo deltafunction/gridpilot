@@ -62,7 +62,7 @@ public class SRMFileTransfer implements FileTransfer {
 
   public SRMFileTransfer() throws IOException, GeneralSecurityException{
     pluginName = "srm";
-    if(!GridPilot.IS_FIRST_RUN){
+    if(!GridPilot.IS_SETUP_RUN){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     

@@ -1797,7 +1797,6 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     miLookupPFNs.setEnabled(hasPFNs);
     miCopyPFNs.setEnabled(hasPFNs);
-    tableResults.addMenuSeparator();
     tableResults.addMenuItem(miDownload);
     tableResults.addMenuItem(miLookupPFNs);
     tableResults.addMenuItem(miCopyPFNs);

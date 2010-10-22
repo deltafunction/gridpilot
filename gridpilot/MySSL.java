@@ -67,7 +67,8 @@ public class MySSL extends SSL{
   private boolean sslOk = false;
   private boolean proxyOk = false;
   private CoGProperties prop = null;
-  // the *Str fields are to be fully qualified path names to be fed to the VOMS stuff
+  /** Whether or not this app was loaded from a jar. -1: not checked, 0 NOT loaded from jar, 1 loaded from jar. */
+  private static int FROM_JAR = -1;
 
   private final static String PROXY_TYPE_OLD = "OLD";
   private final static String PROXY_TYPE_GLOBUS = "GLOBUS";
@@ -104,6 +105,7 @@ public class MySSL extends SSL{
       //getProxyFile().delete();
       //getGridCredential();
       synchronized(sslInitialized){
+        Debug.debug("Decrypting private key;"+GridPilot.KEY_PASSWORD+":"+GridPilot.IS_SETUP_RUN, 3);
         decryptPrivateKey(frame);
         sslInitialized = true;
       }
@@ -114,19 +116,23 @@ public class MySSL extends SSL{
     sslOk = true;
   }
 
-  public void activateProxySSL() throws IOException, GeneralSecurityException {
+  public void activateProxySSL() throws IOException, GeneralSecurityException, GSSException {
     activateProxySSL(null);
   }
 
-  public void activateProxySSL(Window frame) throws IOException, GeneralSecurityException {
-    if(proxyOk){
-      Debug.debug("Proxy already ok", 3);
+  public void activateProxySSL(Window frame) throws IOException, GeneralSecurityException, GSSException {
+    activateProxySSL(frame, false);
+  }
+
+  public void activateProxySSL(Window frame, boolean force) throws IOException, GeneralSecurityException, GSSException {
+    if(!force && proxyOk){
+      Debug.debug("Proxy already ok, vomsdir -->"+GridPilot.VOMS_DIR+", voms server -->"+GridPilot.VOMS_SERVER_URL, 3);
       return;
     }
-    Debug.debug("Activating proxy SSL with password "+GridPilot.KEY_PASSWORD, 2);
-    initalizeCACertsDir();
     GridPilot.VOMS_DIR = setupDefaultVomsDir(GridPilot.VOMS_DIR);
-    getGridCredential(frame);
+    Debug.debug("Activating proxy SSL with password "+GridPilot.KEY_PASSWORD+". vomsdir -->"+GridPilot.VOMS_DIR+", voms server -->"+GridPilot.VOMS_SERVER_URL, 2);
+    initalizeCACertsDir();
+    getGridCredential(frame, force);
     //super.activateSSL(getProxyFile().getAbsolutePath(), getProxyFile().getAbsolutePath(), "", caCertsDir);
     proxyOk = true;
   }
@@ -169,19 +175,19 @@ public class MySSL extends SSL{
     return getGridSubject0();
   }
   
-  public GSSCredential getGridCredential(){
-    return getGridCredential(null);
+  public GSSCredential getGridCredential() throws IOException, GSSException{
+    return getGridCredential(null, false);
   }
   
-  public /*synchronized*/ GSSCredential getGridCredential(Window frame){
-    if(gridProxyInitialized){
+  public /*synchronized*/ GSSCredential getGridCredential(Window frame, boolean force) throws IOException, GSSException{
+    if(gridProxyInitialized && !force){
       Debug.debug("Grid proxy already initialized. "+credential, 2);
       return credential;
     }
     synchronized(gridProxyInitialized){
       // avoids that dozens of popups open if
       // you submit dozen of jobs and proxy not initialized
-      try{
+      //try{
         Debug.debug("Initializing credential", 3);
         initGridProxy(frame);
         Debug.debug("Initialized credential", 3);
@@ -193,11 +199,11 @@ public class MySSL extends SSL{
         // set the proxy default location
         prop.setProxyFile(getProxyFile().getAbsolutePath());
         CoGProperties.setDefault(prop);
-      }
+      /*}
       catch(Exception e){
         Debug.debug("ERROR: could not get grid credential", 1);
         e.printStackTrace();
-      }
+      }*/
     }
     return credential;
   }
@@ -226,18 +232,20 @@ public class MySSL extends SSL{
   
   private String setupDefaultVomsDir(String _vomsdir) {
     try{
-      // try and see if SSl.class was loaded from a jar
-      boolean fromJar = false;
-      try{
-        fromJar = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0;
-      }
-      catch(Exception e){
-        e.printStackTrace();
-        Debug.debug("this class NOT loaded from jar.", 2);
+      if(FROM_JAR==-1){
+        // try and see if SSl.class was loaded from a jar
+        try{
+          FROM_JAR = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0?1:0;
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          Debug.debug("this class NOT loaded from jar.", 2);
+          FROM_JAR = 0;
+        }
       }
       File myVomsdir;
       // if so, extract vomsdir to the vomsdir dir
-      if(fromJar){
+      if(FROM_JAR==1){
         if(_vomsdir!=null && !_vomsdir.trim().equals("")){
           myVomsdir = new File(clearTildeLocally(clearFile(_vomsdir)));
           if(!LocalStaticShell.existsFile(_vomsdir) || LocalStaticShell.listFiles(_vomsdir).length==0){
@@ -251,19 +259,25 @@ public class MySSL extends SSL{
           myVomsdir = mkTmpVomsDir();
         }
         // have the directory deleted on exit
-        GridPilot.getClassMgr().getLogFile().addInfo("Set up tmp VOMS dir "+myVomsdir.getAbsolutePath());
+        GridPilot.getClassMgr().getLogFile().addInfo("Set up VOMS dir "+myVomsdir.getAbsolutePath());
         return myVomsdir.getAbsolutePath();
       }
       // otherwise, just use the directory
       else{
-        URL dirUrl = super.getClass().getResource("/resources/vomsdir");
+        String vomsDirPath;
+        if(_vomsdir!=null && !_vomsdir.trim().equals("")){
+          vomsDirPath = _vomsdir;
+        }
+        else{
+          URL dirUrl = super.getClass().getResource("/resources/vomsdir");
+          vomsDirPath = dirUrl.getPath();
+        }
         // Strip "C:" from beginning of the string - VOMS seems to add this...
-        String vomsDirPath = dirUrl.getPath();
         if(MyUtil.onWindows()){
           vomsDirPath = vomsDirPath.replaceFirst("^/+", "");
         }
         vomsDirPath = MyUtil.urlDecode(vomsDirPath);
-        Debug.debug("Using default VOMS dir "+vomsDirPath, 3);
+        Debug.debug("Using VOMS dir "+vomsDirPath, 3);
         return vomsDirPath;
       }
     }
@@ -473,13 +487,13 @@ public class MySSL extends SSL{
               GridPilot.KEY_PASSWORD);
         }
         catch(IllegalArgumentException e){
-          // cancelling
+          // Canceling
           e.printStackTrace();
           break;
         }
       }
       try{
-        Debug.debug("Creating proxy, "+arrayToString(credentials), 3);
+        Debug.debug("Creating proxy, "+":"+i+":"+arrayToString(credentials), 3);
         certFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[2])))).getAbsolutePath();
         keyFile = (new File(clearTildeLocally(MyUtil.clearFile(credentials[1])))).getAbsolutePath();
         keyPassword = credentials[0];
@@ -495,7 +509,7 @@ public class MySSL extends SSL{
           String caCertsDirStr = caCertsDir==null||caCertsDir.trim().equals("")?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
           
           // This works with gLite and ARC
-          Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile, 2);
+          Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile+":"+i, 2);
           VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
               GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
               certFile, keyFile, caCertsDirStr, vomsDir,
@@ -525,9 +539,9 @@ public class MySSL extends SSL{
       }
       catch(Exception e){
         if(GridPilot.VOMS_SERVER_URL!=null && keyFile!=null && LocalStaticShell.existsFile(keyFile) &&
-            i==1){
-          MyUtil.showError("Could not create VOMS proxy. Please check that you're member of a VO on "+
-              GridPilot.VOMS_SERVER_URL+" and, if not, unset \"voms server\" in your preferences.\n\n" +
+            i==2){
+          MyUtil.showError("Could not create VOMS proxy. Please check that you're member of a VO on\n\n"+
+              GridPilot.VOMS_SERVER_URL+"\n\nand, if not, unset \"voms server\" in your preferences.\n\n" +
                   "I will now attempt to create a normal proxy.");
           GridPilot.VOMS_SERVER_URL = null;
         }
@@ -924,7 +938,7 @@ public class MySSL extends SSL{
     try{
       
       // Make sure a proxy exists
-      getGridCredential(frame);
+      getGridCredential(frame, false);
       // Get the DN from this proxy
       String subject = getGridSubject0();
       AbstractChecksum checksum = null;

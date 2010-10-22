@@ -379,7 +379,7 @@ private static String fixUrl(String _url){
  private static void handleCheckPanelException(Window frame, Exception eee, String finBaseUrl){
    eee.printStackTrace();
    Debug.debug("Could not open URL "+finBaseUrl+". "+eee.getMessage(), 1);
-   if(!GridPilot.IS_FIRST_RUN){
+   if(!GridPilot.IS_SETUP_RUN){
      GridPilot.getClassMgr().getStatusBar().setLabel("Could not open URL "+finBaseUrl+". "+eee.getMessage());
    }
    ConfirmBox confirmBox = new ConfirmBox(frame); 

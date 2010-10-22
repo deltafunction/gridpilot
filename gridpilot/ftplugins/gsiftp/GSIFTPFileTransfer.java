@@ -51,7 +51,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
 
   public GSIFTPFileTransfer() throws IOException, GeneralSecurityException{
     PLUGIN_NAME = "gsiftp";
-    if(!GridPilot.IS_FIRST_RUN){
+    if(!GridPilot.IS_SETUP_RUN){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
     fileCacheMgr = GridPilot.getClassMgr().getFileCacheMgr();

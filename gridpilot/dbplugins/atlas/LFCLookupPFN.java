@@ -9,7 +9,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 
-
 import org.glite.lfc.LFCConfig;
 import org.glite.lfc.LFCServer;
 import org.glite.lfc.internal.ReplicaDesc;
@@ -34,7 +33,10 @@ public class LFCLookupPFN extends LookupPFN {
     guid = _guid;
     tryDli = _tryDli;
     lfcServer = new LFCServer(lfcConfig, new URI(catalogServer));
-    Debug.debug("Created new LFCServer from ID "+lfcServer.getConfig().globusCredential.getIdentity(), 3);
+    Debug.debug("Created new LFCServer for "+lfcServer.getConfig().globusCredential.getIdentity()+
+        ":"+lfcServer.getConfig().globusCredential.getProxyType()+
+        ":"+lfcServer.getConfig().globusCredential.getSubject()+" from "+
+        catalogUrl.getURL(), 3);
     host = catalogUrl.getHost();
     /*e.g. "http://lfc-atlas.cern.ch:8085", "http://lxb1941.cern.ch:8085"
            "http://lfc-atlas-test.cern.ch:8085" */
@@ -64,6 +66,7 @@ public class LFCLookupPFN extends LookupPFN {
     // If the LFN starts with "user." assume lfcUserBasePath
     if(pfns==null && lfn.startsWith("user.")){
       String atlasLPN = basePath+db.lfcUserBasePath+lfn;
+      Debug.debug("Looking up user file: "+atlasLPN, 3);
       try{
         pfns = lfcLookup(atlasLPN);
       }

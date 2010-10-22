@@ -114,6 +114,7 @@ public class GridPilot extends JApplet{
   // dialog. It overrides the various thread timeouts and can be cleared only by
   // "reload values from config file"
   public static boolean WAIT_FOREVER = false;
+  public static boolean IS_SETUP_RUN = false;
   public static boolean IS_FIRST_RUN = false;
   public static File USER_CONF_FILE = null;
   public static String RUNTIME_DIR = null;
@@ -131,7 +132,6 @@ public class GridPilot extends JApplet{
     /** This will test for GUI events launched outside of the event dispatching thread. */
     //CheckThreadViolationRepaintManager.initMonitoring();
     
-    boolean askImport = false;
     try{
       try{
         getClassMgr().setLogFile(new MyLogFile(MyUtil.clearTildeLocally(MyUtil.clearFile(LOG_FILE_NAME))));
@@ -161,12 +161,18 @@ public class GridPilot extends JApplet{
         }
         catch(Exception eee){
         }
+        IS_SETUP_RUN = true;
         IS_FIRST_RUN = true;
-        new BeginningWizard(IS_FIRST_RUN);
-        askImport = true;
-        IS_FIRST_RUN = false;
+        new BeginningWizard(IS_SETUP_RUN);
+        IS_SETUP_RUN = false;
         setConfigFile();
-      }      
+        try{
+          getClassMgr().getSSL().activateProxySSL(getClassMgr().getGlobalFrame(), true);
+        }
+        catch(Exception eee){
+          eee.printStackTrace();
+        }
+      }
       loadConfigValues();
       initDebug();
       loadDBs();
@@ -189,7 +195,7 @@ public class GridPilot extends JApplet{
       getClassMgr().getLogFile().addInfo("GridPilot loaded");
       /** This will test for GUI hanging threads and report on stderr. */
       //EventDispatchThreadHangMonitor.initMonitoring();
-      if(askImport){
+      if(IS_FIRST_RUN){
         askForImport();
       }
     }
@@ -340,7 +346,7 @@ public class GridPilot extends JApplet{
     DEBUG_LEVEL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Debug");
     setButtonDefaults();
     RUNTIME_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Runtime directory");
-    if(!IS_FIRST_RUN){
+    if(!IS_SETUP_RUN){
       SPLASH = new Splash(RESOURCES_PATH+"splash.png", GridPilot.class);
     }
     JOB_COLOR_MAPPING = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION, "Job color mapping");  
@@ -406,6 +412,31 @@ public class GridPilot extends JApplet{
       TAB_DBS = new String[] {"My_DB_Local"};
       TAB_TABLES = new String[] {"dataset"};
     }
+    BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Browser history file");
+    GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Grid home url");
+    APP_STORE_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+       "Application store URL");
+    if(APP_STORE_URL==null || APP_STORE_URL.equals("")){
+      getClassMgr().getConfigFile().missingMessage(
+         TOP_CONFIG_SECTION, "application store URL");
+      getClassMgr().getLogFile().addMessage(
+         "WARNING: you have not specified any application store URL. " +
+         "The default will be used:"+DEFAULT_APP_STORE_URL);
+      APP_STORE_URL = DEFAULT_APP_STORE_URL;
+    }
+    String ask = null;
+    try{
+      ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+         "Ask before thread interrupt");
+      ASK_BEFORE_INTERRUPT = !(ask!=null && (
+      ask.equalsIgnoreCase("no") ||
+      ask.equalsIgnoreCase("false")));
+    }
+    catch(Exception e){
+      ASK_BEFORE_INTERRUPT = true;
+    }
     PROXY_TYPE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
        "Proxy type", "RFC");
     PROXY_TIME_LEFT_LIMIT = Integer.parseInt(
@@ -418,21 +449,26 @@ public class GridPilot extends JApplet{
         "Certificate file");
     PROXY_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
        "Proxy directory", "~/.globus");
-    KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-        "Key password");
-    CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-        "CA certificates");
+    if(!IS_FIRST_RUN || KEY_PASSWORD==null){
+      KEY_PASSWORD = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+      "Key password");
+    }
+    if(!IS_FIRST_RUN || CA_CERTS_DIR==null){
+      CA_CERTS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+         "CA certificates");
+    }
     if(CA_CERTS_DIR==null){
-      getClassMgr().getConfigFile().missingMessage(
-          TOP_CONFIG_SECTION, "CA certificates");
+      getClassMgr().getConfigFile().missingMessage(TOP_CONFIG_SECTION, "CA certificates");
       getClassMgr().getLogFile().addMessage(
           "WARNING: you have not specified any CA certificates. " +
           "A default set will be used.");
     }
     TRUSTSTORE_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
        "Truststore file");
-    VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-       "Voms directory");
+    if(!IS_FIRST_RUN || VOMS_DIR==null){
+      VOMS_DIR = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
+         "Voms directory");      
+    }
     if(VOMS_DIR==null){
       getClassMgr().getConfigFile().missingMessage(
           TOP_CONFIG_SECTION, "voms directory");
@@ -442,6 +478,8 @@ public class GridPilot extends JApplet{
     }
     VO = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Virtual organization");
     VOMS_SERVER_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms server");
+    GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
+       "Globus tcp port range");
     FQAN = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION, "Voms fqan");
     String [] _fixedJobAttributes = getClassMgr().getConfigFile().getValues(TOP_CONFIG_SECTION,
        "Job attributes");
@@ -456,33 +494,6 @@ public class GridPilot extends JApplet{
     }
     Debug.debug("Job attributes: "+MyUtil.arrayToString(FIXED_JOB_ATTRIBUTES)+" "+
         FIXED_JOB_ATTRIBUTES.length, 2);
-    BROWSER_HISTORY_FILE = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-       "Browser history file");
-    GLOBUS_TCP_PORT_RANGE = getClassMgr().getConfigFile().getValue("File transfer systems",
-       "Globus tcp port range");
-    GRID_HOME_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-       "Grid home url");
-    APP_STORE_URL = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-       "Application store URL");
-    if(APP_STORE_URL==null || APP_STORE_URL.equals("")){
-      getClassMgr().getConfigFile().missingMessage(
-          TOP_CONFIG_SECTION, "application store URL");
-      getClassMgr().getLogFile().addMessage(
-          "WARNING: you have not specified any application store URL. " +
-          "The default will be used:"+DEFAULT_APP_STORE_URL);
-      APP_STORE_URL = DEFAULT_APP_STORE_URL;
-    }
-    String ask = null;
-    try{
-      ask = getClassMgr().getConfigFile().getValue(TOP_CONFIG_SECTION,
-      "Ask before thread interrupt");
-      ASK_BEFORE_INTERRUPT = !(ask!=null && (
-          ask.equalsIgnoreCase("no") ||
-          ask.equalsIgnoreCase("false")));
-    }
-    catch(Exception e){
-      ASK_BEFORE_INTERRUPT = true;
-    }
     //getClassMgr().getConfigFile().printConfig();
   }
   
@@ -612,7 +623,7 @@ public class GridPilot extends JApplet{
         continue;
       }
       try{
-        if(!IS_FIRST_RUN){
+        if(!IS_SETUP_RUN){
           splashShow("Loading file transfer system: "+FT_NAMES[i]);
         }
       }
@@ -626,7 +637,7 @@ public class GridPilot extends JApplet{
       }
       catch(Exception e){
         // load as many FTS as possible
-        if(!IS_FIRST_RUN){
+        if(!IS_SETUP_RUN){
           GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not load file transfer system "+
               FT_NAMES[i], e);
         }
@@ -940,6 +951,12 @@ public class GridPilot extends JApplet{
    */
   public static void main(String[] args) {
     IS_APPLET = false;
+    parseArgs(args);
+    getClassMgr().setGridPilot(new GridPilot());
+    Debug.debug("NAME: "+getClassMgr().getGridPilot().getName(), 2);
+  }
+
+  private static void parseArgs(String[] args) {
     if(args!=null){
       for(int i=0; i<args.length; ++i){
         if(args[i]!=null && (args[i].equals("-c") || args[i].equals("-conf"))){
@@ -970,8 +987,6 @@ public class GridPilot extends JApplet{
         }
       }
     }
-    getClassMgr().setGridPilot(new GridPilot());
-    Debug.debug("NAME: "+getClassMgr().getGridPilot().getName(), 2);
   }
 
   private static void badUsage(String s){

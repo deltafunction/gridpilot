@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Vector;
 
 import javax.swing.JCheckBox;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
+import org.ietf.jgss.GSSException;
 import org.nordugrid.gridftp.ARCGridFTPJob;
 import org.nordugrid.gridftp.ARCGridFTPJobException;
 import org.nordugrid.is.ARCDiscoveryException;
@@ -123,7 +123,7 @@ public class NGSubmission{
   }
 
   private String doSubmit() throws ARCDiscoveryException,
-  MalformedURLException, ARCGridFTPJobException, IOException, GeneralSecurityException{
+  MalformedURLException, ARCGridFTPJobException, IOException, GeneralSecurityException, GSSException{
     
     queue = null;
     xrsl = "";
@@ -386,7 +386,7 @@ public class NGSubmission{
     return retVec.toArray(new ARCResource[retVec.size()]);
   }
 
-  private String arcSubmit() throws IOException, GeneralSecurityException {
+  private String arcSubmit() throws IOException, GeneralSecurityException, GSSException {
     String ngJobId = null;
     int i = 0;
     ARCGridFTPJob gridJob = null;

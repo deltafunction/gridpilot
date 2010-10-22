@@ -637,7 +637,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       });
 
       JPanel jpNavigation = new JPanel(new GridBagLayout());
-      if(!GridPilot.IS_FIRST_RUN){
+      if(!GridPilot.IS_SETUP_RUN){
         jpNavigation.add(bHome);
       }
       jpNavigation.add(new JLabel(" "));

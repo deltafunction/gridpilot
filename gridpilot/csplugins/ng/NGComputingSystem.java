@@ -14,6 +14,7 @@ import org.globus.gsi.GlobusCredential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSCredential;
+import org.ietf.jgss.GSSException;
 import org.nordugrid.gridftp.ARCGridFTPJob;
 import org.nordugrid.gridftp.ARCGridFTPJobException;
 import org.nordugrid.is.ARCDiscovery;
@@ -420,7 +421,7 @@ public class NGComputingSystem implements MyComputingSystem{
     }
   }
   
-  private ARCGridFTPJob getGridJob(MyJobInfo job) throws ARCGridFTPJobException, IOException, GeneralSecurityException{
+  private ARCGridFTPJob getGridJob(MyJobInfo job) throws ARCGridFTPJobException, IOException, GeneralSecurityException, GSSException{
     
     String jobID = job.getJobId().substring(job.getJobId().lastIndexOf("/"));
     int lastSlash = job.getJobId().lastIndexOf("/");

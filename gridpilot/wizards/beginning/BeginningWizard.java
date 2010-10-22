@@ -14,7 +14,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
@@ -145,13 +144,14 @@ public class BeginningWizard{
         }
         else if(ret==1){
           // No grid credentials
-          certAndKeyOk = false;
-          MyUtil.showError(
-              "WARNING: without a key and a certificate you will not be able to authenticate with remote resources.");
+          throw new IOException("Failed initializing SSL.");
         }
       }
-      catch(FileNotFoundException ee){
+      catch(Exception ee){
        ee.printStackTrace();
+       certAndKeyOk = false;
+       MyUtil.showError(
+           "WARNING: without grid credentials you will not be able to authenticate with remote resources.");
       }
       
       try{
@@ -643,6 +643,7 @@ public class BeginningWizard{
     }
     catch(Exception e){
       e.printStackTrace();
+      choice = 1;
     }
     
     if(choice!=0){
@@ -760,7 +761,7 @@ public class BeginningWizard{
     host = host.replaceFirst("(.*):\\d+", "$1");
     String lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=(\\w+)\\s+(\\w+)\\W.*", "$1$2");
     lfcUser = GridPilot.getClassMgr().getSSL().getGridSubject().replaceFirst(".*CN=([\\w ]+).*", "$1").replaceAll(" +", "");
-    String lfcPath = "/users/"+lfcUser+"/";
+    String lfcPath = "/users/"+lfcUser;
     JTextField tfLfcPath = new JTextField(TEXTFIELDWIDTH);
     String toaPath = "~/GridPilot/TiersOfATLASCache.txt";
     JComponent tfHomeSite = createAtlasSitesField();
@@ -1080,6 +1081,7 @@ public class BeginningWizard{
       URL monitorURL = new URL("http://www.nordugrid.org/monitor/");
       String line = null;
       String inLine = null;
+      Debug.debug("Reading URL "+monitorURL.toExternalForm(), 2);
       BufferedReader in = new BufferedReader(new InputStreamReader(monitorURL.openStream()));
       StringBuffer lb = new StringBuffer();
       String sitePattern = ".*clusdes\\.php\\?host=([\\w\\-\\.]+)\\&.*";
@@ -1161,7 +1163,7 @@ public class BeginningWizard{
       "GridFactory is the native batch system of GridPilot. It is still experimental, but you're welcome to try\n" +
       "it out. The submission is done by uploading jobs scripts and input file(s) to a server from where they will be\n" +
       "picked up and run by GridWorkers.\n\n";
-    JPanel jPanel = new JPanel(new GridBagLayout());
+    final JPanel jPanel = new JPanel(new GridBagLayout());
     jPanel.add(new JLabel("<html>"+confirmString.replaceAll("\n", "<br>")+"</html>"),
         new GridBagConstraints(0, (firstRun?1:0), 2, 2, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
@@ -1178,7 +1180,7 @@ public class BeginningWizard{
     csPanels[0] = new JPanel(new GridBagLayout());
     String ngString =
       "To use NorduGrid you must have a certificate/key that is recognized by NorduGrid and you (i.e.\n" +
-      "your certificate) must be member of one of the virtual organizations of NorduGrid.\n\n" +
+      "your certificate) must be member of one of the virtual organizations recognized by NorduGrid.\n\n" +
       "If you fill in the field 'clusters', you choose to submit only to a selected set of clusters. This will\n" +
       "typically save you a significant amount of time when submitting jobs. The field must be filled with\n" +
       "a space-separated list of front-end host names. If you leave it empty all available resources will be\n" +
@@ -1204,7 +1206,7 @@ public class BeginningWizard{
     bClusters.setToolTipText("Query ARC information system for list of all cluster front-end names.");
     bClusters.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        confirmBox.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        jPanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         (new Thread(){
           public void run(){
             JComponent cbClusters = createNGClustersField();
@@ -1213,7 +1215,7 @@ public class BeginningWizard{
               jpClusters.add(cbClusters, 0);
               jpClusters.updateUI();
             }
-            confirmBox.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            jPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           }
         }).start();
       }

@@ -21,7 +21,7 @@ public class HTTPSFileTransfer extends
   }
   
   public HTTPSFileTransfer() throws IOException, GeneralSecurityException{
-    super(GridPilot.IS_FIRST_RUN?null:GridPilot.getClassMgr().getSSL().getGridSubject(),
+    super(GridPilot.IS_SETUP_RUN?null:GridPilot.getClassMgr().getSSL().getGridSubject(),
         GridPilot.getClassMgr().getSSL(), GridPilot.getClassMgr().getLogFile());
     fileCacheMgr = GridPilot.getClassMgr().getFileCacheMgr();
   }
