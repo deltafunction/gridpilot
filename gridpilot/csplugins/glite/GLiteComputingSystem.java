@@ -98,6 +98,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   public GLiteComputingSystem(String _csName){
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
+    org.apache.log4j.Logger.getLogger(org.glite.security.util.FileEndingIterator.class.getName()).setLevel(org.apache.log4j.Level.FATAL);
     configFile = GridPilot.getClassMgr().getConfigFile();
     transferControl = GridPilot.getClassMgr().getTransferControl();
     defaultUser = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Default user");

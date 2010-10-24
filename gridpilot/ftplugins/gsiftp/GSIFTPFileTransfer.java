@@ -726,7 +726,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
     boolean onlyDir = filter.endsWith("/");
     String [] entryArr = MyUtil.split(line);
-    String fileName = entryArr[entryArr.length-1];
+    String fileName = entryArr[entryArr.length-1].trim();
+    // gLite WMS lists . and .. Skip.
+    if(fileName.equals(".") || fileName.equals("..")){
+      return;
+    }
+    
     String bytes = null;
     /*
        Really ugly: we cannot know how the server chooses to display the information.
