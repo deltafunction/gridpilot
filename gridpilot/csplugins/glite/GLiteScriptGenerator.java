@@ -276,8 +276,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       
       // Input files: scripts
       jdlLine = "InputSandbox = {";
-      jdlLine += "\"" + MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName)) + "\", ";
-      jdlLine += "\"" + exeFileName + "\", ";
+      /*scriptFileName = MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFileName));
+      if(scriptFileName.startsWith("/") || scriptFileName.startsWith("\\w+:")){
+        scriptFileName = "file:///"+scriptFileName;
+      }
+      jdlLine += "\"" + scriptFileName + "\", ";
+      jdlLine += "\"file:///" + exeFileName + "\", ";*/
+      jdlLine += "\"" + (new File(scriptFileName)).getName() + "\", ";
+      jdlLine += "\"" + (new File(exeFileName)).getName() + "\", ";
   
       // Input files.
       String[] inputFiles1 = new String [] {};
