@@ -59,7 +59,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private ArrayList<JComponent> detailFields = new ArrayList<JComponent>();
   private HashMap<String, JComponent> labels = new HashMap<String, JComponent>();
   private HashMap<String, JComponent> textFields = new HashMap<String, JComponent>();
-  private String[] detailFieldNames;
+  private ArrayList<String> detailFieldNames;
   private HashMap<String, String> descriptions;
   
   public boolean editable = true;
@@ -232,8 +232,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   private void initVars() {
-    detailFieldNames = new String [] {datasetIdentifier, datasetExecutableReference[1], datasetExecutableVersionReference[1],
-        "created", "lastModified", "metaData", "runNumber", "totalEvents", "inputDataset", "inputDB", "totalFiles"};
+    detailFieldNames = new ArrayList<String>();
+    Collections.addAll(detailFieldNames,
+       new String [] {datasetIdentifier, datasetExecutableReference[1], datasetExecutableVersionReference[1],
+       "created", "lastModified", "metaData", "runNumber", "totalEvents", "totalFiles"});
     descriptions = new HashMap<String, String>();
     descriptions.put(jobDefDatasetReference[0], "Name of this application/dataset");
     descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
@@ -245,10 +247,16 @@ public class DatasetCreationPanel extends CreateEditPanel{
     descriptions.put("metaData", "Optional: data describing the application/dataset");
     descriptions.put("runNumber", "Optional: number used to keep track of datasets");
     descriptions.put("totalEvents", "Optional: number of events of this dataset");
-    descriptions.put("inputDataset", "Optional: input dataset");
-    descriptions.put("inputDB", "Optional: name of database holding the input dataset");
     descriptions.put("totalFiles", "Optional: total number of files. If not given or -1, inferred from number of input files " +
     		"when creating jobs");
+    descriptions.put("inputDataset", "Input dataset");
+    descriptions.put("inputDB", "Name of database holding the input dataset");
+    /*
+    detailFieldNames.add("inputDataset");
+    detailFieldNames.add("inputDB");
+    descriptions.put("inputDataset", "Optional: input dataset");
+    descriptions.put("inputDB", "Optional: name of database holding the input dataset");
+    */
     String key;
     HashMap<String, String> locaseDescriptions = new HashMap<String, String>();
     for(Iterator<String>it=descriptions.keySet().iterator(); it.hasNext();){
@@ -404,7 +412,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   private boolean isDetail(String fieldName){
-    return MyUtil.arrayContainsIgnoreCase(detailFieldNames, fieldName);
+    return MyUtil.arrayContainsIgnoreCase(detailFieldNames.toArray(new String[detailFieldNames.size()]), fieldName);
   }
   
   private void addToolTipText(String fieldName){

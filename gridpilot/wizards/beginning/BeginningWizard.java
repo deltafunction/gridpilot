@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.Security;
@@ -32,6 +33,7 @@ import gridpilot.GridPilot;
 import gridpilot.JExtendedComboBox;
 import gridpilot.MySSL;
 import gridpilot.MyUtil;
+import gridpilot.dbplugins.atlas.SecureWebServiceConnection;
 import gridpilot.dbplugins.atlas.TiersOfAtlas;
 
 import javax.swing.ImageIcon;
@@ -1054,6 +1056,80 @@ public class BeginningWizard{
     return new JTextField(TEXTFIELDWIDTH);
   }
 
+  private JComponent createVomsesField(String vomsUrl) throws MalformedURLException {
+    GlobusURL url = new GlobusURL(vomsUrl);
+    String[] vomses;
+    try{
+      vomses = findVomses("https://"+url.getHost()+":8443/vomses");
+      JExtendedComboBox sitesBox = new JExtendedComboBox();
+      sitesBox.setAutoscrolls(true);
+      ((JExtendedComboBox) sitesBox).addItem("");
+      for(int i=0; i<vomses.length; ++i){
+        ((JExtendedComboBox) sitesBox).addItem(vomses[i]);
+      }
+      ((JExtendedComboBox) sitesBox).setEditable(true);
+      sitesBox.updateUI();
+      return sitesBox;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return new JTextField(TEXTFIELDWIDTH);
+  }
+
+  private String[] findVomses(String _url) {
+    // Pretty hacky - TODO: consider asking the info system directly
+    Vector<String> ret = new Vector<String>();
+    try{
+      // https://lcg-voms.cern.ch:8443/vomses does not work, instead we
+      // use https://voms.cern.ch:8443/vomses which is a mirror.
+      String url = _url.replaceFirst("lcg-voms.cern.ch", "voms.cern.ch");
+      URL monitorURL = new URL(url);
+      // This is to trust all CAs
+      new SecureWebServiceConnection(monitorURL.getHost(), monitorURL.getPort(), monitorURL.getPath());
+      String line = null;
+      String inLine = null;
+      Debug.debug("Reading URL "+monitorURL.toExternalForm(), 2);
+      BufferedReader in = new BufferedReader(new InputStreamReader(monitorURL.openStream()));
+      StringBuffer lb = new StringBuffer();
+      String voPattern =
+        "(?i).*<div class=\"voLink\">\\s*<a href=\"\\S+\">\\s*([\\w\\-\\.]+)\\s*.*";
+      String vo;
+      while((inLine = in.readLine())!=null){
+        inLine = inLine.trim();
+        // take care of "lines" split on multiple lines
+        if(inLine.matches(".*\">\\s*$")){
+          lb.append(inLine);
+          continue;
+        }
+        if(inLine.length()==0){
+          continue;
+        }
+        else if(lb.length()>0){
+          lb.append(inLine);
+          line = lb.toString();
+          lb.setLength(0);
+        }
+        else{
+          line = inLine;
+        }
+        Debug.debug("-->"+line, 3);
+        if(line.matches(voPattern)){
+          vo = line.replaceFirst(voPattern, "$1");
+          if(!ret.contains(vo)){
+            Debug.debug("Adding VO "+vo, 1);
+            ret.add(vo);
+          }
+        }
+      }
+      Collections.sort(ret);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return ret.toArray(new String [ret.size()]);
+  }
+
   private JComponent createNGClustersField() {
     String[] sites;
     try{
@@ -1088,7 +1164,6 @@ public class BeginningWizard{
       String site;
       while((inLine = in.readLine())!=null){
         inLine = inLine.trim();
-        // take care of "lines" split on multiple lines
         if(inLine.length()==0){
           continue;
         }
@@ -1156,7 +1231,7 @@ public class BeginningWizard{
       "in the Nordic countries. This grid uses the middleware called ARC. If you're not yourself a member of the nordugrid\n" +
       "virtual organization or another virtual organization affiliated with one of the institutes participating in NorduGrid\n" +
       "or ARC, you will probably not be allowed to run jobs on this backend.\n\n" +
-      "GLite is the middleware used by the EGEE grid. EGEE is a project driven by European instutions, in particular CERN.\n" +
+      "GLite is the middleware built by EGEE and used by the LCG grid. LCG is a grid servicing high energy physicists.\n" +
       "If you're not a member of an EGEE virtual organization, you will probably not be able to run jobs on this backend.\n\n" +
       "SSH_POOL is a backend that runs jobs on a pool of Linux machines accessed via ssh. The scheduling is done by\n" +
       "a very simplistic FIFO algorithm.\n\n" +
@@ -1246,12 +1321,48 @@ public class BeginningWizard{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
-    row.add(new JLabel("Virtual organization: "), BorderLayout.WEST);
-    JTextField tfVO = new JTextField(TEXTFIELDWIDTH);
-    tfVO.setText("");
-    row.add(tfVO, BorderLayout.CENTER);
+    row.add(new JLabel("VOMS server: "), BorderLayout.WEST);
+    final JTextField tfVomsServer = new JTextField(TEXTFIELDWIDTH);
+    tfVomsServer.setText("https://lcg-voms.cern.ch:15001/DC=ch/DC=cern/OU=computers/CN=lcg-voms.cern.ch");
+    row.add(tfVomsServer, BorderLayout.CENTER);
     csPanels[1].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+            GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
+            new Insets(5, 5, 5, 5), 0, 0));
+    row = new JPanel(new BorderLayout(8, 0));
+    row.add(new JLabel("Virtual organization: "), BorderLayout.WEST);
+    final JPanel jpVos = new JPanel();
+    JTextField tfVO = new JTextField(TEXTFIELDWIDTH);
+    tfVO.setText("");
+    jpVos.add(tfVO);
+    JButton bVos = new JButton("Get list");
+    bVos.setToolTipText("Query VOMS server for list of virtual organizations.");
+    bVos.addActionListener(new ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        jPanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        (new Thread(){
+          public void run(){
+            JComponent cvVomses;
+            try {
+              cvVomses = createVomsesField(tfVomsServer.getText());
+              if(cvVomses!=null){
+                jpVos.remove(0);
+                jpVos.add(cvVomses, 0);
+                jpVos.updateUI();
+              }
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
+            jPanel.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+        }).start();
+      }
+    });
+    jpVos.add(bVos);
+    row.add(jpVos, BorderLayout.CENTER);
+    csPanels[1].add(row,
+        new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     
@@ -1458,11 +1569,19 @@ public class BeginningWizard{
           );
     }
     if(jcbs[1].isSelected() && tfVO.getText()!=null && !tfVO.getText().equals("")){
+      boolean reInitSSL = false;
+      if(!tfVO.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Virtual organization")) ||
+         !tfVomsServer.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Voms server"))){
+        reInitSSL = true;
+      }
       configFile.setAttributes(
-          new String [] {"GLite", GridPilot.TOP_CONFIG_SECTION, "GLite"},
-          new String [] {"Enabled", "Virtual organization", "Runtime vos"},
-          new String [] {"yes", tfVO.getText().trim(), tfVO.getText().trim()}
+          new String [] {"GLite", GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION, "GLite"},
+          new String [] {"Enabled", "Virtual organization", "Voms server", "Runtime vos"},
+          new String [] {"yes", tfVO.getText().trim(), tfVomsServer.getText().trim(), tfVO.getText().trim()}
           );
+      if(reInitSSL){
+        GridPilot.getClassMgr().getSSL().activateProxySSL(null, true);
+      }
     }
     else{
       configFile.setAttributes(
