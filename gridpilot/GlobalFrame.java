@@ -9,6 +9,8 @@ import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.text.StyleConstants;
 
+import org.globus.gsi.GSIConstants;
+
 import java.util.*;
 
 import gridfactory.common.ConfigFile;
@@ -411,25 +413,46 @@ public class GlobalFrame extends GFrame{
   }
 
 
-  // Help -> Show my distinguished name
+  // Help -> info on credentials
   private void menuHelpShowDN_actionPerformed(){
     try{
-      String dn = GridPilot.getClassMgr().getSSL().getDN();
+      MySSL ssl = GridPilot.getClassMgr().getSSL();
+      String dn = ssl.getDN();
       String label;
-      JPanel jp = new JPanel();
+      JPanel jp = new JPanel(new GridLayout(5, 1));
       if(dn==null || dn.equals("")){
         label = "You don't have any active X.509 certificate";
         jp.add(new JLabel(label));
       }
       else{
-        label = "Distinguished name (DN) of your active X.509 certificate: ";
+        JPanel row = new JPanel();
+        label = "Distinguished name (DN): ";
         JTextArea jt = new JTextArea(dn);
         jt.setEditable(false);
-        jp.add(new JLabel(label));
-        jp.add(jt);
+        row.add(new JLabel(label));
+        row.add(jt);
+        jp.add(row);
+        jp.add(new JLabel("Issuer DN: "+ssl.getX509UserCert().getIssuerDN()));
+        try{
+          if(ssl.getActiveProxyType()>=GSIConstants.GSI_2_PROXY){
+            jp.add(new JLabel("Proxy type: "+ssl.getActiveProxyType()));
+            jp.add(new JLabel("Proxy subject: "+ssl.getProxySubject()));
+            int rt = ssl.getGridCredential().getRemainingLifetime();
+            jp.add(new JLabel("Remaining life time: "+rt+" seconds"+
+                (rt>3600?" ("+(rt/3600)+" hours)":"")));
+          }
+          else{
+            int rt = ssl.getCredential().getRemainingLifetime();
+            jp.add(new JLabel("Remaining life time: "+rt+" seconds"+
+                (rt>3600?" ("+(rt/3600)+" hours)":"")));
+          }
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
       }
       ConfirmBox confirmBox = new ConfirmBox(this);
-      confirmBox.getConfirm("My DN", jp, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
+      confirmBox.getConfirm("Credential information", jp, new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane())});
     }
     catch(Exception e){
       e.printStackTrace();
@@ -755,7 +778,7 @@ public class GlobalFrame extends GFrame{
     });
     menuHelp.add(menuHelpWebsite);
     menuHelp.addSeparator();
-    JMenuItem menuHelpShowDN = new JMenuItem("Show my distinguished name");
+    JMenuItem menuHelpShowDN = new JMenuItem("Credentials info");
     menuHelpShowDN.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         menuHelpShowDN_actionPerformed();
