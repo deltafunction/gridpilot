@@ -1859,14 +1859,14 @@ private static String fixUrl(String _url){
   }
 
   public static void checkAndActivateSSL(String[] urls){
-    checkAndActivateSSL(null, urls);
+    checkAndActivateSSL(null, urls, false);
   }
   
-  public static void checkAndActivateSSL(Window frame, String[] urls){
+  public static void checkAndActivateSSL(Window frame, String[] urls, boolean force){
     for(int i=0; i<urls.length; ++i){
       if(urls[i].toLowerCase().startsWith("https://")){
         try{
-          GridPilot.getClassMgr().getSSL().activateSSL(frame);
+          GridPilot.getClassMgr().getSSL().activateSSL(frame, force);
         }
         catch(Exception e){
           e.printStackTrace();

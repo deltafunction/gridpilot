@@ -150,7 +150,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     //if(shellMgr.isLocal() && executableDirectory!=null && executableDirectory.startsWith("~")){
     //  executableDirectory = System.getProperty("user.home")+executableDirectory.substring(1);
     //}
-    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), rteCatalogUrls);
+    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), rteCatalogUrls, false);
     rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
   }
   

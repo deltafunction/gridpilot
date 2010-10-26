@@ -23,7 +23,7 @@ public class RteXmlParser {
   
   public RteXmlParser(String [] _urls){
     catalogURLs = _urls;
-    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), catalogURLs);
+    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), catalogURLs, false);
     //rteCatalog = new RTECatalog(catalogURLs, null);
     rteCatalog = GridPilot.getClassMgr().getRTEMgr(GridPilot.RUNTIME_DIR, catalogURLs).getRTECatalog();
   }

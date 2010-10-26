@@ -91,11 +91,11 @@ public class MySSL extends SSL{
   }
   
   public void activateSSL() throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
-    activateSSL(null);
+    activateSSL(null, false);
   }
 
-  public void activateSSL(Window frame) throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
-    if(sslOk){
+  public void activateSSL(Window frame, boolean force) throws IOException, GeneralSecurityException, GlobusCredentialException, GSSException {
+    if(!force && sslOk){
       return;
     }
     initalizeCACertsDir();
@@ -386,7 +386,7 @@ public class MySSL extends SSL{
     throw new IOException("ERROR: could not decrypt private key");
   }
 
-  private int getProxyType(){
+  public int getProxyType(){
     // This works with ARC and gLite (well, would if it had VOMS extensions)
     //int proxyType = GSIConstants.DELEGATION_FULL;
     if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_OLD)){
@@ -402,7 +402,7 @@ public class MySSL extends SSL{
     return GSIConstants.GSI_4_IMPERSONATION_PROXY;
   }
   
-  private int getVomsProxyType(){
+  public int getVomsProxyType(){
     if(GridPilot.PROXY_TYPE.equalsIgnoreCase(PROXY_TYPE_OLD)){
       // This works with gLite and ARC
       return VomsProxyFactory.OID_OLD;
@@ -838,6 +838,44 @@ public class MySSL extends SSL{
       GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
     }
     return subject;
+  }
+  
+  public String getProxySubject(){
+    String subject = null;
+    try{
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting identity", 3);
+      subject = globusCred.getSubject().trim();
+      Debug.debug("--->"+subject, 3);
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could get grid user subject. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+    }
+    return subject;
+  }
+  
+  public int getActiveProxyType(){
+    int type = -1;
+    try{
+      GlobusCredential globusCred = null;
+      if(credential instanceof GlobusGSSCredentialImpl){
+        globusCred = ((GlobusGSSCredentialImpl)credential).getGlobusCredential();
+      }
+      Debug.debug("getting proxy type", 3);
+      type = globusCred.getProxyType();
+      Debug.debug("--->"+type, 3);
+    }
+    catch(Exception nsae){
+      String error = "ERROR: could get grid proxy type. "+nsae.getMessage();
+      nsae.printStackTrace();
+      GridPilot.getClassMgr().getLogFile().addMessage(error, nsae);
+    }
+    return type;
   }
   
   /**

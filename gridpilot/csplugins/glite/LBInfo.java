@@ -1,14 +1,9 @@
 package gridpilot.csplugins.glite;
 
-import java.io.File;
-import java.io.IOException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import gridfactory.common.Debug;
-import gridfactory.common.LocalStaticShell;
-import gridpilot.GridPilot;
-import gridpilot.MyUtil;
 
 /**
  * This class parses an LB job status page like e.g.
@@ -33,19 +28,31 @@ import gridpilot.MyUtil;
  *
  */
 public class LBInfo {
+  
   private String url;
   private HashMap<String, String> map;
+  
   public LBInfo(String _url) throws Exception{
     url = _url;
     map = new HashMap<String, String>();
     parseURL();
   }
+  
+  /**
+   * For some reason Java cannot open the wms urls - the ssl handshake fails.
+   * In the future this may start working...
+   * @throws Exception
+   */
   private void parseURL() throws Exception{
-    MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), new String[]{url});
-    File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
+    //MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), new String[]{url}, false);
+    // This is to trust certs with wrong host name, expired certs - seems to be necessary
+    URL thisUrl = new URL(url);
+    //SecureWebServiceConnection sws = new SecureWebServiceConnection(thisUrl.getHost(), thisUrl.getPort(), thisUrl.getPath());
+    /*File tmpFile = File.createTempFile(MyUtil.getTmpFilePrefix(), "");
     GridPilot.getClassMgr().getTransferControl().httpsDownload(url, tmpFile);
     String str = LocalStaticShell.readFile(tmpFile.getAbsolutePath());
-    tmpFile.delete();
+    tmpFile.delete();*/
+    String str = (String) thisUrl.getContent();
     StringBuffer sb = new StringBuffer();
     String key = null;
     String val = null;
