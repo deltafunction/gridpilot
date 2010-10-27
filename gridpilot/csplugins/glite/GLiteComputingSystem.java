@@ -13,7 +13,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
 
-import javax.swing.JOptionPane;
 import javax.xml.rpc.holders.LongHolder;
 
 import gridfactory.common.ConfigFile;
@@ -37,7 +36,6 @@ import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.JobUnknownFaultException;
 import org.glite.wms.wmproxy.OperationNotAllowedFaultException;
-import org.glite.wms.wmproxy.StringAndLongList;
 import org.glite.wms.wmproxy.StringAndLongType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.globus.gsi.GlobusCredentialException;
@@ -59,7 +57,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private String workingDir = null;
   private String unparsedWorkingDir = null;
   private String [] runtimeDBs = null;
-  private HashSet finalRuntimes = null;
+  private HashSet<String> finalRuntimes = null;
   private String wmUrl = null;
   private WMProxyAPI wmProxyAPI = null;
   private String bdiiHost = null;
@@ -68,8 +66,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private String [] rteVos = null;
   private String [] rtePathTags = null;
   private String[] rteTranslationTags;
-  private HashSet rteScriptMappings = null;
-  private HashSet rteTranslationMappings = null;
+  private HashSet<String[]> rteScriptMappings = null;
+  private HashSet<String[]> rteTranslationMappings = null;
   private String defaultUser;
   private String delegationId = null;
   private MyTransferControl transferControl;
@@ -214,8 +212,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
    * information system.
    */
   public void setupRuntimeEnvironments(String csName, String runtimeDB){
-    finalRuntimes = new HashSet();
-    HashSet runtimes = new HashSet();
+    finalRuntimes = new HashSet<String>();
+    HashSet<String> runtimes = new HashSet<String>();
     
     GridPilot.splashShow("Discovering gLite runtime environments...");
 
@@ -224,16 +222,16 @@ public class GLiteComputingSystem implements MyComputingSystem{
       Hashtable clusterTable =
         mds.search(BDII_BASE_DN, "(GlueSubClusterName=*)",
             new String [] {"GlueSubClusterName"}, MDS.SUBTREE_SCOPE);
-      Enumeration en = clusterTable.elements();
-      Enumeration enn = null;
-      Hashtable rteTable = null;
+      Enumeration<MDSResult> en = clusterTable.elements();
+      Enumeration<MDSResult> enn = null;
+      Hashtable<String, MDSResult> rteTable = null;
       MDSResult hostRes = null;
       MDSResult rteRes = null;
       String host = null;
       String rte = null;
       Debug.debug("rteClusters: "+rteClusters, 2);
       while(en.hasMoreElements()){
-        hostRes = (MDSResult) en.nextElement();
+        hostRes = en.nextElement();
         host = hostRes.getFirstValue("GlueSubClusterName").toString();
         // If runtime hosts are defined, ignore non-mathing hosts
         if(rteClusters!=null && !Arrays.asList(rteClusters).contains(host)){
@@ -290,7 +288,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       String [] runtimeEnvironmentFields =
         dbPluginMgr.getFieldNames("runtimeEnvironment");
       String [] rtVals = new String [runtimeEnvironmentFields.length];
-      for(Iterator it=runtimes.iterator(); it.hasNext();){
+      for(Iterator<String> it=runtimes.iterator(); it.hasNext();){
         name = null;
         try{
           name = it.next().toString();       
@@ -335,7 +333,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   
   private String translateRte(String name) {
     if(rteTranslationMappings==null){
-      rteTranslationMappings = new HashSet();
+      rteTranslationMappings = new HashSet<String[]>();
       String [] mappings = null;
       if(rteTranslationTags!=null){
         for(int i=0; i<rteVos.length; ++i){
@@ -355,8 +353,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
 
     String [] patternAndReplacements = null;
     String ret = "";
-    for(Iterator it=rteTranslationMappings.iterator(); it.hasNext();){
-      patternAndReplacements = (String []) it.next();
+    for(Iterator<String[]> it=rteTranslationMappings.iterator(); it.hasNext();){
+      patternAndReplacements = it.next();
       if(patternAndReplacements!=null && patternAndReplacements.length>1 &&
           name.matches(patternAndReplacements[0])){
         ret = name;
@@ -376,7 +374,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private String mapRteNameToScriptPaths(String name){
     if(rteScriptMappings==null){
       // Try to find (guess...) the paths to the setup scripts
-      rteScriptMappings = new HashSet();
+      rteScriptMappings = new HashSet<String[]>();
       String [] mappings = null;
       if(rtePathTags!=null){
         for(int i=0; i<rteVos.length; ++i){
@@ -396,8 +394,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
 
     String [] patternAndReplacements = null;
     String ret = "";
-    for(Iterator it=rteScriptMappings.iterator(); it.hasNext();){
-      patternAndReplacements = (String []) it.next();
+    for(Iterator<String[]> it=rteScriptMappings.iterator(); it.hasNext();){
+      patternAndReplacements = it.next();
       if(patternAndReplacements!=null && patternAndReplacements.length>1 &&
           name.matches(patternAndReplacements[0])){
         for(int i=1; i<patternAndReplacements.length; ++i){
@@ -450,7 +448,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       jad.fromFile(jdlName);
       String jdlString = jad.toString();
       // check if any resources match
-      StringAndLongList result = null;
+      StringAndLongType[] result = null;
       try{
         result = wmProxyAPI.jobListMatch(jdlString, delegationId);
       }
@@ -463,12 +461,11 @@ public class GLiteComputingSystem implements MyComputingSystem{
       }
       else{
         // list of CE's+their ranks
-        StringAndLongType [] list = (StringAndLongType[ ]) result.getFile ();
-        if (list != null) {
-          int size = list.length ;
+        if(result!=null) {
+          int size = result.length ;
           for(int i=0; i<size ; i++){
-            String ce = list[i].getName();
-            Debug.debug( "- " + ce + list[i].getSize(), 2);
+            String ce = result[i].getName();
+            Debug.debug( "- " + ce + result[i].getSize(), 2);
           }
         }
       }
@@ -476,14 +473,14 @@ public class GLiteComputingSystem implements MyComputingSystem{
       Debug.debug("Registering job; "+scriptName+":"+jdlString, 2);
       JobIdStructType jobId = wmProxyAPI.jobRegister(jdlString, delegationId);
       // upload the sandbox
-      org.glite.wms.wmproxy.StringList list =
+      String[] list =
         wmProxyAPI.getSandboxDestURI(jobId.getId(), SANDBOX_PROTOCOL);
-      String uri = list.getItem()[0];
+      String uri = list[0];
       uri = uri+(uri.endsWith("/")?"":"/");
       Debug.debug("Uploading sandbox to "+uri, 2);
       String upFile;
-      for(Iterator it=scriptGenerator.localInputFilesList.iterator(); it.hasNext();){
-        upFile = (String) it.next();
+      for(Iterator<String> it=scriptGenerator.localInputFilesList.iterator(); it.hasNext();){
+        upFile = it.next();
         transferControl.upload(
             new File(MyUtil.clearTildeLocally(MyUtil.clearFile(upFile))),
             uri);
@@ -728,10 +725,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
 
-  public boolean killJobs(Set jobsToKill){
+  public boolean killJobs(Set<JobInfo> jobsToKill){
     MyJobInfo job = null;
-    Vector errors = new Vector();
-    for(Iterator it=jobsToKill.iterator(); it.hasNext();){
+    Vector<String> errors = new Vector<String>();
+    for(Iterator<JobInfo> it=jobsToKill.iterator(); it.hasNext();){
       try{
         job = (MyJobInfo) it.next();
         Debug.debug("Killing: " + job.getName() + ":" + job.getJobId(), 3);
@@ -813,7 +810,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       try{
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(
             runtimeDBs[ii]);
-        for(Iterator it=finalRuntimes.iterator(); it.hasNext();){
+        for(Iterator<String> it=finalRuntimes.iterator(); it.hasNext();){
           ok = true;
           runtimeName = (String )it.next();
           // Don't delete records with a non-empty initText.
@@ -847,10 +844,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private void getOutputs(MyJobInfo job) throws Exception{
     GridPilot.getClassMgr().getSSL().activateProxySSL();
     String url = null;
-    StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
-    StringAndLongType [] outs = outList.getFile();
-    for(int i=0; i<outs.length; ++i){
-      url = outs[i].getName();
+    StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+    for(int i=0; i<outList.length; ++i){
+      url = outList[i].getName();
       if(url!=null){
         if(url.endsWith("stdout")){
           transferControl.download(url, new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp()))));
@@ -890,16 +886,15 @@ public class GLiteComputingSystem implements MyComputingSystem{
           String stdoutUrl = null;
           String stderrUrl = null;
           Debug.debug("Getting output file list", 3);
-          StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+          StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
           Debug.debug("--> "+outList.toString(), 3);
-          StringAndLongType [] outs = outList.getFile();
-          if(outs!=null){
-            for(int i=0; i<outs.length; ++i){
-              if(outs[i].getName().endsWith("stdout")){
-                stdoutUrl = outs[i].getName();
+          if(outList!=null){
+            for(int i=0; i<outList.length; ++i){
+              if(outList[i].getName().endsWith("stdout")){
+                stdoutUrl = outList[i].getName();
               }
-              else if(outs[i].getName().endsWith("stderr")){
-                stderrUrl = outs[i].getName();
+              else if(outList[i].getName().endsWith("stderr")){
+                stderrUrl = outList[i].getName();
               }
             }
           }
@@ -1034,11 +1029,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }
     try{
-      StringAndLongList outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
-      StringAndLongType [] outs = outList.getFile();
+      StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
       String fileList = "";
-      for(int i=0; i<outs.length; ++i){
-        fileList += "    "+outs[i].getName() + outs[i].getSize() + "\n";
+      for(int i=0; i<outList.length; ++i){
+        fileList += "    "+outList[i].getName() + outList[i].getSize() + "\n";
       }
       ret += "Sandbox output files:\n"+fileList;
     }
@@ -1048,7 +1042,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     try{
       ret += "Input sandbox: "+
       MyUtil.arrayToString(
-          wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL).getItem())+"\n";
+          wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL))+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
