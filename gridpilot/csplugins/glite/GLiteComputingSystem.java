@@ -3,7 +3,7 @@ package gridpilot.csplugins.glite;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -20,6 +20,7 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.VirtualMachine;
 
@@ -34,14 +35,18 @@ import gridpilot.MyUtil;
 
 import org.glite.jdl.JobAd;
 import org.glite.wms.wmproxy.JobIdStructType;
+import org.glite.wms.wmproxy.JobStatusStructType;
 import org.glite.wms.wmproxy.JobUnknownFaultException;
 import org.glite.wms.wmproxy.OperationNotAllowedFaultException;
 import org.glite.wms.wmproxy.StringAndLongType;
 import org.glite.wms.wmproxy.WMProxyAPI;
+import org.glite.wsdl.types.lb.JobStatus;
+import org.glite.lb.LBGetJobStatus;
 import org.globus.gsi.GlobusCredentialException;
 import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
 import org.globus.mds.MDSResult;
+import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
@@ -59,6 +64,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private String [] runtimeDBs = null;
   private HashSet<String> finalRuntimes = null;
   private String wmUrl = null;
+  private String lbUrl = null;
   private WMProxyAPI wmProxyAPI = null;
   private String bdiiHost = null;
   private MDS mds = null;
@@ -78,6 +84,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String BDII_BASE_DN = "mds-vo-name=local,o=grid";
   //private static String SANDBOX_PROTOCOL = "gsiftp";
   private static String SANDBOX_PROTOCOL = "all";
+  
+  private LBGetJobStatus lbGetJobStatus;
+  private static int MDS_TIMEOUT = 17000;
   
   private static String GLITE_STATUS_UNKNOWN = "Unknown";
   private static String GLITE_STATUS_DONE = "Done";
@@ -152,6 +161,12 @@ public class GLiteComputingSystem implements MyComputingSystem{
     try{
       wmUrl = GridPilot.getClassMgr().getConfigFile().getValue(
           csName, "WMProxy URL");
+      lbUrl = GridPilot.getClassMgr().getConfigFile().getValue(
+          csName, "LB URL");
+      if(lbUrl==null || lbUrl.trim().length()==0){
+        GlobusURL vmUrl = new GlobusURL(wmUrl);
+        lbUrl = "https://"+vmUrl.getHost()+":9003";
+      }
       bdiiHost = GridPilot.getClassMgr().getConfigFile().getValue(
           csName, "BDII host");
       
@@ -166,12 +181,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
 
       Debug.debug("Creating new WMProxyAPI; "+MySSL.getProxyFile().getAbsolutePath()+
           " : "+GridPilot.getClassMgr().getSSL().getCaCertsTmpDir(), 2);
-      wmProxyAPI = new WMProxyAPI(wmUrl,
-          MySSL.getProxyFile().getAbsolutePath(),
-            GridPilot.getClassMgr().getSSL().getCaCertsTmpDir());
+      wmProxyAPI = new WMProxyAPI(wmUrl, MySSL.getProxyFile().getAbsolutePath(),
+                                  GridPilot.getClassMgr().getSSL().getCaCertsTmpDir());
       
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
+      lbGetJobStatus = new LBGetJobStatus(lbUrl, GridPilot.getClassMgr().getSSL().getGridCredential());
+
       try{
         runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
             csName, "runtime databases");
@@ -185,6 +201,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       Debug.debug("ERROR initializing "+csName+". "+e.getMessage(), 1);
       e.printStackTrace();
     }
+    
   }
 
   /*
@@ -198,12 +215,29 @@ public class GLiteComputingSystem implements MyComputingSystem{
    * The runtime environments are simply found from the
    * information system.
    */
-  public void setupRuntimeEnvironments(String csName){
+  public void setupRuntimeEnvironments(final String csName){
     if(runtimeDBs==null || runtimeDBs.length==0){
       return;
     }
-    for(int i=0; i<runtimeDBs.length; ++i){
-      setupRuntimeEnvironments(csName, runtimeDBs[i]);
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          for(int i=0; i<runtimeDBs.length; ++i){
+            setupRuntimeEnvironments(csName, runtimeDBs[i]);
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          this.setException(e);
+          this.requestStop();
+        }
+      }
+    };
+    t.start();
+    if(!MyUtil.waitForThread(t, "gLite RTE setup", MDS_TIMEOUT , "setupRuntimeEnvironments", false, logFile)){
+      String msg = "WARNING: MDS timeout - could not discover gLite RTEs.";
+      MyUtil.showError(msg);
+      logFile.addMessage(msg, t.getException());
     }
   }
 
@@ -674,7 +708,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         Debug.debug("No status found for job "+job.getName(), 2);
         job.setCSStatus(GLITE_STATUS_ERROR);
       }
-      else if(status.equals(GLITE_STATUS_DONE)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_DONE)){
         try{
           // get stdout and stderr and any other sandbox files
           getOutputs(job);
@@ -687,24 +721,24 @@ public class GLiteComputingSystem implements MyComputingSystem{
           logFile.addInfo("Job "+job.getName()+" : "+job.getIdentifier()+" : "+job.getJobId()+" : "+"failed. "+e.getMessage());
         }
       }
-      else if(status.equals(GLITE_STATUS_ERROR)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_ERROR)){
         // try to clean up, just in case...
         //getOutputs(job);
         job.setStatusError();
       }
-      else if(status.equals(GLITE_STATUS_READY)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_READY)){
         job.setStatusReady();
       }
-      else if(status.equals(GLITE_STATUS_WAITING)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_WAITING)){
         job.setStatusReady();
       }
-      else if(status.equals(GLITE_STATUS_SCHEDULED)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_SCHEDULED)){
         job.setStatusReady();
       }
-      else if(status.equals(GLITE_STATUS_RUNNING)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_RUNNING)){
         job.setStatusRunning();
       }
-      else if(status.equals(GLITE_STATUS_ABORTED)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_ABORTED)){
         try{
           // try to clean up, just in case...
           getOutputs(job);
@@ -714,7 +748,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         }
         job.setStatusFailed();
       }
-      else if(status.equals(GLITE_STATUS_FAILED)){
+      else if(status.equalsIgnoreCase(GLITE_STATUS_FAILED)){
         job.setStatusFailed();
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
@@ -878,7 +912,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
 
       boolean getFromfinalDest = createMissingWorkingDir(job);
-      if(!getFromfinalDest && !job.getCSStatus().equals(GLITE_STATUS_DONE) &&
+      if(!getFromfinalDest && !job.getCSStatus().equalsIgnoreCase(GLITE_STATUS_DONE) &&
           job.getDBStatus()!=DBPluginMgr.UNDECIDED){
         Debug.debug("Downloading stdout/err of running job: " + job.getName() + " : " + job.getJobId() +
             " : " + job.getCSStatus()+" to " + dirName, 3);
@@ -920,7 +954,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
           getFromfinalDest = false;
         }
       }
-      if(getFromfinalDest || job.getCSStatus().equals(GLITE_STATUS_DONE) ||
+      if(getFromfinalDest || job.getCSStatus().equalsIgnoreCase(GLITE_STATUS_DONE) ||
           job.getDBStatus()==DBPluginMgr.UNDECIDED){
         if(getFromfinalDest || !finalStdOut.startsWith("file:")){
           Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
@@ -944,10 +978,28 @@ public class GLiteComputingSystem implements MyComputingSystem{
       throw new IOException(error);
     }
   }
-
+  
   public String getStatus(MyJobInfo job){
-
     try{
+      return lbGetJobStatus.getStatus(job.getJobId()).getState().getValue();
+    }
+    catch(IOException e){
+      e.printStackTrace();
+    }
+    return GLITE_STATUS_UNKNOWN;
+  }
+  
+  public String getStatus0(MyJobInfo job){
+    
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL();
+    }
+    catch(Exception e){
+      logFile.addMessage("ERROR: could not activate proxy credentials.", e);
+      return null;
+    }
+
+    /*try{
       LBInfo lbInfo = new LBInfo(job.getJobId());
       if(lbInfo.getMap().get("status")!=null){
         return lbInfo.getMap().get("status");
@@ -955,9 +1007,18 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
     catch(Exception e){
       e.printStackTrace();
-    }
+    }*/
     
     try{
+      JobStatusStructType jobStatus = wmProxyAPI.getJobStatus(job.getJobId());
+      return jobStatus.getStatus();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return GLITE_STATUS_UNKNOWN;
+    }
+    
+    /*try{
       if(!syncCurrentOutputs(job)){
         //return GLITE_STATUS_ERROR;
         return GLITE_STATUS_WAIT;
@@ -994,10 +1055,26 @@ public class GLiteComputingSystem implements MyComputingSystem{
         return GLITE_STATUS_DONE;
       }
     }
-    return GLITE_STATUS_UNKNOWN;
+    return GLITE_STATUS_UNKNOWN;*/
   }
   
   public String getFullStatus(JobInfo job){
+    
+    try{
+      JobStatus jobStatus = lbGetJobStatus.getStatus(job.getJobId());
+      String info = "";
+      info += "Status: "+jobStatus.getState().getValue();
+      info += "\nReason: "+jobStatus.getReason();
+      info += "\nState enter time: "+jobStatus.getStateEnterTime().getTvSec();
+      info += "\nExit code: "+jobStatus.getExitCode();
+      info += "\nACL: "+jobStatus.getAcl();
+      info += "\nCPU time: "+jobStatus.getCpuTime();
+      info += "\nCE node: "+jobStatus.getCeNode();
+      return info;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
     
     try{
       LBInfo lbInfo = new LBInfo(job.getJobId());
