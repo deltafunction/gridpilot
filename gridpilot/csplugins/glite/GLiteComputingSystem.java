@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Iterator;
+import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
 
@@ -34,10 +36,15 @@ import gridpilot.MyTransferControl;
 import gridpilot.MyUtil;
 
 import org.glite.jdl.JobAd;
+import org.glite.security.trustmanager.ContextWrapper;
+import org.glite.security.trustmanager.axis.AXISSocketFactory;
+import org.glite.wms.wmproxy.CredentialException;
 import org.glite.wms.wmproxy.JobIdStructType;
 import org.glite.wms.wmproxy.JobStatusStructType;
 import org.glite.wms.wmproxy.JobUnknownFaultException;
 import org.glite.wms.wmproxy.OperationNotAllowedFaultException;
+import org.glite.wms.wmproxy.ServiceException;
+import org.glite.wms.wmproxy.ServiceURLException;
 import org.glite.wms.wmproxy.StringAndLongType;
 import org.glite.wms.wmproxy.WMProxyAPI;
 import org.glite.wsdl.types.lb.JobStatus;
@@ -47,6 +54,7 @@ import org.globus.mds.MDS;
 import org.globus.mds.MDSException;
 import org.globus.mds.MDSResult;
 import org.globus.util.GlobusURL;
+import org.ietf.jgss.GSSException;
 import org.safehaus.uuid.UUIDGenerator;
 
 /**
@@ -85,8 +93,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
   //private static String SANDBOX_PROTOCOL = "gsiftp";
   private static String SANDBOX_PROTOCOL = "all";
   
-  private LBGetJobStatus lbGetJobStatus;
-  private static int MDS_TIMEOUT = 17000;
+  private LBGetJobStatus lbGetJobStatus = null;
+  private static int MDS_TIMEOUT = 30000;
   
   private static String GLITE_STATUS_UNKNOWN = "Unknown";
   private static String GLITE_STATUS_DONE = "Done";
@@ -170,24 +178,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
       bdiiHost = GridPilot.getClassMgr().getConfigFile().getValue(
           csName, "BDII host");
       
-      // setup proxy if not there
-      try{
-        GridPilot.getClassMgr().getSSL().activateProxySSL();
-      }
-      catch(Exception ee){
-        ee.printStackTrace();
-        logFile.addMessage("WARNING: could not initialize GSI security.", ee);
-      }
-
-      Debug.debug("Creating new WMProxyAPI; "+MySSL.getProxyFile().getAbsolutePath()+
-          " : "+GridPilot.getClassMgr().getSSL().getCaCertsTmpDir(), 2);
-      wmProxyAPI = new WMProxyAPI(wmUrl, MySSL.getProxyFile().getAbsolutePath(),
-                                  GridPilot.getClassMgr().getSSL().getCaCertsTmpDir());
-      
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
-      lbGetJobStatus = new LBGetJobStatus(lbUrl, GridPilot.getClassMgr().getSSL().getGridCredential());
-
       try{
         runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
             csName, "runtime databases");
@@ -458,18 +450,20 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
 
+  
+  
   public boolean submit(JobInfo job){
     try{
       if(delegationId==null){
         delegationId = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
         Debug.debug("using delegation id "+delegationId, 3);
-        String vmProxyVersion = wmProxyAPI.getVersion();
+        String vmProxyVersion = getVMProxyAPI().getVersion();
         Debug.debug("wmProxyAPI version: "+vmProxyVersion, 3);
         // setup credentials
         Debug.debug("putting proxy", 3);
-        String proxyReq = wmProxyAPI.grstGetProxyReq(delegationId);
+        String proxyReq = getVMProxyAPI().grstGetProxyReq(delegationId);
         Debug.debug("proxy req "+proxyReq, 3);
-        wmProxyAPI.grstPutProxy(delegationId, proxyReq);
+        getVMProxyAPI().grstPutProxy(delegationId, proxyReq);
       }
       // create script and JDL
       String scriptName = runDir(job) + File.separator + job.getName() + ".job";
@@ -484,7 +478,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       // check if any resources match
       StringAndLongType[] result = null;
       try{
-        result = wmProxyAPI.jobListMatch(jdlString, delegationId);
+        result = getVMProxyAPI().jobListMatch(jdlString, delegationId);
       }
       catch(Exception e){
         e.printStackTrace();
@@ -505,10 +499,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       }
       // register the job
       Debug.debug("Registering job; "+scriptName+":"+jdlString, 2);
-      JobIdStructType jobId = wmProxyAPI.jobRegister(jdlString, delegationId);
+      JobIdStructType jobId = getVMProxyAPI().jobRegister(jdlString, delegationId);
       // upload the sandbox
       String[] list =
-        wmProxyAPI.getSandboxDestURI(jobId.getId(), SANDBOX_PROTOCOL);
+        getVMProxyAPI().getSandboxDestURI(jobId.getId(), SANDBOX_PROTOCOL);
       String uri = list[0];
       uri = uri+(uri.endsWith("/")?"":"/");
       Debug.debug("Uploading sandbox to "+uri, 2);
@@ -520,7 +514,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
             uri);
       }
       // start the job
-      wmProxyAPI.jobStart(jobId.getId());
+      getVMProxyAPI().jobStart(jobId.getId());
       if(jobId.getId()==null){
         job.setStatusError();
         throw new Exception("job id unexpectedly null");
@@ -537,6 +531,24 @@ public class GLiteComputingSystem implements MyComputingSystem{
       return false;
     }
     return true;
+  }
+
+  private WMProxyAPI getVMProxyAPI() throws IOException, GeneralSecurityException, ServiceException, ServiceURLException, CredentialException {
+    // setup proxy if not there
+    try{
+      GridPilot.getClassMgr().getSSL().activateProxySSL(null, true);
+    }
+    catch(Exception ee){
+      ee.printStackTrace();
+      logFile.addMessage("WARNING: could not initialize GSI security.", ee);
+    }
+    if(wmProxyAPI==null){
+      Debug.debug("Creating new WMProxyAPI; "+MySSL.getProxyFile().getAbsolutePath()+
+          " : "+GridPilot.getClassMgr().getSSL().getCaCertsTmpDir(), 2);
+      wmProxyAPI = new WMProxyAPI(wmUrl, MySSL.getProxyFile().getAbsolutePath(),
+                                  GridPilot.getClassMgr().getSSL().getCaCertsTmpDir());
+    }
+    return wmProxyAPI;
   }
 
   public void updateStatus(Vector<JobInfo> jobs){
@@ -766,7 +778,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       try{
         job = (MyJobInfo) it.next();
         Debug.debug("Killing: " + job.getName() + ":" + job.getJobId(), 3);
-        wmProxyAPI.jobCancel(job.getJobId());
+        getVMProxyAPI().jobCancel(job.getJobId());
       }
       catch(Exception ae){
         errors.add(ae.getMessage());
@@ -777,7 +789,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       }
       try{
         Debug.debug("Cleaning: " + job.getName() + ":" + job.getJobId(), 3);
-        wmProxyAPI.jobPurge(job.getJobId());
+        getVMProxyAPI().jobPurge(job.getJobId());
       }
       catch(Exception ae){
         errors.add(ae.getMessage());
@@ -801,14 +813,14 @@ public class GLiteComputingSystem implements MyComputingSystem{
     
     // Clean job off grid. - just in case...
     try{
-      wmProxyAPI.jobCancel(job.getJobId());
+      getVMProxyAPI().jobCancel(job.getJobId());
     }
     catch(Exception e){
       Debug.debug("Could not cancel job. Probably finished. "+
           job.getName()+". "+e.getMessage(), 3);
     }
     try{
-      wmProxyAPI.jobPurge(job.getJobId());
+      getVMProxyAPI().jobPurge(job.getJobId());
     }
     catch(Exception e){
       Debug.debug("Could not clean job. Probably already cleaned. "+
@@ -878,7 +890,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private void getOutputs(MyJobInfo job) throws Exception{
     GridPilot.getClassMgr().getSSL().activateProxySSL();
     String url = null;
-    StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+    StringAndLongType[] outList = getVMProxyAPI().getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
     for(int i=0; i<outList.length; ++i){
       url = outList[i].getName();
       if(url!=null){
@@ -920,7 +932,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
           String stdoutUrl = null;
           String stderrUrl = null;
           Debug.debug("Getting output file list", 3);
-          StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+          StringAndLongType[] outList = getVMProxyAPI().getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
           Debug.debug("--> "+outList.toString(), 3);
           if(outList!=null){
             for(int i=0; i<outList.length; ++i){
@@ -979,11 +991,28 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
   
+  private LBGetJobStatus getLBJobStatus() throws IOException, GSSException, GeneralSecurityException, Exception{
+    if(lbGetJobStatus==null){
+      lbGetJobStatus = new LBGetJobStatus(lbUrl, GridPilot.getClassMgr().getSSL().getGridCredential());
+      Properties cp = AXISSocketFactory.getCurrentProperties();
+      Debug.debug("Axis properties: "+cp.entrySet(), 3);
+      cp.setProperty(ContextWrapper.HOSTNAME_CHECK, "false");
+      //cp.setProperty("axis.socketSecureFactory", GridPilot.getClassMgr().getSSL().getSSLContext().getClass().getCanonicalName());
+      //cp.setProperty("axis.socketSecureFactory", "gridpilot.csplugins.glite.MyAXISSocketFactory");
+      AXISSocketFactory.setCurrentProperties(cp);
+    }
+    return lbGetJobStatus;
+  }
+  
   public String getStatus(MyJobInfo job){
     try{
-      return lbGetJobStatus.getStatus(job.getJobId()).getState().getValue();
+      JobStatus jobStatus = getLBJobStatus().getStatus(job.getJobId());
+      String status = jobStatus.getState().getValue();
+      String host = jobStatus.getDestination();
+      job.setHost(host);
+      return status;
     }
-    catch(IOException e){
+    catch(Exception e){
       e.printStackTrace();
     }
     return GLITE_STATUS_UNKNOWN;
@@ -1010,7 +1039,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }*/
     
     try{
-      JobStatusStructType jobStatus = wmProxyAPI.getJobStatus(job.getJobId());
+      JobStatusStructType jobStatus = getVMProxyAPI().getJobStatus(job.getJobId());
       return jobStatus.getStatus();
     }
     catch(Exception e){
@@ -1061,7 +1090,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   public String getFullStatus(JobInfo job){
     
     try{
-      JobStatus jobStatus = lbGetJobStatus.getStatus(job.getJobId());
+      JobStatus jobStatus =  getLBJobStatus().getStatus(job.getJobId());
       String info = "";
       info += "Status: "+jobStatus.getState().getValue();
       info += "\nReason: "+jobStatus.getReason();
@@ -1100,13 +1129,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }*/
     try{
-      ret += "Proxy info: "+wmProxyAPI.getJobProxyInfo(job.getJobId())+"\n";
+      ret += "Proxy info: "+getVMProxyAPI().getJobProxyInfo(job.getJobId())+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
     }
     try{
-      StringAndLongType[] outList = wmProxyAPI.getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
+      StringAndLongType[] outList = getVMProxyAPI().getOutputFileList(job.getJobId(), SANDBOX_PROTOCOL);
       String fileList = "";
       for(int i=0; i<outList.length; ++i){
         fileList += "    "+outList[i].getName() + outList[i].getSize() + "\n";
@@ -1119,13 +1148,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
     try{
       ret += "Input sandbox: "+
       MyUtil.arrayToString(
-          wmProxyAPI.getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL))+"\n";
+          getVMProxyAPI().getSandboxDestURI(job.getJobId(), SANDBOX_PROTOCOL))+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
     }
     try{
-      ret += "Transfer protocols: "+wmProxyAPI.getTransferProtocols()+"\n";
+      ret += "Transfer protocols: "+getVMProxyAPI().getTransferProtocols()+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1133,14 +1162,14 @@ public class GLiteComputingSystem implements MyComputingSystem{
     try{
       LongHolder softLimit = new LongHolder();
       LongHolder hardLimit = new LongHolder();
-      wmProxyAPI.getFreeQuota(softLimit, hardLimit);
+      getVMProxyAPI().getFreeQuota(softLimit, hardLimit);
       ret += "Quota limits: "+softLimit.value+":"+hardLimit.value+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
     }
     try{
-      ret += "WMProxy version: "+wmProxyAPI.getVersion()+"\n";
+      ret += "WMProxy version: "+getVMProxyAPI().getVersion()+"\n";
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1399,7 +1428,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       try{
         try{
           Debug.debug("Cleaning : " + job.getName() + ":" + job.getJobId(), 3);
-          wmProxyAPI.jobPurge(job.getJobId());
+          getVMProxyAPI().jobPurge(job.getJobId());
         }
         catch(Exception ae){
           logFile.addMessage("Exception during purging of " + job.getName() + ":" + job.getJobId() + ":\n" +

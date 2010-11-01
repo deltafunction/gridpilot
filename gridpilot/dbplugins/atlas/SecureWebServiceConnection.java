@@ -57,7 +57,8 @@ public class SecureWebServiceConnection extends WebServiceConnection {
     MyUtil.checkAndActivateSSL(new String[] {"https://atlddm.cern.ch/"});
     KeyManagerFactory keyManagerFactory;
     try{
-      keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
+      //keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
+      keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
       MySSL ssl = GridPilot.getClassMgr().getSSL();
       keyManagerFactory.init(ssl.getKeyStore(), ssl.getKeyPassword().toCharArray());
       SSLContext context = SSLContext.getInstance("TLS");
@@ -99,7 +100,8 @@ public class SecureWebServiceConnection extends WebServiceConnection {
     X509Certificate[] chain = thecreds.getCertificateChain();
     PrivateKey mypriv=thecreds.getPrivateKey();
     ks.setKeyEntry("mycert", mypriv, tmppwd.toCharArray(), chain);  
-    KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+    //KeyManagerFactory kmf = KeyManagerFactory.getInstance("SunX509");
+    KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
     kmf.init(ks, tmppwd.toCharArray());   
     km = kmf.getKeyManagers();  
 
