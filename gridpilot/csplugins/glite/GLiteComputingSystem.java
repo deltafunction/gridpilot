@@ -180,6 +180,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
       
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
+      // This seems to be neccesary...
+      getVMProxyAPI();
+      
       try{
         runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
             csName, "runtime databases");
