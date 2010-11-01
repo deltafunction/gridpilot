@@ -976,7 +976,7 @@ public class JobMgr{
 
   /**
    * Called each time the DB status of the specified job changes (except at submission). <br>
-   * In all case the DB is updated.<br>
+   * In all cases the DB is updated.<br>
    * <ul>
    * <li>Defined : dereservation
    * <li>Submitted : needToBeRefreshed <- true

@@ -234,7 +234,6 @@ public class CSPluginMgr implements MyComputingSystem{
   public int run(final MyJobInfo job){
     
     // first check if the runtime environments are present
-
     try{
       checkRTEs(job);
     }
@@ -300,8 +299,8 @@ public class CSPluginMgr implements MyComputingSystem{
           }
         }
         if(!ok){
-          throw new IOException("Runtime environment "+rtes[i]+" not found. "+((MyJobInfo) job).getCSName()+
-              ":"+((MyJobInfo) job).getDBName());
+          throw new IOException("Runtime environment "+rtes[i]+" not found on "+((MyJobInfo) job).getCSName()+
+              " in DB "+((MyJobInfo) job).getDBName());
         }
       }
     }
