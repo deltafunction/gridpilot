@@ -746,7 +746,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
         try{
           Debug.debug("loading jobs...", 3);
           loadJobs(allJobs, new int [] {Database.SUBMITTED, Database.UNDECIDED,
-              Database.UNEXPECTED, Database.FAILED});
+              Database.UNEXPECTED/*, Database.FAILED*/});
           showRows = bgView.getSelection().getMnemonic();
           switch(showRows){
             case ALL_JOBS:

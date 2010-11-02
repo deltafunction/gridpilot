@@ -64,6 +64,8 @@ public class ClassMgr{
   private FileCacheMgr fileCacheMgr;
   private HashMap<String, HashMap<String, String>> reverseRteTranslationMap =
      new HashMap<String, HashMap<String, String>>();
+  private HashMap<String, HashMap<String, String>> rteApproximationMap =
+    new HashMap<String, HashMap<String, String>>();
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   
@@ -591,6 +593,13 @@ public class ClassMgr{
       reverseRteTranslationMap.put(csName, new HashMap<String, String>());
     }
     return reverseRteTranslationMap.get(csName);
+  }
+  
+  public HashMap<String, String> getRteApproximationMap(String csName){
+    if(!rteApproximationMap.containsKey(csName)){
+      rteApproximationMap.put(csName, new HashMap<String, String>());
+    }
+    return rteApproximationMap.get(csName);
   }
   
 }

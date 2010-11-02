@@ -20,11 +20,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   String cpuTime = null;
   String memory = null;
   String reRun = null;
-  List remoteInputFilesList = null;
-  List lfcInputFilesList = null;
+  List<String> remoteInputFilesList = null;
+  List<String> lfcInputFilesList = null;
   String replicaCatalog = null;
   String [] uses = null;
   protected HashMap<String, String> reverseRteTranslationMap;
+  protected HashMap<String, String> rteApproximationMap;
   DBPluginMgr dbPluginMgr = null;
   MyJobInfo job = null;
   String exeFileName = null;
@@ -34,9 +35,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   String jobDefID = null;
   ConfigFile configFile;
   String csName;
+  String[] clusters = null;
 
   // These files will be uploaded to the sandbox.
-  protected List localInputFilesList = null;
+  protected List<String> localInputFilesList = null;
 
   public GLiteScriptGenerator(String _csName, MyJobInfo _job, String _exeFileName, String _jdlFileName) {
     super(GridPilot.getClassMgr().getLogFile(), false);
@@ -49,10 +51,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
+    clusters = configFile.getValues(csName, "clusters");
     reverseRteTranslationMap = GridPilot.getClassMgr().getReverseRteTranslationMap(csName);
-    localInputFilesList = new Vector();
-    remoteInputFilesList = new Vector();
-    lfcInputFilesList = new Vector();
+    rteApproximationMap = GridPilot.getClassMgr().getRteApproximationMap(csName);
+    localInputFilesList = new Vector<String>();
+    remoteInputFilesList = new Vector<String>();
+    lfcInputFilesList = new Vector<String>();
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
     jobDefID = job.getIdentifier();
     uses = dbPluginMgr.getRuntimeEnvironments(jobDefID);
@@ -173,7 +177,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     }      
 
     // upload output files
-    Vector uploadVector = new Vector();
+    Vector<String[]> uploadVector = new Vector<String[]>();
     // output file copy
     for(int i=0; i<outputFileNames.length; ++i){
       localName = dbPluginMgr.getJobDefOutLocalName(jobDefID, outputFileNames[i]);
@@ -235,7 +239,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
   private String reverseTranslateRte(String rte) {
     if(reverseRteTranslationMap.containsKey(rte)){
-      reverseRteTranslationMap.get(rte);
+      return reverseRteTranslationMap.get(rte);
+    }
+    if(rteApproximationMap.containsKey(rte)){
+      String realRte = rteApproximationMap.get(rte);
+      if(reverseRteTranslationMap.containsKey(realRte)){
+        return reverseRteTranslationMap.get(realRte);
+      }
+      return realRte;
     }
     return rte;
   }
@@ -343,8 +354,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         String lfcHost = null;
         String oldLfcHost = null;
         String cat = null;
-        for(Iterator it=lfcInputFilesList.iterator(); it.hasNext();){
-          cat = (String) it.next();
+        for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
+          cat = it.next();
           if(cat.startsWith("lfc:")){
             lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
             jdlLine += "\"lfn:"+cat+"\", ";
@@ -366,6 +377,17 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       // Various options
       //writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
       Vector<String> reqVec = new Vector<String>();
+      // Run only on specific clusters
+      if(clusters!=null && clusters.length>0){
+        String clustersStr = "";
+        for(int i=0; i<clusters.length; ++i){
+          if(i>0){
+            clustersStr += " || ";
+          }
+          clustersStr += "other.GlueCEUniqueID == \""+clusters[i]+"\"";
+        }
+        reqVec.add("("+clustersStr+")");
+      }
       if(cpuTime!=null&&!cpuTime.equals("")){
         reqVec.add("(other.GlueCEPolicyMaxCPUTime >= "+cpuTime+")");
       }
@@ -392,7 +414,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           if(uses[i].equals(GLiteComputingSystem.OS)){
             continue;
           }
-          rteReq = "Member(\""+MyUtil.dos2unix(uses[i])+"\", " +
+          rteReq = "Member(\""+MyUtil.dos2unix(reverseTranslateRte(uses[i]))+"\", " +
              "other.GlueHostApplicationSoftwareRunTimeEnvironment)";
           reqVec.add(rteReq);
         }

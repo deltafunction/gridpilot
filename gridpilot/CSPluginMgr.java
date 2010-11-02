@@ -276,10 +276,17 @@ public class CSPluginMgr implements MyComputingSystem{
     String[] rtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
        ).getRuntimeEnvironments(job.getIdentifier());
     
+    HashMap<String, String> rteApproximationMap = null;
+    String csName = ((MyJobInfo)job).getCSName();
+    if(csName!=null){
+      rteApproximationMap = GridPilot.getClassMgr().getRteApproximationMap(csName);
+    }
+    
     String [] ids;
     boolean ok;
     DBResult allRtes;
     String provides;
+    String name;
     for(int i=0; i<rtes.length; ++i){
       // This is just a rough check: although all RTEs may be available
       //                             for a given CS, they may be available
@@ -288,13 +295,15 @@ public class CSPluginMgr implements MyComputingSystem{
          ).getRuntimeEnvironmentIDs(rtes[i], ((MyJobInfo) job).getCSName());
       if(ids==null){
         ok = false;
-        allRtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()
-          ).getRuntimeEnvironments();
+        allRtes = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName()).getRuntimeEnvironments();
         for(int j=0; j<allRtes.values.length; ++j){
           provides = (String) allRtes.getValue(j, "provides");
-          if(MyUtil.checkOS(rtes[i], (String) allRtes.getValue(j, "name"),
-              provides==null?null:MyUtil.split(provides))){
+          name = (String) allRtes.getValue(j, "name");
+          if(MyUtil.checkOS(rtes[i], name, provides==null?null:MyUtil.split(provides))){
             ok = true;
+            if(rteApproximationMap!=null){
+              rteApproximationMap.put(rtes[i], name);
+            }
             break;
           }
         }

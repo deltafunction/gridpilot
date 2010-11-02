@@ -105,6 +105,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String GLITE_STATUS_ERROR = "Error";
   private static String GLITE_STATUS_ABORTED = "Aborted";
   private static String GLITE_STATUS_FAILED = "Failed";
+  private static String GLITE_STATUS_CLEARED = "Cleared";
   private static String GLITE_STATUS_RUNNING = "Running";
   
   // At least for now, we only have Linux resources on EGEE
@@ -181,7 +182,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
       // This seems to be neccesary...
-      getVMProxyAPI();
+      getVMProxyAPI().getInterfaceVersion();
       
       try{
         runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
@@ -329,7 +330,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
           // Write the entry in the local DB
           for(int i=0; i<runtimeEnvironmentFields.length; ++i){
             if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-              rtVals[i] = translateRte(name);
+              rtVals[i] = gliteToArcRteName(name);
             }
             else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
               rtVals[i] = csName;
@@ -360,7 +361,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     }
   }
   
-  private String translateRte(String name) {
+  private String gliteToArcRteName(String name) {
     if(rteTranslationMappings==null){
       rteTranslationMappings = new HashSet<String[]>();
       String [] mappings = null;
@@ -764,6 +765,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
         job.setStatusFailed();
       }
       else if(status.equalsIgnoreCase(GLITE_STATUS_FAILED)){
+        job.setStatusFailed();
+      }
+      else if(status.equalsIgnoreCase(GLITE_STATUS_CLEARED)){
         job.setStatusFailed();
       }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
