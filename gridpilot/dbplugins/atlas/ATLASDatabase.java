@@ -110,9 +110,10 @@ public class ATLASDatabase extends DBCache implements Database{
     dq2SecurePort = configFile.getValue(dbName, "DQ2 secure port");
     dq2Path = configFile.getValue(dbName, "DQ2 path");
     String lfcUserPath = configFile.getValue(dbName, "User path");
-    if(lfcUserPath==null || lfcUserPath.equals("")){
-      lfcUserBasePath = "/users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/";
-      logFile.addInfo("Notice: will register new files under path "+lfcUserBasePath+" in LFC.");
+    if(lfcUserPath==null /*|| lfcUserPath.equals("")*/){
+      lfcUserBasePath = "";
+      //lfcUserBasePath = "/users/"+GridPilot.getClassMgr().getSSL().getGridDatabaseUser()+"/";
+      //logFile.addInfo("Notice: will register new files under path "+lfcUserBasePath+" in LFC.");
     }
     else{
       lfcUserBasePath = lfcUserPath;
@@ -413,7 +414,7 @@ public class ATLASDatabase extends DBCache implements Database{
       Debug.debug("dsn, vuid, complete, incomplete: "+
           dsn+", "+vuid+", "+complete+", "+incomplete, 2);
       // dsns can be looked up with simple GET
-      if(complete.equals("") && incomplete.equals("")){
+      //if(complete.equals("") && incomplete.equals("")){
         if(vuid.equals("")){
           get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+get;
           Debug.debug(">>> get string was : "+get, 3);        
@@ -449,7 +450,7 @@ public class ATLASDatabase extends DBCache implements Database{
           Debug.debug("WARNING: search returned an error:"+str+":", 1);
           return new DBResult(fields, new String[0][fields.length]);
         }
-      }
+      //}
       // DQ2 cannot handle other searches.
       if(str==null){
         error = "WARNING: cannot perform search "+get;
@@ -496,9 +497,9 @@ public class ATLASDatabase extends DBCache implements Database{
             logFile.addMessage(error, e);
           }
           // If some selection boxes have been set, use patterns for restricting.
-          vuid = vuid.replaceAll("\\*", ".*");
-          complete = complete.replaceAll("\\*", ".*");
-          incomplete = incomplete.replaceAll("\\*", ".*");
+          vuid = vuid.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+          complete = complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+          incomplete = incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
           Debug.debug("Matching: "+vuid+":"+complete+":"+incomplete, 2);
           for(int j=0; j<vuids.length; ++j){
             Debug.debug("vuid: "+vuids[j], 3);
@@ -585,9 +586,9 @@ public class ATLASDatabase extends DBCache implements Database{
               name = "";
             }
             // If some selection boxes have been set, use patterns for restricting.
-            complete = complete.replaceAll("\\*", ".*");
-            incomplete = incomplete.replaceAll("\\*", ".*");
-            dsn = dsn.replaceAll("\\*", ".*");
+            complete = complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+            incomplete = incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+            dsn = dsn.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
             for(int k=0; k<fields.length; ++k){
               if(fields[k].equalsIgnoreCase("dsn")){
                 if(dsn.equals("") || name.matches("(?i)"+dsn)){
@@ -773,6 +774,7 @@ public class ATLASDatabase extends DBCache implements Database{
       }    
       Vector<String[]> valuesVector = new Vector<String[]>();
       String [] record = null;
+      GridPilot.getClassMgr().getStatusBar().stopAnimation();
       if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
         pb = MyUtil.setProgressBar(records.length, dbName);
       }
@@ -781,8 +783,12 @@ public class ATLASDatabase extends DBCache implements Database{
           break;
         }
         GridPilot.getClassMgr().getStatusBar().setLabel("Record "+(i+1)+" : "+records.length);
-        if(pb!=null){
-          pb.setValue(i+1);
+        try{
+          if(pb!=null){
+            pb.setValue(i+1);
+          }
+        }
+        catch(Exception ee){
         }
         Vector<String> recordVector = new Vector<String>();
         boolean exCheck = true;
@@ -874,7 +880,7 @@ public class ATLASDatabase extends DBCache implements Database{
         }       
 
       }
-      setFindPFNs(true);
+      //setFindPFNs(true);
       if(pb!=null){
         GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
         GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
@@ -1365,7 +1371,17 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     LFCServer lfcServer = new LFCServer(lfcConfig, new URI(_catalogServer));
     lfcServer.connect();
     // Make sure the directory exists
-    lfcServer.mkdir(path);
+    boolean dirExists = false;
+    try{
+      dirExists = lfcServer.listDirectory(path)!=null;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    if(!dirExists){
+      Debug.debug("Creating directory in LFC: "+path, 2);
+      lfcServer.mkdir(path);
+    }
     int colonIndex;
     String chksumType;
     String chksum;
@@ -1396,11 +1412,17 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         fullName = path+lfns[i];
         Debug.debug("Registering file in LFC: "+pfns[i]+":"+fullName+":"+size, 2);
         lfcServer.register(new URI(pfns[i]), fullName, size);
-        Debug.debug("Setting size of file in LFC: "+guids[i]+":"+size+":"+chksumType+":"+chksum, 2);
-        lfcServer.setFileSize(guids[i], size, chksumType, chksum);
+        try{
+          // This will not work when registering files on a remote server (chksum is not available)
+          Debug.debug("Setting size of file in LFC: "+guids[i]+":"+size+":"+chksumType+":"+chksum, 2);
+          lfcServer.setFileSize(guids[i], size, chksumType, chksum);
+        }
+        catch(Exception ee){
+          ee.printStackTrace();
+        }
       }
       catch(Exception e){
-        error = "ERROR: could not insert lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+_catalogServer;
+        error = "WARNING: problem inserting lfn or lfn/pfn "+lfns[i]+"/"+pfns[i]+" on "+_catalogServer;
         logFile.addMessage(error, e);
         GridPilot.getClassMgr().getStatusBar().setLabel(error);
       }
@@ -2219,9 +2241,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
       if(existingID!=null && !existingID.equals("")){
         if(!existingID.equalsIgnoreCase(vuid)){
-          error = "WARNING: dataset "+dsn+" already registered in DQ2 with name "+
+          error = "Dataset "+dsn+" already registered in DQ2 with VUID "+
           existingID+"!="+vuid+". Using "+existingID+".";
-          logFile.addMessage(error);
+          logFile.addInfo(error);
           vuid = existingID;
         }
         datasetExists = true;
@@ -2246,24 +2268,36 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       }
     }
     
+    if(!datasetExists){
+      throw new IOException("Cannot register file in non-existing dataset (and could not create) "+dsn);
+    }
+    
     String dqSize = "-1";
-    if(datasetExists){
-      if(size!=null && !size.equals("") && !size.endsWith("L")){
-        // The DQ2 conventions seems to be that the file size is like e.g. 41943040L 
-        dqSize = size+"L";
+    if(size!=null && !size.equals("") && !size.endsWith("L")){
+      // The DQ2 conventions seems to be that the file size is like e.g. 41943040L 
+      dqSize = size+"L";
+    }
+    if(checksum!=null && !checksum.equals("") && !checksum.matches("\\w+:.*")){
+      // If no type is given, we assume it's an md5 sum.
+      checksum = "md5:"+checksum;
+    }
+    
+    // Strip off the path - DQ2 LFNs don't have a path - the path is only
+    // used by LFC
+    String shortLfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
+    String [] guids = new String[] {guid};
+    String [] lfns = new String[] {shortLfn};
+    String [] sizes = new String[] {dqSize};
+    String [] checksums = new String[] {checksum};
+    // If the LFN is not already registered in DQ2 with this dataset, register it
+    String existingGuid = getFileID(dsn, shortLfn);
+    if(existingGuid!=null){
+      if(guid!=null && !guid.equals(existingGuid)){
+        logFile.addInfo("File "+lfn+" already registered with GUID "+guid+". Reusing this instead of "+guid);
+        guid = existingGuid;
       }
-      if(checksum!=null && !checksum.equals("") && !checksum.matches("\\w+:.*")){
-        // If no type is given, we assume it's an md5 sum.
-        checksum = "md5:"+checksum;
-      }
-      
-      // Strip off the path - DQ2 LFNs don't have a path - the path is only
-      // used by LFC
-      String shortLfn = lfn.replaceFirst("^.*/([^/]+)$", "$1");
-      String [] guids = new String[] {guid};
-      String [] lfns = new String[] {shortLfn};
-      String [] sizes = new String[] {dqSize};
-      String [] checksums = new String[] {checksum};
+    }
+    else{
       try{
         Debug.debug("Registering new lfn " +shortLfn+
           " with DQ2, "+size+", "+checksum, 2);
@@ -2295,12 +2329,13 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           }
         }
         String catalog = toa.getFileCatalogServer(homeSite, false);
-        String cPath = catalog.replaceFirst(":([^:]+)$", "$1");
+        String cPath = catalog.replaceFirst("^.+:/([^:]+)$", "$1");
         if(cPath.equals(catalog)){
           cPath = "";
         }
         String basePath = "/"+cPath+(cPath.endsWith("/")?"":"/");
-        registerLFNs(catalog, basePath+path, new String [] {guid},
+        String finalPath = (basePath+path).replaceAll("([^:])//", "$1/");
+        registerLFNs(catalog, finalPath, new String [] {guid},
             new String [] {lfn}, new String [] {url},
             new String [] {size}, new String [] {checksum});
       }
@@ -2319,8 +2354,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     if(catalogRegOk){
       // Register home site in DQ2
       try{
-        GridPilot.getClassMgr().getStatusBar().setLabel("Checking if lfn " +lfn+
-           " is registered with "+homeSite+" in DQ2");
+        // Check if lfn is registered with homeSite in DQ2
         DQ2Locations [] locations = getLocations("'"+vuid+"'");
         boolean siteRegistered = false;
         String [] incomplete = locations[0].getIncomplete();
@@ -2336,12 +2370,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           }
         }
         if(!siteRegistered){
-          GridPilot.getClassMgr().getStatusBar().setLabel("Registering new lfn " +lfn+
-          " with "+homeSite+" in DQ2");
           dq2Access.registerLocation(vuid, dsn, datasetComplete, homeSite);
-        }
-        else{
-          GridPilot.getClassMgr().getStatusBar().setLabel("Yes!");
         }
         clearCacheEntries("dataset");
       }

@@ -26,10 +26,12 @@ import gridfactory.common.ResThread;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.VirtualMachine;
 
+import gridpilot.BrowserPanel;
 import gridpilot.MyComputingSystem;
 import gridpilot.DBPluginMgr;
 import gridpilot.MyJobInfo;
 import gridpilot.MyLogFile;
+import gridpilot.MyResThread;
 import gridpilot.MySSL;
 import gridpilot.GridPilot;
 import gridpilot.MyTransferControl;
@@ -106,6 +108,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String GLITE_STATUS_ABORTED = "Aborted";
   private static String GLITE_STATUS_FAILED = "Failed";
   private static String GLITE_STATUS_CLEARED = "Cleared";
+  private static String GLITE_STATUS_CANCELLED = "Cancelled";
   private static String GLITE_STATUS_RUNNING = "Running";
   
   // At least for now, we only have Linux resources on EGEE
@@ -215,7 +218,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     if(runtimeDBs==null || runtimeDBs.length==0){
       return;
     }
-    ResThread t = new ResThread(){
+    final ResThread t = new ResThread(){
       public void run(){
         try{
           for(int i=0; i<runtimeDBs.length; ++i){
@@ -231,9 +234,23 @@ public class GLiteComputingSystem implements MyComputingSystem{
     };
     t.start();
     if(!MyUtil.waitForThread(t, "gLite RTE setup", MDS_TIMEOUT , "setupRuntimeEnvironments", false, logFile)){
-      String msg = "WARNING: MDS timeout - could not discover gLite RTEs.";
-      MyUtil.showError(msg);
-      logFile.addMessage(msg, t.getException());
+      MyResThread rt = new MyResThread(){
+        BrowserPanel wb = null;
+        public void run(){
+          try{
+            String msg = "WARNING: MDS timeout - could not discover gLite RTEs.";
+            MyUtil.showMessage("No RTEs", msg);
+            logFile.addMessage(msg, t.getException());
+          }
+          catch(Exception e){
+           setException(e);
+          }
+        }
+        public BrowserPanel getBrowserPanelRes(){
+          return wb;
+        }
+      };
+      rt.start();
     }
   }
 
@@ -259,7 +276,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       MDSResult rteRes = null;
       String host = null;
       String rte = null;
-      Debug.debug("rteClusters: "+rteClusters, 2);
+      Debug.debug("rteClusters: "+MyUtil.arrayToString(rteClusters), 2);
       while(en.hasMoreElements()){
         hostRes = en.nextElement();
         host = hostRes.getFirstValue("GlueSubClusterName").toString();
@@ -770,6 +787,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
       else if(status.equalsIgnoreCase(GLITE_STATUS_CLEARED)){
         job.setStatusFailed();
       }
+      else if(status.equalsIgnoreCase(GLITE_STATUS_CANCELLED)){
+        job.setStatusFailed();
+      }
       //job.setInternalStatus(ComputingSystem.STATUS_WAIT);
       else{
         Debug.debug("WARNING: unknown status: "+status, 1);
@@ -799,9 +819,9 @@ public class GLiteComputingSystem implements MyComputingSystem{
         getVMProxyAPI().jobPurge(job.getJobId());
       }
       catch(Exception ae){
-        errors.add(ae.getMessage());
-        logFile.addMessage("Exception during cleaning of " + job.getName() + ":" + job.getJobId() + ":\n" +
-                           "\tException\t: " + ae.getMessage(), ae);
+        //errors.add(ae.getMessage());
+        //logFile.addMessage("Exception during cleaning of " + job.getName() + ":" + job.getJobId() + ":\n" +
+        //                   "\tException\t: " + ae.getMessage(), ae);
         ae.printStackTrace();
       }
     }    

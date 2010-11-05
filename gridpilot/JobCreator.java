@@ -63,6 +63,12 @@ public class JobCreator{
   private String inputDatasetName;
   private String inputDatasetID;
 
+  // This is what's actually filled in by the user in the field "nEvents".
+  // If >0 and totalEvents of the dataset also >0, and there's not event
+  // information from the input dataset, this is used to split input files.
+  private int nEventsOut = -1;
+  // This is the totalEvents of the (output) dataset
+  private int totalEventsOut =-1;
 
   public final static String EVENT_MIN = "eventMin";
   public final static String EVENT_MAX = "eventMax";
@@ -70,6 +76,8 @@ public class JobCreator{
   public final static String INPUT_FILE_NAMES = "inputFileNames";
   public final static String INPUT_FILE_URLS = "inputFileURLs";
   public final static String OUPUT_FILE_NAMES = "outputFileNames";
+  
+  public final static String TOTAL_EVENTS = "totalEvents";
   
   public final static String [] AUTO_FILL_ARGS = new String [] {EVENT_MIN, EVENT_MAX, N_EVENTS,
      INPUT_FILE_NAMES, INPUT_FILE_URLS};
@@ -114,6 +122,7 @@ public class JobCreator{
     
     datasetIdFiles = new HashMap<String, DBResult>();
 
+    getNEventsOut();
     createAllJobDefs();
     
     if(closeWhenDone){
@@ -121,8 +130,28 @@ public class JobCreator{
     }
     
   }
+  
+  private void getNEventsOut(){
+    for(int i=0; i<resCstAttr.length; ++i){
+      Debug.debug("Checking cstAttrNames "+cstAttrNames[i], 3);
+      if(cstAttrNames[i].equalsIgnoreCase(N_EVENTS)){
+        if(nEventsOut==-1){
+          String nEventsOutStr = cstAttr[i];
+          try{
+            nEventsOut = Integer.parseInt(nEventsOutStr);
+            Debug.debug("nEvents specified: "+nEventsOut, 2);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+          break;
+        }
+      }
+    }
+  }
 
   private void createAllJobDefs(){
+
     try{
       removeConstants();
     }
@@ -143,6 +172,15 @@ public class JobCreator{
       lastPartition  = -1;
 
       currentDatasetID = datasetIdentifiers[i];
+      
+      try{
+        String totEv = (String) dbPluginMgr.getDataset(currentDatasetID).getValue(TOTAL_EVENTS);
+        totalEventsOut = Integer.parseInt(totEv);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+
       setInputMgrAndDataset();
       
       Debug.debug("Creating job definitions for dataset "+currentDatasetID, 2);
@@ -206,6 +244,7 @@ public class JobCreator{
       for(int currentPartition=firstPartition; currentPartition<=lastPartition; ++currentPartition){
         currentPartitionCount = prepareJobDefs(currentPartition, lastPartition, eventSplits, i);
         if(currentPartitionCount==-1){
+          Debug.debug("Partition count -1, "+currentPartition+"/"+lastPartition, 1);
           return;
         }
         partitionCount += currentPartitionCount;
@@ -281,7 +320,7 @@ public class JobCreator{
   private int[] getSplitFromOutputDataset(){
     int firstPartition = 1;
     int lastPartition = -1;
-    // try to get number of files from input dataset
+    // try to get number of files from output dataset
     try{
       String totalOutputFiles = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("totalFiles");
       lastPartition = Integer.parseInt(totalOutputFiles);
@@ -289,7 +328,32 @@ public class JobCreator{
     catch(Exception ee){
       String error = "WARNING: Could not get number of files from " +
           "field totalFiles in dataset record.";
-      GridPilot.getClassMgr().getLogFile().addMessage(error);
+      GridPilot.getClassMgr().getLogFile().addMessage(error, ee);
+    }
+    // even if totalFiles is not specified, totalEvents and nEvents could be
+    Debug.debug("totalEventsOut: "+totalEventsOut, 3);
+    Debug.debug("nEventsOut: "+nEventsOut, 3);
+    if(totalEventsOut>0 && nEventsOut>0){
+      int remainder = totalEventsOut % nEventsOut;
+      int calculatedLastPartition = (totalEventsOut-remainder)/nEventsOut+(remainder>0?1:0);
+      
+      inputFileRecords = inputMgr.getFiles(inputDatasetID);
+      if(inputFileRecords!=null && !inputFileRecords.isEmpty()){
+        if(!datasetIdFiles.containsKey(inputDatasetID)){
+          datasetIdFiles.put(inputDatasetID, inputFileRecords);
+        }
+        inputFileIds = new String[inputFileRecords.values.length];
+        Debug.debug("Splitting over input files "+inputFileIds.length, 2);
+        if(calculatedLastPartition<inputFileIds.length){
+          int remainder1 = inputFileIds.length % calculatedLastPartition;
+          calculatedLastPartition = calculatedLastPartition+(remainder1>0&&remainder==0?1:0);
+        }
+      }
+      
+      if(calculatedLastPartition>lastPartition){
+        lastPartition = calculatedLastPartition;
+      }
+      Debug.debug("Using event splitting from dataset.totalEvents and nEvents; "+lastPartition+"-->"+calculatedLastPartition, 2);
     }
     return new int [] {firstPartition, lastPartition};
   }
@@ -305,6 +369,7 @@ public class JobCreator{
       String currentDatasetOutputLocation =
         (String) dbPluginMgr.getDataset(currentDatasetID).getValue("outputLocation");
       evaluateAll(currentPartition,
+                  lastPartition,
                   currentDatasetOutputLocation,
                   eventSplits);
     }
@@ -726,7 +791,7 @@ public class JobCreator{
    * So, NOTICE: the (root) output file should always be the FIRST in the
    * field 'outputs' in the executable definition.
    */
-  private void evaluateAll(int currentPartition, String outputDest, int [][] eventSplits)
+  private void evaluateAll(int currentPartition, int lastPartition, String outputDest, int [][] eventSplits)
      throws ArithmeticException, SyntaxException,
      IOException{
     
@@ -769,7 +834,7 @@ public class JobCreator{
     }
     String [] inputFileURLs = new String[]{};
     try{
-      inputFileURLs = findInputFiles(evtMin, evtMax, currentPartition,
+      inputFileURLs = findInputFiles(evtMin, evtMax, currentPartition, lastPartition,
          fileCatalogInput, eventsPresent, inputJobDefIds!=null && inputJobDefIds.length>0);
     }
     catch(Exception e){
@@ -956,12 +1021,11 @@ public class JobCreator{
     return fileCatalogInput;
   }
 
-  private String [] findInputFiles(int evtMin, int evtMax, int currentPartition,
+  private String [] findInputFiles(int evtMin, int evtMax, int currentPartition, int lastPartition,
       boolean fileCatalogInput, boolean eventsPresent, boolean inputJobDefsPresent) {
     Debug.debug("findInputFiles "+evtMin+":"+evtMax+":"+currentPartition+":"+fileCatalogInput+":"+eventsPresent+":"+inputJobDefsPresent, 3);
     Vector<String> inputFiles = new Vector<String>();
     String inputFileName = null;
-    String pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
     int readEvtMin = -1;
     int readEvtMax = -1;
     if(eventsPresent && inputJobDefsPresent){
@@ -1037,14 +1101,8 @@ public class JobCreator{
         // Notice: if "find all PFNs" is checked all PFNs will be looked up,
         // slowing down job creation enormously, and still only the first will be used.
         // So, it should NOT be checked.
-        
-        DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1], DBPluginMgr.LOOKUP_PFNS_ONE);
-        Debug.debug("Looked up input file "+inputFile, 2);
-        String inputUrlsStr = (String) inputFile.getValue(pfnsField);
-        String [] inputUrls = MyUtil.split(inputUrlsStr);
-        // Take the first PFN found
-        String firstInputUrl = inputUrls[0];
-        inputFiles.add(firstInputUrl);
+        Vector<String> inputUrlsForThisPartition = findInputUrlsFromTotalAndNEvents(currentPartition, lastPartition);
+        inputFiles.addAll(inputUrlsForThisPartition);
         /*String [] inputFilArr = null;
         try{
           inputFilArr = MyUtil.splitUrls(inputFils);
@@ -1065,6 +1123,34 @@ public class JobCreator{
     return inputFiles.toArray(new String[inputFiles.size()]);
   }
 
+  private Vector<String> findInputUrlsFromTotalAndNEvents(int currentPartition, int lastPartition) {
+    int nPartitions = 1;
+    if(totalEventsOut>0 && nEventsOut>0 && lastPartition<inputFileIds.length){
+      int remainder = inputFileIds.length % lastPartition;
+      if(remainder>0){
+        remainder = inputFileIds.length % (lastPartition-1);
+      }
+      if(remainder>0 && currentPartition==lastPartition){
+        nPartitions = remainder;
+      }
+      else{
+        nPartitions = (inputFileIds.length-remainder)/(lastPartition-(remainder>0?1:0));
+      }
+    }
+    Vector<String> ret = new Vector<String>();
+    for(int i=0; i<nPartitions; ++i){
+      String pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
+      DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONE);
+      Debug.debug("Looked up input file "+inputFile, 2);
+      String inputUrlsStr = (String) inputFile.getValue(pfnsField);
+      String [] inputUrls = MyUtil.split(inputUrlsStr);
+      // Take the first PFN found
+      String firstInputUrl = inputUrls[0];
+      ret.add(firstInputUrl);
+    }
+    return ret;
+  }
+  
   private void fillInJobParams(int currentPartition,
       int [][] eventSplits, int evtMin, int evtMax, String name, String number,
       String outputDest, String inputSource, ArrayList<String> jobattributenames,
@@ -1085,8 +1171,8 @@ public class JobCreator{
           (jobParamNames[i].equalsIgnoreCase(EVENT_MAX)) && eventSplits!=null){
         resJobParam[i] = Integer.toString(evtMax);
       }
-      else if((jobParam[i]==null || jobParam[i].equals("")) &&
-          (jobParamNames[i].equalsIgnoreCase(N_EVENTS)) && eventSplits!=null){
+      else if(jobParamNames[i].equalsIgnoreCase(N_EVENTS) &&
+          (jobParam[i]==null || jobParam[i].equals("")) && eventSplits!=null){
         resJobParam[i] = Integer.toString(evtMax-evtMin+1);
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&

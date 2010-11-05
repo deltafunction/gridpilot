@@ -403,7 +403,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       //}
       writeLine(bufJdl, "JobType  = \"normal\";");
       writeLine(bufJdl, "Type  = \"job\";");
-      writeLine(bufJdl, "RetryCount  = 3;");
+      writeLine(bufJdl, "RetryCount  = 0;");
       writeLine(bufJdl, "ShallowRetryCount = " + reRun + ";");
       
       // Runtime environments

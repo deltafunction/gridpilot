@@ -135,7 +135,7 @@ public class DatasetCreator{
     Debug.debug("Input values "+MyUtil.arrayToString(res.values), 2);
     clearAttrs.clear();
     if(!datasetIDs[i].equals("-1")){
-      fillInValues(datasetIDs[i], exeName, exeVersion);
+      fillInValues(datasetIDs[i], i, exeName, exeVersion);
     }
     if(showResults && !okAll){
     int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
@@ -164,18 +164,18 @@ public class DatasetCreator{
     return true;
   }
 
-  private void fillInValues(String datasetId, String exeName, String exeVersion) {
+  private void fillInValues(String datasetId, int datasetIndex, String exeName, String exeVersion) {
     String datasetNameField = MyUtil.getNameField(targetDB, "Dataset");
     for(int j=0; j<cstAttrNames.length; ++j){         
       // Get values from source dataset in question, excluding
       // executable, executableVersion and any other filled-in values.
       // Construct name for new target dataset.
       Debug.debug("Filling in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
-      if((autoFillName || resCstAttr[j]==null || resCstAttr[j].equals("")) &&
+      if((autoFillName || resCstAttr[j]==null || resCstAttr[j].equals("") || datasetIDs!=null && datasetIDs.length>1) &&
           cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
         autoFillName = true;
-        resCstAttr[j] = dbPluginMgr.getTargetDatasetName(targetDB,
-           dbPluginMgr.getDatasetName(datasetId), exeName, exeVersion);
+        resCstAttr[j] = dbPluginMgr.createTargetDatasetName(resCstAttr[j], targetDB,
+           dbPluginMgr.getDatasetName(datasetId), datasetIndex, exeName, exeVersion);
       }
       else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
         String runNum = dbPluginMgr.getRunNumber(datasetId);

@@ -306,7 +306,7 @@ public class DQ2Access {
     if (complete) com = "1";
     else com = "0";
     String keys[]={"complete","vuid","dsn","site"};
-    String values[]={com,vuid,dsn,location};
+    String values[]={com, vuid, dsn, location};
     wsSecure.post(addLocationsURL, keys, values);
     return true;
   }

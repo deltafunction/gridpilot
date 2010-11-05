@@ -141,10 +141,15 @@ public class DBPluginMgr extends DBCache implements Database{
    * Construct the name of the target dataset when creating a new dataset
    * from an input dataset.
    */ 
-  public String getTargetDatasetName(String targetDB, String sourceDatasetName,
+  public String createTargetDatasetName(String datasetName, String targetDB, String sourceDatasetName, int i,
       String executableName, String executableVersion){
     Debug.debug("Finding target dataset name for "+sourceDatasetName+" in "+targetDB+
         " with executable "+executableName+":"+executableVersion, 2);
+    
+    // If a name has been specified, use it.
+    if(datasetName!=null && !datasetName.trim().equals("")){
+      return datasetName+"-"+i;
+    }
         
     String findString = "";
     String replaceString = "";

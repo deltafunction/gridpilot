@@ -2551,6 +2551,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
          datasetName = dbPluginMgr.getDataset(id).getValue(
              fileDatasetReference[0]).toString();
        }
+       dbPluginMgr.clearRequestStopLookup();
        // Create and return new panel with files.
        DBPanel ret = createViewFilesPanel(id, datasetColumn, datasetName, waitForThread);
        Debug.debug("Created new panel "+ret, 2);

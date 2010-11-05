@@ -76,15 +76,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-    datasetIdentifier = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-    executables = dbPluginMgr.getExecutables();
+     executables = dbPluginMgr.getExecutables();
     editable = true;
-    
-    jobDefDatasetReference = MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
-    datasetExecutableReference =
-      MyUtil.getDatasetExecutableReference(dbPluginMgr.getDBName());
-    datasetExecutableVersionReference =
-      MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
+
+    setFieldNames(dbPluginMgr.getDBName());
     
     // Find identifier index
     int identifierIndex = -1;
@@ -125,6 +120,32 @@ public class DatasetCreationPanel extends CreateEditPanel{
     } 
   }
 
+  private void setFieldNames(String dbName) {
+    datasetIdentifier = MyUtil.getIdentifierField(dbName, "dataset");    
+    jobDefDatasetReference = MyUtil.getJobDefDatasetReference(dbName);
+    datasetExecutableReference =
+      MyUtil.getDatasetExecutableReference(dbName);
+    datasetExecutableVersionReference =
+      MyUtil.getDatasetExecutableVersionReference(dbName);
+    
+    try{
+      for(int i=0; i<cstAttributesNames.length; ++i){
+        if(isDetail(cstAttributesNames[i])){
+          detailFields.add(tcCstAttributes[i]);
+          if(labels.containsKey(cstAttributesNames[i])){
+            detailFields.add(labels.get(cstAttributesNames[i]));
+          }
+        }
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
+    initVars();
+
+  }
+
   private void initButtons(){
     jbEditExe = MyUtil.mkButton("search.png", GridPilot.ADVANCED_MODE?"Look up":"Edit",
         GridPilot.ADVANCED_MODE?"Look up executable record":"Edit executable record");
@@ -149,9 +170,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else if(GridPilot.DB_NAMES!=null && GridPilot.DB_NAMES.length!=0 &&
         datasetIDs!=null && datasetIDs.length!=0 &&
-        (datasetIDs.length!=1 || !datasetIDs[0].equals("-1"))){
+        (datasetIDs.length!=1 || datasetIDs[0].equals(null) && !datasetIDs[0].equals("-1"))){
       if(datasetIDs.length==1){
-        if(datasetIDs[0].equals("-1")){
+        if(datasetIDs[0].equals(null) || datasetIDs[0].equals("-1")){
           title = "Define new dataset";
         }
         else{
@@ -184,14 +205,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
     
     pTop.add(pExecutable);
 
-    initVars();
+    //initVars();
     initAttributePanel();
     setValues();
     checkValues();
     
     if(GridPilot.DB_NAMES==null || GridPilot.DB_NAMES.length==0 ||
         datasetIDs==null || datasetIDs.length==0 ||
-        (datasetIDs.length==1 && datasetIDs[0].equals("-1"))){
+        (datasetIDs.length==1 && (datasetIDs[0].equals(null) || datasetIDs[0].equals("-1")))){
       initExecutablePanel();
       initExeVersionPanel();
       setComboBoxValues();
@@ -237,8 +258,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
        new String [] {datasetIdentifier, datasetExecutableReference[1], datasetExecutableVersionReference[1],
        "created", "lastModified", "metaData", "runNumber", "totalEvents", "totalFiles"});
     descriptions = new HashMap<String, String>();
-    descriptions.put(jobDefDatasetReference[0], "Name of this application/dataset");
     descriptions.put("outputLocation", "URL of the directory where the files of this application/dataset are kept");
+    descriptions.put(jobDefDatasetReference[0], "Name of this application/dataset");
     descriptions.put(datasetIdentifier, "Unique identifier");
     descriptions.put(datasetExecutableReference[1], "Optional: Executable used by this application/dataset");
     descriptions.put(datasetExecutableVersionReference[1], "Optional: Version of the executable");
@@ -941,7 +962,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     // only do anything if there are input dataset(s) selected
     Debug.debug("datasetIDs[0]="+datasetIDs[0], 3);
-    if(datasetIDs[0].equals("-1")){
+    if(datasetIDs[0].equals(null) || datasetIDs[0].equals("-1")){
       return;
     }
     boolean detailsVisible = detailsShown();
@@ -952,6 +973,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     targetDB = cbTargetDBSelection.getSelectedItem().toString();
     targetDBPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(targetDB);
+    setFieldNames(targetDBPluginMgr.getDBName());
     String datasetNameField = MyUtil.getNameField(targetDBPluginMgr.getDBName(), "dataset");
     String [] targetFields = targetDBPluginMgr.getFieldNames("dataset");
     String [] targetAttr = new String[targetFields.length];
@@ -973,8 +995,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
           targetFields[j].equalsIgnoreCase(datasetExecutableVersionReference[1])){
       }
       else if(datasetIDs!=null && datasetIDs.length==1 && targetFields[j].equalsIgnoreCase(datasetNameField)){
-        targetAttr[j] = dbPluginMgr.getTargetDatasetName(
-            targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]),
+        targetAttr[j] = dbPluginMgr.createTargetDatasetName(null,
+            targetDB, dbPluginMgr.getDatasetName(datasetIDs[0]), 0, 
             executableName, executableVersion);
       }
       //else if(targetFields[j].equalsIgnoreCase("runNumber")){
@@ -1070,8 +1092,11 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   public void showDetails(boolean show){
+    JComponent comp;
     for(Iterator<JComponent> it=detailFields.iterator(); it.hasNext(); ){
-      it.next().setVisible(show);
+      comp = it.next();
+      Debug.debug((show?"showing ":"hiding ")+MyUtil.getJTextOrEmptyString(comp), 2);
+      comp.setVisible(show);
     }
   }
   

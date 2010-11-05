@@ -118,6 +118,9 @@ public class MyUtil extends gridfactory.common.Util{
         comp.getClass().isInstance(new JExtendedComboBox())){
       text = ((JComboBox) comp).getSelectedItem().toString();
     }
+    else if(comp.getClass().isInstance(new JLabel())){
+      text = ((JLabel) comp).getText();
+    }
     else{
       Debug.debug("WARNING: component type "+comp.getClass()+
           " not known. Failed to set text "+text, 3);

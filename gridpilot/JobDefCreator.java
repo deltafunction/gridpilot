@@ -3,7 +3,6 @@ package gridpilot;
 import gridfactory.common.Debug;
 
 import java.awt.Window;
-import java.util.*;
 import javax.swing.*;
 
 /**
