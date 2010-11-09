@@ -30,7 +30,6 @@ import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
 
 import gridfactory.common.ConfirmBox;
-import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
@@ -91,7 +90,6 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private JPopupMenu bmiRegister = new JPopupMenu("Register all files");
   // File registration semaphore
   private boolean registering = false;
-  private JComponent dsField = new JTextField(TEXTFIELDWIDTH);
   // Keep track of which files we are listing.
   private Vector<String> listedUrls = null;
   private Vector<String> listedSizes = null;
@@ -994,47 +992,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
             new Insets(5, 5, 5, 5), 0, 0));
     final JPanel dsRow = new JPanel(new BorderLayout());
-    final JButton jbLookup = MyUtil.mkButton("search.png", "Look up", "Search results for this request");
+    DatasetChooser dsc = new DatasetChooser(dbPluginMgr, jPanel);
     dsRow.add(new JLabel("Dataset: "), BorderLayout.WEST);
-    dsRow.add(dsField, BorderLayout.CENTER);
-    dsRow.add(jbLookup, BorderLayout.EAST);
-    dsRow.updateUI();
+    dsRow.add(dsc);
     jPanel.add(dsRow, new GridBagConstraints(0, 4, 1, 1, 0.0, 0.0,
         GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
         new Insets(10, 10, 10, 10), 0, 0));
     jPanel.updateUI();
-    jbLookup.addMouseListener(new MouseAdapter(){
-      public void mouseClicked(MouseEvent e){
-        if(e.getButton()!=MouseEvent.BUTTON1){
-          return;
-        }
-        String idField = MyUtil.getIdentifierField(dbPluginMgr.getDBName(), "dataset");
-        String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "dataset");
-        String str = MyUtil.getJTextOrEmptyString(dsField);
-        if(str==null || str.equals("")){
-          return;
-        }
-        DBResult dbRes = dbPluginMgr.select("SELECT "+nameField+" FROM dataset" +
-                (str!=null&&!str.equals("")?" WHERE "+nameField+" CONTAINS "+str:""),
-            idField, false);
-        dsField = new JExtendedComboBox();
-        for(int i=0; i<dbRes.values.length; ++i){
-          ((JExtendedComboBox) dsField).addItem(dbRes.getValue(i, nameField));
-        }
-        ((JExtendedComboBox) dsField).setEditable(true);
-        dsField.updateUI();
-        dsRow.removeAll();
-        dsRow.add(new JLabel("Dataset: "), BorderLayout.WEST);
-        dsRow.add(dsField, BorderLayout.CENTER);
-        dsRow.add(jbLookup, BorderLayout.EAST);
-        dsRow.updateUI();
-        dsRow.add(dsField, BorderLayout.CENTER);
-        dsRow.updateUI();
-        dsRow.validate();
-        jPanel.updateUI();
-        jPanel.validate();
-      }
-    });
     
     JTextField lfnField = new JTextField(TEXTFIELDWIDTH);
     lfnField.setText(lfn);
@@ -1065,10 +1029,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(choice!=0){
       return null;
     }
-    return new String [] {MyUtil.getJTextOrEmptyString(dsField), lfnField.getText()};
+    return new String [] {dsc.getText(), lfnField.getText()};
   }
-  
-  
+
   /**
    * Register a single file.
    */

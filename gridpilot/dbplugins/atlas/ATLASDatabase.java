@@ -32,6 +32,7 @@ import javax.xml.rpc.ServiceException;
 import org.glite.lfc.LFCConfig;
 import org.glite.lfc.LFCException;
 import org.glite.lfc.LFCServer;
+import org.glite.lfc.internal.FileDesc;
 
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
@@ -1410,8 +1411,12 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           }
         }
         fullName = path+lfns[i];
+        //lfcServer.register(new URI(pfns[i]), fullName, size);
+        Debug.debug("Registering file in LFC: "+guids[i]+":"+fullName, 2);
+        lfcServer.registerEntry(fullName, guids[i]);
         Debug.debug("Registering file in LFC: "+pfns[i]+":"+fullName+":"+size, 2);
-        lfcServer.register(new URI(pfns[i]), fullName, size);
+        FileDesc fileDesc = lfcServer.fetchFileDesc(guids[i], true);
+        lfcServer.addReplica(fileDesc, new URI(pfns[i]));
         try{
           // This will not work when registering files on a remote server (chksum is not available)
           Debug.debug("Setting size of file in LFC: "+guids[i]+":"+size+":"+chksumType+":"+chksum, 2);
@@ -1873,11 +1878,19 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   }
   
   public String getFileID(String datasetName, String fileName){
-    DBRecord file = getFile(datasetName, fileName, Database.LOOKUP_PFNS_NONE);
+    DBRecord file = getFileFromName(datasetName, fileName, Database.LOOKUP_PFNS_NONE);
     return file.getValue("guid").toString();
   };
   
   public DBRecord getFile(String dsn, String fileID, int findAllPFNs){
+    return getFile(dsn, fileID, "guid", findAllPFNs);
+  }
+
+  public DBRecord getFileFromName(String dsn, String fileName, int findAllPFNs){
+    return getFile(dsn, fileName, "lfn", findAllPFNs);
+  }
+
+  public DBRecord getFile(String dsn, String idOrName, String idOrNameField, int findAllPFNs){
     // "dsn", "lfn", "pfns", "guid"
     
     // NOTICE: this query is NOT supported by DQ2.
@@ -1898,17 +1911,23 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     
     DBResult files = getFiles(vuid);
     String lfn = null;
+    String guid = null;
     String bytes = "";
     String checksum = "";
     for(int i=0; i<files.values.length; ++i){
-      Debug.debug("matching fileID "+fileID, 3);
-      if(files.getValue(i, "guid").toString().equals(fileID)){
+      Debug.debug("matching file id or name "+idOrName, 3);
+      if(files.getValue(i, idOrNameField).toString().equals(idOrName)){
         lfn = files.getValue(i, "lfn").toString();
         lfn = lfn.replaceFirst(".*/([^/]+)", "$1");
+        guid = files.getValue(i, "guid").toString();
         bytes = files.getValue(i, "bytes").toString();
         checksum = files.getValue(i, "checksum").toString();
         break;
       };
+    }
+    
+    if(lfn==null){
+      return null;
     }
     
     // Get the pfns
@@ -1916,7 +1935,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String pfns = "";
     String catalogs = "";
     if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
-      PFNResult pfnRes = findPFNs(vuid, dsn, fileID, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
+      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
       for(int j=0; j<pfnRes.getPfns().size(); ++j){
         resultVector.add(pfnRes.getPfns().get(j));
@@ -1929,7 +1948,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
     }
         
-    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, fileID, bytes, checksum});
+    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, guid, bytes, checksum});
 
   }
 
@@ -2293,7 +2312,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String existingGuid = getFileID(dsn, shortLfn);
     if(existingGuid!=null){
       if(guid!=null && !guid.equals(existingGuid)){
-        logFile.addInfo("File "+lfn+" already registered with GUID "+guid+". Reusing this instead of "+guid);
+        logFile.addInfo("File "+lfn+" already registered with GUID "+existingGuid+". Reusing this instead of "+guid);
         guid = existingGuid;
       }
     }

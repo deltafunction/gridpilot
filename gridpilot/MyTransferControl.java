@@ -1293,7 +1293,7 @@ public class MyTransferControl extends TransferControl {
     }
     catch(Exception e){
       logFile.addMessage("WARNING: finalize could not " +
-          "be done for transfer "+id, e);
+          "be done for transfer "+id+". Cache information probably not written.", e);
     }
     // If transfer.getDBPluginMgr() is not null, it is the convention that this
     // DBPluginMgr is used for registering the file.
@@ -1304,6 +1304,7 @@ public class MyTransferControl extends TransferControl {
         lfn= transfer.getLFN();
       }
       catch(Exception e){
+        e.printStackTrace();
       }
       if(lfn==null || lfn.equals("")){
         logFile.addMessage("WARNING: LFN not found. "+
@@ -1316,9 +1317,10 @@ public class MyTransferControl extends TransferControl {
       }
       String guid = null;
       try{
-        guid= transfer.getGUID();
+        guid = transfer.getGUID();
       }
       catch(Exception e){
+        e.printStackTrace();
       }
       if(guid==null || guid.equals("")){
         logFile.addMessage("WARNING: GUID not found. "+
@@ -1641,6 +1643,7 @@ public class MyTransferControl extends TransferControl {
       guid = values.get(idField).toString();
     }
     catch(Exception e){
+      e.printStackTrace();
     }
     try{
       name = values.get(nameField).toString();

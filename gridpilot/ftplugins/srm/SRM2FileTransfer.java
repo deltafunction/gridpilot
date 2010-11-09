@@ -460,7 +460,7 @@ public class SRM2FileTransfer implements FileTransfer {
    *                           RequestStatus.fileStatuses.
    * @throws IOException 
    */
-  public void finalize(String fileTransferID) throws SRMException, IOException {    
+  public void finalize(String fileTransferID) throws Exception {    
     String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String requestId = idArr[2];
@@ -468,21 +468,17 @@ public class SRM2FileTransfer implements FileTransfer {
     String surl = idArr[6];
 
     Debug.debug("Finalizing request "+requestId, 2);
-    try{
-      ISRM srm = connect(new GlobusURL(surl));
-      startDates.remove(fileTransferID);
-      if(requestType.equalsIgnoreCase("put")){
-        SrmPutDoneRequest putDoneReq = new SrmPutDoneRequest();
-        putDoneReq.setRequestToken(requestId);
-        srm.srmPutDone(putDoneReq);
-      }
-      SrmReleaseFilesRequest releaseFilesReq = new SrmReleaseFilesRequest();
-      releaseFilesReq.setRequestToken(requestId);
-      srm.srmReleaseFiles(releaseFilesReq);
+    ISRM srm = connect(new GlobusURL(surl));
+    startDates.remove(fileTransferID);
+    if(requestType.equalsIgnoreCase("put")){
+      SrmPutDoneRequest putDoneReq = new SrmPutDoneRequest();
+      putDoneReq.setRequestToken(requestId);
+      srm.srmPutDone(putDoneReq);
     }
-    catch(Exception e){
-      throw new SRMException("ERROR: SRM problem with "+requestType+" "+fileTransferID+". "+e.getMessage());
-    }
+    SrmReleaseFilesRequest releaseFilesReq = new SrmReleaseFilesRequest();
+    releaseFilesReq.setRequestToken(requestId);
+    srm.srmReleaseFiles(releaseFilesReq);
+
     File destinationFile = new File((new GlobusURL(destUrl)).getPath());
     try{
       GridPilot.getClassMgr().getFileCacheMgr().writeCacheInfo(destinationFile);

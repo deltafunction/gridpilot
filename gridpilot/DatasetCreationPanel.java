@@ -27,7 +27,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private DBPanel panel;
   private MyJTable table;
   private String [] cstAttributesNames;
-  private JTextComponent [] tcCstAttributes;
+  private JComponent [] tcCstAttributes;
   private boolean reuseTextFields = true;
   private Vector<JTextComponent> tcConstant = new Vector<JTextComponent>(); // contains all text components
   private String [] cstAttr = null;
@@ -45,6 +45,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private JPanel pVersion = new JPanel();
   private JComboBox cbTargetDBSelection;
   private JComboBox cbExecutableSelection;
+  private JComboBox cbInputDBSelection;
   private JComboBox cbExeVersionSelection;
   private String targetDB = null;
   private DBRecord dataset = null;
@@ -61,7 +62,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private HashMap<String, JComponent> textFields = new HashMap<String, JComponent>();
   private ArrayList<String> detailFieldNames;
   private HashMap<String, String> descriptions;
-  
+  private String inputDB = null;
+  private JComponent datasetChooser;
+
   public boolean editable = true;
 
   /**
@@ -76,7 +79,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     table = panel.getTable();
     cstAttributesNames = dbPluginMgr.getFieldNames("dataset");
     cstAttr = new String[cstAttributesNames.length];
-     executables = dbPluginMgr.getExecutables();
+    executables = dbPluginMgr.getExecutables();
     editable = true;
 
     setFieldNames(dbPluginMgr.getDBName());
@@ -102,7 +105,6 @@ public class DatasetCreationPanel extends CreateEditPanel{
         Debug.debug("ERROR: could not find datasetID in table!", 1);
         return;
       }
-      // Fill cstAttr from db
       Debug.debug("Getting dataset. "+editing, 1);     
       dataset = dbPluginMgr.getDataset(datasetID);
     }
@@ -170,7 +172,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
     else if(GridPilot.DB_NAMES!=null && GridPilot.DB_NAMES.length!=0 &&
         datasetIDs!=null && datasetIDs.length!=0 &&
-        (datasetIDs.length!=1 || datasetIDs[0].equals(null) && !datasetIDs[0].equals("-1"))){
+        (datasetIDs.length!=1 || !datasetIDs[0].equals(null) && !datasetIDs[0].equals("-1"))){
       if(datasetIDs.length==1){
         if(datasetIDs[0].equals(null) || datasetIDs[0].equals("-1")){
           title = "Define new dataset";
@@ -204,6 +206,15 @@ public class DatasetCreationPanel extends CreateEditPanel{
     //spAttributes.setMinimumSize(new Dimension(300, 300));
     
     pTop.add(pExecutable);
+    
+    cbInputDBSelection = new JComboBox();
+    cbInputDBSelection.addActionListener(
+        new java.awt.event.ActionListener(){
+          public void actionPerformed(java.awt.event.ActionEvent e){
+            cbInputDBSelection_actionPerformed();
+          }
+        }
+    );
 
     //initVars();
     initAttributePanel();
@@ -341,7 +352,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Creating new tcCstAttributes, "+tcCstAttributes+", "+
           (tcCstAttributes==null ? "":Integer.toString(tcCstAttributes.length)),
               3);
-      tcCstAttributes = new JTextComponent[cstAttributesNames.length];
+      tcCstAttributes = new JComponent[cstAttributesNames.length];
     }
     int row = 0;
     for(int i=0; i<cstAttributesNames.length; ++i){
@@ -349,6 +360,18 @@ public class DatasetCreationPanel extends CreateEditPanel{
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
         }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("inputDB")){
+        tcCstAttributes[i] = cbInputDBSelection;
+        // Start with empty entry
+        ((JComboBox) tcCstAttributes[i]).addItem("");
+        for(int ii=0; ii<GridPilot.DB_NAMES.length; ++ii){
+          cbInputDBSelection.addItem(GridPilot.DB_NAMES[ii]);
+        }
+      }
+      else if(cstAttributesNames[i].equalsIgnoreCase("inputDataset")){
+        tcCstAttributes[i] = new DatasetChooser(pAttributes);
+        datasetChooser = tcCstAttributes[i];
       }
       else{
         if(!editing && !reuseTextFields || tcCstAttributes[i]==null){
@@ -364,7 +387,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       if(cstAttributesNames[i].equalsIgnoreCase("outputLocation")){
         JPanel outputLocationCheckPanel = MyUtil.createCheckPanel1(
             (Window) SwingUtilities.getWindowAncestor(this),
-            cstAttributesNames[i], tcCstAttributes[i], true, true, true, false);
+            cstAttributesNames[i], (JTextComponent) tcCstAttributes[i], true, true, true, false);
         pAttributes.add(outputLocationCheckPanel,
             new GridBagConstraints(0, row, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
@@ -491,7 +514,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   public void clearPanel(){
-    Vector<JTextComponent> textFields;
+    Vector<JComponent> textFields;
     if(editing){
       textFields = getFields(); 
     }
@@ -499,7 +522,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       textFields = getNonIdTextFields();
     }
     for(int i =0; i<textFields.size(); ++i){
-      MyUtil.setJText((JComponent) textFields.get(i),"");
+      MyUtil.setJText((JComponent) textFields.get(i), "");
     }
     GridBagConstraints cv = new GridBagConstraints();
     cv.fill = GridBagConstraints.VERTICAL;
@@ -600,6 +623,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
                 else if(cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1])){
                   executableVersion = dataset.values[j].toString();
                 }
+                else if(cstAttributesNames[i].equalsIgnoreCase("inputDB")){
+                  inputDB = dataset.values[j].toString();
+                  cbInputDBSelection_actionPerformed();
+                }
               }
               catch(java.lang.Exception e){
                 Debug.debug("Field not found or set, "+e.getMessage(), 1);
@@ -612,7 +639,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
               cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1]) ||
               cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]) ||
               cstAttributesNames[i].equalsIgnoreCase("created") ||
-              cstAttributesNames[i].equalsIgnoreCase("lastModified")){          
+              cstAttributesNames[i].equalsIgnoreCase("lastModified")){
           try{
             if(datasetID==null || datasetID.equals("-1")){
               Debug.debug("Clearing identifier", 3);
@@ -855,6 +882,18 @@ public class DatasetCreationPanel extends CreateEditPanel{
     }
   }
 
+  private void cbInputDBSelection_actionPerformed(){
+    if(datasetChooser==null){
+      return;
+    }
+    inputDB = cbInputDBSelection.getSelectedItem().toString();
+    if(inputDB==null || inputDB.trim().equals("")){
+      return;
+    }
+    Debug.debug("Input DB: "+inputDB, 2);
+    ((DatasetChooser) datasetChooser).setDB(inputDB);
+  }
+
   private void cbExecutableSelection_actionPerformed(){
     if(cbExecutableSelection.getSelectedItem()==null){
       return;
@@ -888,8 +927,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     pTop.validate();
   }
 
-  private Vector<JTextComponent> getFields(){
-    Vector<JTextComponent> v = new Vector<JTextComponent>();
+  private Vector<JComponent> getFields(){
+    Vector<JComponent> v = new Vector<JComponent>();
 
     v.addAll(tcConstant);
 
@@ -899,8 +938,8 @@ public class DatasetCreationPanel extends CreateEditPanel{
     return v;
   }
 
-  private Vector<JTextComponent> getNonIdTextFields(){
-    Vector<JTextComponent> v = new Vector<JTextComponent>();
+  private Vector<JComponent> getNonIdTextFields(){
+    Vector<JComponent> v = new Vector<JComponent>();
 
     v.addAll(tcConstant);
 
@@ -1062,10 +1101,10 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug("Setting "+targetFields[i]+"->"+targetAttr[i], 3);
       MyUtil.setJText(tcCstAttributes[i], targetAttr[i]);
       if((cstAttributesNames[i].equalsIgnoreCase("runNumber") ||
-          cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
           cstAttributesNames[i].equalsIgnoreCase("InputDB") ||
+          cstAttributesNames[i].equalsIgnoreCase("InputDataset") ||
           cstAttributesNames[i].equalsIgnoreCase(datasetExecutableReference[1]) ||
-          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]))){         
+          cstAttributesNames[i].equalsIgnoreCase(datasetExecutableVersionReference[1]))){
         try{
           MyUtil.setJEditable(tcCstAttributes[i], false);
         }

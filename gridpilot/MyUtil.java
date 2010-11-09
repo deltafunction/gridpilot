@@ -121,6 +121,9 @@ public class MyUtil extends gridfactory.common.Util{
     else if(comp.getClass().isInstance(new JLabel())){
       text = ((JLabel) comp).getText();
     }
+    else if(comp.getClass().isInstance(new DatasetChooser())){
+      text = ((DatasetChooser) comp).getText();
+    }
     else{
       Debug.debug("WARNING: component type "+comp.getClass()+
           " not known. Failed to set text "+text, 3);
@@ -143,6 +146,9 @@ public class MyUtil extends gridfactory.common.Util{
     }
     else if(comp.getClass().isInstance(new JComboBox())){
       ((JComboBox) comp).setSelectedItem(text);
+    }
+    else if(comp.getClass().isInstance(new DatasetChooser())){
+      ((DatasetChooser) comp).setText(text);
     }
     else{
       try{
