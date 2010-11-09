@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.TimeoutException;
 
 import javax.xml.rpc.holders.LongHolder;
 
@@ -79,6 +80,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private String bdiiHost = null;
   private MDS mds = null;
   private String [] rteClusters = null;
+  private int mdsTimeout = 30000;
   private String [] rteVos = null;
   private String [] rtePathTags = null;
   private String[] rteTranslationTags;
@@ -96,7 +98,6 @@ public class GLiteComputingSystem implements MyComputingSystem{
   private static String SANDBOX_PROTOCOL = "all";
   
   private LBGetJobStatus lbGetJobStatus = null;
-  private static int MDS_TIMEOUT = 30000;
   
   private static String GLITE_STATUS_UNKNOWN = "Unknown";
   private static String GLITE_STATUS_DONE = "Done";
@@ -171,6 +172,13 @@ public class GLiteComputingSystem implements MyComputingSystem{
       logFile.addMessage(error, e);
     }
     try{
+      String mdsTimeoutStr = GridPilot.getClassMgr().getConfigFile().getValue(csName, "MDS timeout");
+      mdsTimeout = 1000*Integer.parseInt(mdsTimeoutStr);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    try{
       wmUrl = GridPilot.getClassMgr().getConfigFile().getValue(
           csName, "WMProxy URL");
       lbUrl = GridPilot.getClassMgr().getConfigFile().getValue(
@@ -218,29 +226,20 @@ public class GLiteComputingSystem implements MyComputingSystem{
     if(runtimeDBs==null || runtimeDBs.length==0){
       return;
     }
-    final ResThread t = new ResThread(){
-      public void run(){
-        try{
-          for(int i=0; i<runtimeDBs.length; ++i){
-            setupRuntimeEnvironments(csName, runtimeDBs[i]);
-          }
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          this.setException(e);
-          this.requestStop();
-        }
-      }
-    };
-    t.start();
-    if(!MyUtil.waitForThread(t, "gLite RTE setup", MDS_TIMEOUT , "setupRuntimeEnvironments", false, logFile)){
+    final Vector<Exception> excpts = new Vector<Exception>();
+    for(int i=0; i<runtimeDBs.length; ++i){
+      excpts.addAll(setupRuntimeEnvironments(csName, runtimeDBs[i]));
+    }
+    if(!excpts.isEmpty()){
       MyResThread rt = new MyResThread(){
         BrowserPanel wb = null;
         public void run(){
           try{
-            String msg = "WARNING: MDS timeout - could not discover gLite RTEs.";
+            String msg = "WARNING: MDS timeout. gLite RTEs may not be up to date.";
             MyUtil.showMessage("No RTEs", msg);
-            logFile.addMessage(msg, t.getException());
+            for(Iterator<Exception> it=excpts.iterator(); it.hasNext();){
+              logFile.addMessage(msg, it.next());
+            }
           }
           catch(Exception e){
            setException(e);
@@ -253,12 +252,32 @@ public class GLiteComputingSystem implements MyComputingSystem{
       rt.start();
     }
   }
-
-    /**
+  
+  /**
    * The runtime environments are simply found from the
    * information system.
    */
-  public void setupRuntimeEnvironments(String csName, String runtimeDB){
+  public Vector<Exception> setupRuntimeEnvironments(final String csName, final String runtimeDB){
+    final Vector<Exception> excpts = new Vector<Exception>();
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          doSetupRuntimeEnvironments(csName, runtimeDB);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          excpts.add(e);
+        }
+      }
+    };
+    t.start();
+    if(!MyUtil.waitForThread(t, "gLite RTE setup", mdsTimeout , "setupRuntimeEnvironments", false, logFile)){
+      excpts.add(new TimeoutException("MDS timeout."));
+    }
+    return excpts;
+  }
+  
+  public void doSetupRuntimeEnvironments(String csName, String runtimeDB){
     finalRuntimes = new HashSet<String>();
     HashSet<String> runtimes = new HashSet<String>();
     

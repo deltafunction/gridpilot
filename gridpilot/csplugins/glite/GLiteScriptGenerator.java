@@ -238,17 +238,22 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   }
 
   private String reverseTranslateRte(String rte) {
+    Debug.debug("Reverse translating using "+rteApproximationMap+"-->"+reverseRteTranslationMap, 2);
+    String ret = rte;
     if(reverseRteTranslationMap.containsKey(rte)){
-      return reverseRteTranslationMap.get(rte);
+      ret = reverseRteTranslationMap.get(rte);
     }
     if(rteApproximationMap.containsKey(rte)){
       String realRte = rteApproximationMap.get(rte);
       if(reverseRteTranslationMap.containsKey(realRte)){
-        return reverseRteTranslationMap.get(realRte);
+        ret = reverseRteTranslationMap.get(realRte);
       }
-      return realRte;
+      else{
+        ret = realRte;
+      }
     }
-    return rte;
+    Debug.debug("Reverse translated "+rte+"-->"+ret, 2);
+    return ret;
   }
 
   public void createJDL(){
@@ -323,7 +328,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         // Add local files to the return value.
         // Files not starting with file: are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
-          jdlLine += "\"" + inputFileURL + "\", ";
+          jdlLine += "\"" + (new File(inputFileURL)).getName() + "\", ";
           localInputFilesList.add(inputFileURL);
         }
         else if(MyUtil.isLocalFileName(inputFiles[i]) && !inputFiles[i].startsWith("file:")){

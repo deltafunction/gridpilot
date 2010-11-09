@@ -287,6 +287,7 @@ public class CSPluginMgr implements MyComputingSystem{
     DBResult allRtes;
     String provides;
     String name;
+    String thisCsName;
     for(int i=0; i<rtes.length; ++i){
       // This is just a rough check: although all RTEs may be available
       //                             for a given CS, they may be available
@@ -299,7 +300,8 @@ public class CSPluginMgr implements MyComputingSystem{
         for(int j=0; j<allRtes.values.length; ++j){
           provides = (String) allRtes.getValue(j, "provides");
           name = (String) allRtes.getValue(j, "name");
-          if(MyUtil.checkOS(rtes[i], name, provides==null?null:MyUtil.split(provides))){
+          thisCsName = (String) allRtes.getValue(j, "computingSystem");
+          if(csName.equalsIgnoreCase(thisCsName) && MyUtil.checkOS(rtes[i], name, provides==null?null:MyUtil.split(provides))){
             ok = true;
             if(rteApproximationMap!=null){
               rteApproximationMap.put(rtes[i], name);
