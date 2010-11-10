@@ -831,7 +831,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
         logFile.addMessage("Exception during killing of " + job.getName() + ":" + job.getJobId() + ":\n" +
                            "\tException\t: " + ae.getMessage(), ae);
         ae.printStackTrace();
-        continue;
+        //continue;
       }
       try{
         Debug.debug("Cleaning: " + job.getName() + ":" + job.getJobId(), 3);

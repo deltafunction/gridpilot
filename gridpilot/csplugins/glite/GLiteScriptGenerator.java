@@ -89,9 +89,9 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     writeBlock(bufScript, "runtime environment dependencies", 1, "# ");
     for(int i=0; i<uses.length; ++i){
       writeBlock(bufScript, "use "+ uses[i], 2, "# ");
-      String initTxt = (String) dbPluginMgr.getRuntimeInitText(reverseTranslateRte(uses[i]), csName);
+      String initTxt = (String) dbPluginMgr.getRuntimeInitText(reverseApproximateRte(uses[i]), csName);
       if(initTxt!=null){
-        writeLine(bufScript, MyUtil.dos2unix(initTxt));
+        writeLine(bufScript, MyUtil.dos2unix(initTxt).replaceAll("\\\\n", "\n"));
         writeLine(bufScript, "");
       }
     }
@@ -148,13 +148,17 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
     // core script call
     writeBlock(bufScript, "core script call", 1, "# ");
-    
-    // workaround for bug in NG on Condor
-    writeLine(bufScript, "chmod +x "+shortScriptName);
-    scriptLine = "./"+shortScriptName ;
-    for(int i=0; i<formalParam.length; ++i)
+    scriptLine = shortScriptName ;
+    for(int i=0; i<formalParam.length; ++i){
       scriptLine += " $p"+(i+1);
+    }
+    // workaround for bug in NG on Condor
+    writeLine(bufScript, "if [ -e "+shortScriptName+" ]; then");
+    writeLine(bufScript, "chmod +x "+shortScriptName);
+    writeLine(bufScript, "./"+scriptLine);
+    writeLine(bufScript, "else");
     writeLine(bufScript, scriptLine);
+    writeLine(bufScript, "fi");
     writeLine(bufScript, "");
     
     // Metadata section
@@ -256,6 +260,16 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     return ret;
   }
 
+  private String reverseApproximateRte(String rte) {
+    Debug.debug("Reverse approximating using "+rteApproximationMap, 2);
+    String ret = rte;
+    if(rteApproximationMap.containsKey(rte)){
+      ret = rteApproximationMap.get(rte);
+    }
+    Debug.debug("Reverse approximated "+rte+"-->"+ret, 2);
+    return ret;
+  }
+
   public void createJDL(){
   
     String jdlLine;
@@ -291,7 +305,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       }
       jdlLine += "\"" + scriptFileName + "\", ";
       jdlLine += "\"file:///" + exeFileName + "\", ";*/
-      jdlLine += "\"" + (new File(scriptFileName)).getName() + "\", ";
+      // unqualified executables that are just assumed to be on the path should
+      // not be listed in the input sandbox
+      String exeScriptFileName = (new File(scriptFileName)).getName();
+      if(!scriptFileName.equals(exeScriptFileName)){
+        jdlLine += "\"" + exeScriptFileName + "\", ";
+      }
       jdlLine += "\"" + (new File(exeFileName)).getName() + "\", ";
   
       // Input files.

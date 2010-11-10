@@ -38,11 +38,11 @@ public class NGScriptGenerator extends ScriptGenerator{
   }
 
   // Returns List of input files, needed for ARCGridFTPJob.submit()
-  public List createXRSL(MyJobInfo job, String exeFileName, String xrslFileName, boolean join)
+  public List<String> createXRSL(MyJobInfo job, String exeFileName, String xrslFileName, boolean join)
      throws IOException {
 
-    Vector localInputFilesList = new Vector();
-    Vector remoteInputFilesList = new Vector();
+    Vector<String> localInputFilesList = new Vector<String>();
+    Vector<String> remoteInputFilesList = new Vector<String>();
     StringBuffer bufXRSL = new StringBuffer();
     StringBuffer bufScript = new StringBuffer();
     String line = "";
@@ -329,8 +329,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       for(int i=0; i<formalParam.length; ++i){
         line += " $p"+(i+1);
       }
-      writeLine(bufScript, "if [ -e "+shortScriptName+" ]; then");
       // workaround for bug in NG on Condor
+      writeLine(bufScript, "if [ -e "+shortScriptName+" ]; then");
       writeLine(bufScript, "  chmod +x "+shortScriptName);
       writeLine(bufScript, "  ./"+line);
       writeLine(bufScript, "else");

@@ -36,7 +36,7 @@ public class DatasetChooser extends JPanel {
   }
 
   private void createDatasetChooser() {
-    final JButton jbLookup = MyUtil.mkButton("search.png", "Look up", "Search results for this request");
+    final JButton jbLookup = MyUtil.mkButton("find.png", "Find", "Lookup this dataset");
     add(dsField, BorderLayout.WEST);
     add(jbLookup, BorderLayout.EAST);
     updateUI();
