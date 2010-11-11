@@ -952,16 +952,16 @@ public class BeginningWizard{
     JPanel row = null;
     final JPanel atlasDetails = new JPanel(new GridBagLayout());
     String atlasString = "\n" +
-    "When looking up files, in principle all ATLAS file catalogs may be queried. In order to always give\n" +
-    "preference to one catalog, you can specify a \"home catalog site\". This should be one of the ATLAS\n" +
-    "site acronyms from the file " +
+    "When looking up and downloading files, the first site with a given file will be used.\n" +
+    "In order to always give preference to one site, you can specify a \"home site\".\n" +
+    "This should be one of the ATLAS site acronyms from the file " +
     "<a href=\"http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py\">TiersOfATLAS</a>" +
     " - e.g. UNICPH-NBI_LOCALGROUPDISK.\n\n" +
-    "In order to be able to write ATLAS file catalog, you must have write access to your \"home site\".\n\n" +
-    "If the home catalog site is an LCG site (i.e. running LFC) you must also specify the path under which\n" +
-    "you want to save your datasets.\n\n" +
-    "If you don't understand the above or don't have write access to a remote file catalog, you can\n" +
-    "safely leave the fields empty. Then you will have only read access.\n";
+    "In order to be able to register your own datasets, you must have write access to the\n" +
+    "file catalog of your \"home site\" and  you must also specify the path in the file\n" +
+    "catalog under which you want to save your datasets.\n\n" +
+    "If you don't understand the above or don't have write access to a remote file catalog,\n" +
+    "you can safely leave the fields untouched. Then you will have only read access.\n";
     JEditorPane atlasLabel = new JEditorPane("text/html", "<html>"+atlasString.replaceAll("\n", "<br>")+"</html>");
     atlasLabel.setEditable(false);
     atlasLabel.setOpaque(false);
@@ -1189,6 +1189,26 @@ public class BeginningWizard{
       e.printStackTrace();
     }
     return ret.toArray(new String [ret.size()]);
+  }
+
+  private JComponent createGridFactorySitesField() {
+    String[] sites;
+    try{
+      sites = new String [] {"https://www.gridfactory.org/gridfactory/jobs/", "https://gridfactory.nbi.dk/gridfactory/jobs/"};
+      JExtendedComboBox sitesBox = new JExtendedComboBox();
+      sitesBox.setAutoscrolls(true);
+      ((JExtendedComboBox) sitesBox).addItem("");
+      for(int i=0; i<sites.length; ++i){
+        ((JExtendedComboBox) sitesBox).addItem(sites[i]);
+      }
+      ((JExtendedComboBox) sitesBox).setEditable(true);
+      sitesBox.updateUI();
+      return sitesBox;
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return new JTextField(TEXTFIELDWIDTH);
   }
 
   /* Configure computing systems
@@ -1449,10 +1469,7 @@ public class BeginningWizard{
     String gfString =
       "To use GridFactory, you (i.e. your certificate/key) must have write access to a GridFactory server.\n\n" +
       "Users who are just testing (i.e. using the supplied test key/certificate) may run a small number\n" +
-      "of test jobs on our test servers:\n\n" +
-      "https://www.gridfactory.org/gridfactory/jobs/\n" +
-      "https://gridfactory.nbi.dk/gridfactory/jobs/\n\n" +
-      "Notice that the latter pulls jobs from the former." +
+      "of test jobs on our test servers listed below."+
       "\n\n";
     pane = new JEditorPane("text/html", "<html>"+gfString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
@@ -1463,14 +1480,8 @@ public class BeginningWizard{
             new Insets(5, 5, 5, 5), 0, 0));
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Submit URL: "), BorderLayout.WEST);
-    String submitURL = configFile.getValue("GRIDFACTORY", "Submission URL");
-    JPanel jpGfDB = new JPanel();
-    JTextField tfGfUrl = new JTextField(TEXTFIELDWIDTH);
-    jpGfDB.add(tfGfUrl);
-    if(submitURL!=null){
-      tfGfUrl.setText(submitURL);
-    }
-    row.add(jpGfDB, BorderLayout.CENTER);
+    JComponent tfGfUrl = createGridFactorySitesField();
+    row.add(tfGfUrl, BorderLayout.CENTER);
     csPanels[4].add(row,
         new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
             GridBagConstraints.NORTH, GridBagConstraints.HORIZONTAL,
