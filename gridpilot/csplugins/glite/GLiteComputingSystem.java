@@ -1306,7 +1306,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
     // Get stdout/stderr of done jobs
     if(getFromfinalDest || job.getDBStatus()==DBPluginMgr.VALIDATED ||
         job.getDBStatus()==DBPluginMgr.UNDECIDED){
-      if(!finalStdOut.startsWith("file:")){
+      if(job.getDBStatus()==DBPluginMgr.VALIDATED && finalStdOut.startsWith("file:")){
+        stdOutFile = finalStdOut;
+      }
+      else{
         Debug.debug("Downloading stdout of: " + job.getName() + ":" + job.getJobId()+
             " from final destination "+finalStdOut+" to " +
             MyUtil.clearTildeLocally(MyUtil.clearFile(stdOutFile)), 3);
@@ -1317,7 +1320,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
           e.printStackTrace();
         }
       }
-      if(!finalStdErr.startsWith("file:")){
+      if(job.getDBStatus()==DBPluginMgr.VALIDATED && finalStdErr.startsWith("file:")){
+        stdErrFile = finalStdErr;
+      }
+      else{
         Debug.debug("Downloading stderr of: " + job.getName() + ":" + job.getJobId()+
             " from final destination "+finalStdErr+" to " +
             MyUtil.clearTildeLocally(MyUtil.clearFile(stdErrFile)), 3);
