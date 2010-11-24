@@ -183,7 +183,7 @@ public class GlobalFrame extends GFrame{
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(null,
-                      "GridPilot File Browser", "", "", false, true, true, null, null, false);
+                      "Browser", "", "", false, true, true, null, null, false);
                   bp.okSetEnabled(false);
                 }
                 catch(Exception ex){
@@ -501,7 +501,7 @@ public class GlobalFrame extends GFrame{
     //menuFile.add(miReloadValues);
     
     // Import/export
-    JMenuItem miImport = new JMenuItem("Import application(s)/dataset(s)");
+    JMenuItem miImport = new JMenuItem("Import application(s)");
     menuFile.add(miImport);
     if(GridPilot.ADVANCED_MODE){
       menuFile.add(miExport);
@@ -730,7 +730,7 @@ public class GlobalFrame extends GFrame{
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(null,
-                  "GridPilot File Browser", "", "", false, true, true, null, null, false);
+                  "Browser", "", "", false, true, true, null, null, false);
               bp.okSetEnabled(false);
             }
             catch(Exception ex){

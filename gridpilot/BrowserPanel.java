@@ -144,6 +144,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     setModal(modal);
     
+    ImageIcon icon = null;
+    URL imgURL = null;
+    try{
+      imgURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "aviateur.png");
+      icon = new ImageIcon(imgURL);
+    }
+    catch(Exception e){
+      Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur.png", 3);
+      icon = new ImageIcon();
+    }
+    setIconImage(icon.getImage());
+    
     if(!localFS){
       gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
       httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
@@ -1717,8 +1729,11 @@ public class BrowserPanel extends JDialog implements ActionListener{
           // Just assume the file is large.
           e.printStackTrace();
         }   
-        if(bytes==0){
-          throw new IOException("File is empty");
+        if(bytes<0){
+          throw new IOException("Could not read file");
+        }
+        if(bytes<0){
+          Debug.debug("File is empty", 1);
         }
         ep.setContentType("text/html");
         String filter = jtFilter.getText();
