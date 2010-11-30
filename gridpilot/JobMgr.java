@@ -1270,6 +1270,13 @@ public class JobMgr{
                            " failed", job);
       }*/
     }
+    if(job.getHost()!=null && !job.getHost().equals("") &&
+       !dbPluginMgr.setJobDefsField(new String [] {job.getIdentifier()}, "host", job.getHost())){
+      succes = false;
+      logFile.addMessage("DB updateDBStatus(" + job.getIdentifier() + ", " +
+          job.getHost() + ") failed.\n"+dbPluginMgr.getError(),
+                         job);
+    }
     statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
     return succes;
   }
