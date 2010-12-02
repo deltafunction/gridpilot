@@ -60,6 +60,7 @@ public class BeginningWizard{
   private boolean certAndKeyOk = true;
   private Dimension catalogPanelSize = null;
   private Dimension gridsPanelSize = null;
+  private JComponent cvVomses;
 	private String TOA_URL = "http://atlas.web.cern.ch/Atlas/GROUPS/DATABASE/project/ddm/releases/TiersOfATLASCache.py";
 
   private static int TEXTFIELDWIDTH = 32;
@@ -1352,7 +1353,7 @@ public class BeginningWizard{
     row = new JPanel(new BorderLayout(8, 0));
     row.add(new JLabel("Virtual organization: "), BorderLayout.WEST);
     final JPanel jpVos = new JPanel();
-    JTextField tfVO = new JTextField(TEXTFIELDWIDTH);
+    final JTextField tfVO = new JTextField(TEXTFIELDWIDTH);
     tfVO.setText("");
     jpVos.add(tfVO);
     JButton bVos = new JButton("Get list");
@@ -1362,11 +1363,10 @@ public class BeginningWizard{
         jPanel.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         (new Thread(){
           public void run(){
-            JComponent cvVomses;
             try {
               cvVomses = createVomsesField(tfVomsServer.getText());
               if(cvVomses!=null){
-                jpVos.remove(0);
+                jpVos.remove(tfVO);
                 jpVos.add(cvVomses, 0);
                 jpVos.updateUI();
               }
@@ -1579,7 +1579,10 @@ public class BeginningWizard{
           new String [] {"no"}
           );
     }
-    if(jcbs[1].isSelected() && tfVO.getText()!=null && !tfVO.getText().equals("")){
+    String vo0 =  tfVO.getText();
+    String vo1 = cvVomses==null?null:MyUtil.getJTextOrEmptyString(cvVomses);
+    String vo = vo1!=null&&!vo1.trim().equals("")?vo1:vo0;
+    if(jcbs[1].isSelected() && vo!=null && !vo.trim().equals("")){
       boolean reInitSSL = false;
       if(!tfVO.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Virtual organization")) ||
          !tfVomsServer.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Voms server"))){
@@ -1588,7 +1591,7 @@ public class BeginningWizard{
       configFile.setAttributes(
           new String [] {"GLite", GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION, "GLite"},
           new String [] {"Enabled", "Virtual organization", "Voms server", "Runtime vos"},
-          new String [] {"yes", tfVO.getText().trim(), tfVomsServer.getText().trim(), tfVO.getText().trim()}
+          new String [] {"yes", vo.trim(), tfVomsServer.getText().trim(), tfVO.getText().trim()}
           );
       if(reInitSSL){
         GridPilot.getClassMgr().getSSL().activateProxySSL(null, true);
