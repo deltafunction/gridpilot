@@ -1584,7 +1584,7 @@ public class BeginningWizard{
     String vo = vo1!=null&&!vo1.trim().equals("")?vo1:vo0;
     if(jcbs[1].isSelected() && vo!=null && !vo.trim().equals("")){
       boolean reInitSSL = false;
-      if(!tfVO.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Virtual organization")) ||
+      if(!vo.equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Virtual organization")) ||
          !tfVomsServer.getText().trim().equals(configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Voms server"))){
         reInitSSL = true;
       }
