@@ -326,7 +326,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       // if the executable is not in the working directory,
       // we call it and assume it's on the path
       line = shortScriptName;
-      for(int i=0; i<formalParam.length; ++i){
+      for(int i=0; i<actualParam.length; ++i){
         line += " $p"+(i+1);
       }
       // workaround for bug in NG on Condor

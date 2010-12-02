@@ -149,7 +149,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     // core script call
     writeBlock(bufScript, "core script call", 1, "# ");
     scriptLine = shortScriptName ;
-    for(int i=0; i<formalParam.length; ++i){
+    for(int i=0; i<actualParam.length; ++i){
       scriptLine += " $p"+(i+1);
     }
     // workaround for bug in NG on Condor
