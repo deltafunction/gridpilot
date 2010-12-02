@@ -192,7 +192,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
-      // This seems to be neccesary...
+      // This seems to be necessary...
       getVMProxyAPI().getInterfaceVersion();
       
       try{

@@ -1591,7 +1591,7 @@ public class BeginningWizard{
       configFile.setAttributes(
           new String [] {"GLite", GridPilot.TOP_CONFIG_SECTION, GridPilot.TOP_CONFIG_SECTION, "GLite"},
           new String [] {"Enabled", "Virtual organization", "Voms server", "Runtime vos"},
-          new String [] {"yes", vo.trim(), tfVomsServer.getText().trim(), tfVO.getText().trim()}
+          new String [] {"yes", vo, tfVomsServer.getText(), vo}
           );
       if(reInitSSL){
         GridPilot.getClassMgr().getSSL().activateProxySSL(null, true);
