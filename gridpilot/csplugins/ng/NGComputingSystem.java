@@ -78,6 +78,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private String error = "";
   private boolean useInfoSystem = false;
   private String [] clusters;
+  private String [] excludedClusters;
   private String [] giises;
   private ARCResource [] resources;
   private String [] runtimeDBs = null;
@@ -125,6 +126,7 @@ public class NGComputingSystem implements MyComputingSystem{
     String useInfoSys = configFile.getValue(csName, "Use information system");
     useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
     clusters = configFile.getValues(csName, "clusters");
+    excludedClusters = configFile.getValues(csName, "Excluded clusters");
     giises = configFile.getValues(csName, "giises");
        
     arcDiscovery = new ARCDiscovery();
@@ -134,6 +136,9 @@ public class NGComputingSystem implements MyComputingSystem{
       String cluster = null;
       Set<String> clusterSet = new HashSet<String>();
       for(int i=0; i<clusters.length; ++i){
+        if(excludedClusters!=null && MyUtil.arrayContainsMatch(excludedClusters, clusters[i])){
+          continue;
+        }
         if(!clusters[i].startsWith("ldap://")){
           cluster = "ldap://"+clusters[i]+
           ":2135/nordugrid-cluster-name="+clusters[i]+",Mds-Vo-name=local,o=grid";
@@ -191,7 +196,15 @@ public class NGComputingSystem implements MyComputingSystem{
       GridPilot.splashShow("Finding authorized NG ARC resources...");
       resources = findAuthorizedResourcesFromIS();
       Debug.debug("Found "+resources.length+" authorized ARC resources.", 1);
+      Vector<ARCResource> nonExcludedResources = new Vector<ARCResource>();
       for(int i=0; i<resources.length; ++i){
+        if(MyUtil.arrayContainsMatch(excludedClusters, resources[i].getClusterName())){
+          continue;
+        }
+        if(MyUtil.arrayContainsMatch(excludedClusters, resources[i].getClusterName())){
+          continue;
+        }
+        nonExcludedResources.add(resources[i]);
         Debug.debug("--> "+resources[i].getClusterName()+"--> "+resources[i].getQueueName(), 1);
       }
       if(resources.length==0){
@@ -211,10 +224,10 @@ public class NGComputingSystem implements MyComputingSystem{
         };
         rt.start();
       }
-      ngSubmission = new NGSubmission(csName, resources);
+      ngSubmission = new NGSubmission(csName, nonExcludedResources.toArray(new ARCResource[nonExcludedResources.size()]));
     }
     else{
-      ngSubmission = new NGSubmission(csName, clusters);
+      ngSubmission = new NGSubmission(csName, clusters, excludedClusters);
     }
     
     Debug.debug("Clusters: "+MyUtil.arrayToString(clusters), 2);

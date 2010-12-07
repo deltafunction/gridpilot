@@ -43,12 +43,13 @@ public class NGSubmission{
   private MyLogFile logFile;
   private String csName;
   private String [] clusters = null;
+  private String [] excludedClusters = null;
   private int clusterIndex = 0;
   private ARCResource [] resources = null;
   private NGScriptGenerator scriptGenerator;
   private String xrslFileName;
-  private List files;
-  private List fileNames;
+  private List<String> files;
+  private List<String> fileNames;
   private String xrsl;
   private String submissionHost;
   private String queue;
@@ -57,11 +58,12 @@ public class NGSubmission{
   private static boolean REMEMBER_CLUSTERS = false;
   private static int MAX_SUBMIT_RETRIES = 3;
 
-  public NGSubmission(String _csName, String [] _clusters){
+  public NGSubmission(String _csName, String [] _clusters, String [] _excludedClusters){
     Debug.debug("Loading class NGSubmission", 3);
     logFile = GridPilot.getClassMgr().getLogFile();
     csName = _csName;
     clusters = _clusters;
+    excludedClusters = _excludedClusters;
   }
 
   public NGSubmission(String _csName, ARCResource [] _resources){
@@ -91,9 +93,9 @@ public class NGSubmission{
 
     files = scriptGenerator.createXRSL((MyJobInfo) job, scriptName, xrslFileName, !withStdErr);
     // Now the short file names
-    fileNames = new Vector();
+    fileNames = new Vector<String>();
     String file;
-    for(Iterator it=files.iterator(); it.hasNext();){
+    for(Iterator<String> it=files.iterator(); it.hasNext();){
       file = (new File((String) it.next())).getName();
       fileNames.add(file);
     }
@@ -322,12 +324,14 @@ public class NGSubmission{
   }
 
   private String[] selectClusters(String[] _clusters) {
+    
+    String[] nonExcludedClusters = discardExcludedClusters(_clusters);
 
     int choice = -1;
     
-    JCheckBox [] cbsClusters = new JCheckBox[_clusters.length];
+    JCheckBox [] cbsClusters = new JCheckBox[nonExcludedClusters.length];
     for(int i=0; i<cbsClusters.length; ++i){
-      cbsClusters[i] = new JCheckBox(_clusters[i], true);
+      cbsClusters[i] = new JCheckBox(nonExcludedClusters[i], true);
     }
     final JCheckBox cbRemember = new JCheckBox("Remember selection", true);
     cbRemember.setSelected(false);
@@ -356,12 +360,23 @@ public class NGSubmission{
       Vector<String> retVec = new Vector<String>();
       for(int i=0; i<cbsClusters.length; ++i){
         if(cbsClusters[i].isSelected()){
-          retVec.add(_clusters[i]);
+          retVec.add(nonExcludedClusters[i]);
         }
       }
       return retVec.toArray(new String[retVec.size()]);
     }
     return null;
+  }
+
+  private String[] discardExcludedClusters(String[] _clusters) {
+    Vector<String> okClustersVec = new Vector<String>();
+    for(int i=0; i<_clusters.length; ++i){
+      if(MyUtil.arrayContainsMatch(excludedClusters, _clusters[i])){
+        continue;
+      }
+      okClustersVec.add(_clusters[i]);
+    }
+    return okClustersVec.toArray(new String[okClustersVec.size()]);
   }
 
   private ARCResource[] selectResources(ARCResource[] _resources) {

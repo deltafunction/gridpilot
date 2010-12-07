@@ -36,6 +36,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   ConfigFile configFile;
   String csName;
   String[] clusters = null;
+  String[] excludedClusters = null;
 
   // These files will be uploaded to the sandbox.
   protected List<String> localInputFilesList = null;
@@ -51,7 +52,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
     replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
-    clusters = configFile.getValues(csName, "clusters");
+    clusters = configFile.getValues(csName, "Clusters");
+    excludedClusters = configFile.getValues(csName, "Excluded clusters");
     reverseRteTranslationMap = GridPilot.getClassMgr().getReverseRteTranslationMap(csName);
     rteApproximationMap = GridPilot.getClassMgr().getRteApproximationMap(csName);
     localInputFilesList = new Vector<String>();
@@ -405,10 +407,25 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       if(clusters!=null && clusters.length>0){
         String clustersStr = "";
         for(int i=0; i<clusters.length; ++i){
+          if(excludedClusters!=null && MyUtil.arrayContains(excludedClusters, clusters[i])){
+            continue;
+          }
           if(i>0){
             clustersStr += " || ";
           }
-          clustersStr += "other.GlueCEUniqueID == \""+clusters[i]+"\"";
+          //clustersStr += "other.GlueCEUniqueID == \""+clusters[i]+"\"";
+          clustersStr += "REgExp(\""+clusters[i]+"\", other.GlueCEUniqueID)";
+        }
+        reqVec.add("("+clustersStr+")");
+      }
+      if(excludedClusters!=null && excludedClusters.length>0 && (clusters==null || clusters.length==0)){
+        String clustersStr = "";
+        for(int i=0; i<clusters.length; ++i){
+          if(i>0){
+            clustersStr += " && ";
+          }
+          //clustersStr += "other.GlueCEUniqueID != \""+clusters[i]+"\"";
+          clustersStr += "!REgExp(\""+clusters[i]+"\", other.GlueCEUniqueID)";
         }
         reqVec.add("("+clustersStr+")");
       }
