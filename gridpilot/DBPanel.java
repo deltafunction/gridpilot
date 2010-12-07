@@ -82,6 +82,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private JButton bDefineJobDefinitions;
   private JButton bShowFilter;
   private JButton bHideFilter;
+  private JButton bLoadSQL;
   private JMenuItem miEdit = null;
   private JMenuItem miImportFiles = new JMenuItem("Import file(s)");
   private JMenuItem miExportDatasets = new JMenuItem("Export application(s)");
@@ -126,6 +127,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private boolean replicating = false;
   private int fileCatalogTimeout;
   private Window window = SwingUtilities.getWindowAncestor(this);
+  private String selectRequest = "";
+  private String manualSelectRequest = null;
 
   /**
    * Create a new DBPanel from scratch.
@@ -729,6 +732,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bHideFilter = MyUtil.mkButton1("up.png", "Hide search filter", "-");
     bShowFilter.setPreferredSize(new Dimension(22, 26));
     bHideFilter.setPreferredSize(new Dimension(22, 26));
+    bLoadSQL = MyUtil.mkButton1("file_new.png", "Input semi-SQL", "Load");
     bShowFilter.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
         showFilter(true);
@@ -739,19 +743,49 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
         showFilter(false);
       }
     });
+    bLoadSQL.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(ActionEvent e) {loadSQL();}});
     showHidePanel.add(bShowFilter);
     showHidePanel.add(bHideFilter);
+    showHidePanel.add(bHideFilter);
+    if(GridPilot.ADVANCED_MODE){
+      showHidePanel.add(bLoadSQL);
+    }
   }
   
+  private void loadSQL(){
+    try{
+      manualSelectRequest = MyUtil.getText("Enter semi-SQL string", selectRequest);
+      if(manualSelectRequest!=null && !manualSelectRequest.equals("") && (selectRequest==null || !selectRequest.equals(manualSelectRequest))){
+        clear();
+        MyUtil.setEnabledRecursively(selectPanel, false);
+        selectRequest = manualSelectRequest;
+      }
+      Debug.debug("Manual SQL: "+manualSelectRequest, 3);
+      if(manualSelectRequest!=null && !manualSelectRequest.trim().equals("")){
+        search();
+      }
+    }
+    catch(Exception e){
+      //manualSelectRequest = null;
+      e.printStackTrace();
+    }
+  }
+
   private void showFilter(final boolean ok){
     //SwingUtilities.invokeLater(
       //new Runnable(){
         //public void run(){
           Debug.debug("Showing filter: "+ok, 2);
+          if(ok){
+            MyUtil.setEnabledRecursively(selectPanel, true);
+            manualSelectRequest = null;
+          }
           spSelectPanel.setVisible(ok);
           bHideFilter.setVisible(ok);
           bShowFilter.setVisible(!ok);
           bClear.setVisible(ok);
+          bLoadSQL.setVisible(ok);
           panelSelectPanel.setPreferredSize(new Dimension(0, ok?180:40));
         //}
       //}
@@ -893,6 +927,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           public void run(){
             try{
               search();
+              MyUtil.setEnabledRecursively(selectPanel, true);
+              manualSelectRequest = null;
             }
             catch(Exception ee){
               statusBar.setLabel("ERROR: could not search "+ee.getMessage());
@@ -946,6 +982,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     bClear.addActionListener(new java.awt.event.ActionListener(){
       public void actionPerformed(ActionEvent e){
         clear();
+        manualSelectRequest = null;
+        MyUtil.setEnabledRecursively(selectPanel, true);
       }
     });
   }
@@ -1105,7 +1143,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     /*remove(panelTableResults);
     add(panelTableResults, ct);*/
     //updateUI();
-    //tableResults.updateUI()
+    //tableResults.updateUI();
   }
 
   /**
@@ -1131,7 +1169,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     selectPanel.setConstraint(MyUtil.getNameField(dbPluginMgr.getDBName(), tableName), "", 1);
     selectPanel.updateUI();
   }
-  
+
   private boolean waitForWorking(){
     setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
     for(int i=0; i<1; ++i){
@@ -1192,6 +1230,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
           }
         });
         try{
+          Debug.debug("Performing doSearchRequest with "+selectRequest+":"+manualSelectRequest, 3);
           doSearchRequest();
           fixSort(sortColumn, isAscending, columnWidths);
         }
@@ -1230,17 +1269,24 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   
   private void doSearchRequest() throws InterruptedException, InvocationTargetException {
     
-    String selectRequest;
-    
     if(SwingUtilities.isEventDispatchThread()){
-      selectRequest = selectPanel.getRequest(shownFields);
+      if(manualSelectRequest==null){
+        selectRequest = selectPanel.getRequest(shownFields);
+      }
+      else{
+        selectRequest = manualSelectRequest;
+      }
     }
     else{
       MyResThread rt = new MyResThread(){
-        String selectRequest;
          public void run(){
-           setFieldArrays();
-           selectRequest = selectPanel.getRequest(shownFields);
+           if(manualSelectRequest==null){
+             setFieldArrays();
+             selectRequest = selectPanel.getRequest(shownFields);
+           }
+           else{
+             selectRequest = manualSelectRequest;
+           }
          }
          public String getStringRes(){
            return selectRequest;
@@ -1250,10 +1296,10 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       selectRequest = rt.getStringRes();
     }
 
-    if(selectRequest==null){
+    Debug.debug("Select request "+selectRequest, 2);
+    if(selectRequest==null || selectRequest.trim().equals("")){
       return;
     }
-    Debug.debug("Select request "+selectRequest, 2);
     res = dbPluginMgr.select(selectRequest, identifier, findAll());
     
     if(SwingUtilities.isEventDispatchThread()){
@@ -1537,7 +1583,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     }
     catch(Exception e1){
       e1.printStackTrace();
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not set values in table.", e1);
+      MyUtil.showError("Search not valid: "+selectRequest);
     }
     Debug.debug("Done setting table", 3);
 

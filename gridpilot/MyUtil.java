@@ -20,7 +20,9 @@ import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
@@ -28,6 +30,8 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -75,6 +79,8 @@ import javax.swing.JTextPane;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 import javax.swing.plaf.UIResource;
@@ -434,7 +440,7 @@ private static String fixUrl(String _url){
  /**
   * Like createCheckPanel, but with an button with an icon instead of a hyperlink.
   */
- public static JPanel createCheckPanel1(
+  public static JPanel createCheckPanel1(
      final Window frame,
      final String name,
      final JTextComponent jt,
@@ -442,10 +448,10 @@ private static String fixUrl(String _url){
      final boolean withNavigation,
      final boolean onlyDirs,
      final boolean localFS){
-   return createCheckPanel1(frame, name, jt, oneUrl, withNavigation, onlyDirs, localFS, false);
- }
+    return createCheckPanel1(frame, name, jt, oneUrl, withNavigation, onlyDirs, localFS, false);
+  }
 
- public static JPanel createCheckPanel1(
+  public static JPanel createCheckPanel1(
      final Window frame,
      final String name,
      final JTextComponent jt,
@@ -463,38 +469,62 @@ private static String fixUrl(String _url){
       }
     });
 
-   JPanel fPanel = new JPanel(new BorderLayout());
-   JPanel checkPanel = new JPanel(new GridBagLayout());
-   JLabel jlName = new JLabel(name+"   ");
-   fPanel.add(jlName, BorderLayout.WEST);
-   checkPanel.add(bBrowse1);
-   fPanel.add(checkPanel, BorderLayout.EAST);
-   return fPanel;
- }
+    JPanel fPanel = new JPanel(new BorderLayout());
+    JPanel checkPanel = new JPanel(new GridBagLayout());
+    JLabel jlName = new JLabel(name+"   ");
+    fPanel.add(jlName, BorderLayout.WEST);
+    checkPanel.add(bBrowse1);
+    fPanel.add(checkPanel, BorderLayout.EAST);
+    return fPanel;
+  }
+ 
+  public static String getText(String message, String str){
+    JPanel panel = new JPanel(new BorderLayout());
+    final JTextArea ta = createTextArea();
+    ta.setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED, Color.white, new Color(165, 163, 151)), ""));
+    if(str!=null){
+      ta.setText(str);
+    }
+    ta.addHierarchyListener(new HierarchyListener() {
+      public void hierarchyChanged(HierarchyEvent e) {
+          Window window = SwingUtilities.getWindowAncestor(ta);
+          if (window instanceof Dialog) {
+              Dialog dialog = (Dialog)window;
+              if (!dialog.isResizable()) {
+                  dialog.setResizable(true);
+              }
+          }
+      }
+    });
+    panel.add(new JLabel(message));
+    panel.add(ta);
+    panel.setPreferredSize(new Dimension(360, 140));
+    panel.validate();
+    int choice = JOptionPane.showConfirmDialog(GridPilot.getClassMgr().getGlobalFrame(),
+      panel, str, JOptionPane.OK_CANCEL_OPTION);
+    if(choice!=JOptionPane.OK_OPTION){
+      return null;
+    }
+    else{
+      return ta.getText();
+    }
+  }
  
   public static String getName(String message, String str){
 
     JPanel panel = new JPanel(new GridBagLayout());
-    JTextPane tp = new JTextPane();
-    tp.setText("");
-    tp.setEditable(false);
-    tp.setOpaque(false);
-    tp.setBorder(null);
+
 
     JTextField tf = new JTextField(str, 24);
 
-    panel.add(tp, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
+    panel.add(new JLabel(message), new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0,
         GridBagConstraints.CENTER,
         GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
-    panel.add(new JLabel(message),
+    panel.add(tf,
         new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0,
             GridBagConstraints.CENTER,
             GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
-        0, 0));
-    panel.add(tf, new GridBagConstraints(0, 2, 1, 1, 1.0, 1.0,
-        GridBagConstraints.CENTER,
-        GridBagConstraints.BOTH, new Insets(5, 5, 5, 5),
         0, 0));
 
     int choice = JOptionPane.showConfirmDialog(GridPilot.getClassMgr().getGlobalFrame(),
@@ -2209,6 +2239,32 @@ private static String fixUrl(String _url){
           }
         }
       });
+  }
+
+  public static boolean arrayContainsMatch(String[] array, String element) {
+    for(int i=0; i<array.length; ++i){
+      if(array[i].matches(element)){
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /**
+  * Recursively enable/disable all components in the hierarchy under parent
+  */
+  public static void setEnabledRecursively(Container component, boolean enabled){
+    component.setEnabled(enabled);
+    final int cnt = component.getComponentCount();
+    for (int i=0; i<cnt; ++i){
+      Component child = component.getComponent(i);
+      if (child instanceof Container) {
+        setEnabledRecursively((Container) child, enabled);
+      }
+      else{
+       child.setEnabled(enabled);
+      }
+    }
   }
 
 }
