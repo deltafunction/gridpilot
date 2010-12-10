@@ -353,8 +353,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     else{
       runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
     }
-    editExecutable(Integer.parseInt(executableID),
-        runtimeEnvironmentName);
+    editExecutable(Integer.parseInt(executableID), runtimeEnvironmentName);
   }
   
   private void initVars() {
@@ -399,7 +398,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     for(int i=0; i<cstAttributesNames.length; ++i, ++row){
       
       if(cstAttributesNames[i].equalsIgnoreCase("initLines") ||
-          cstAttributesNames[i].equalsIgnoreCase("comment")){
+          cstAttributesNames[i].equalsIgnoreCase("comment") ||
+          GridPilot.ADVANCED_MODE && cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
         if(!reuseTextFields || tcCstAttributes[i]==null){
           tcCstAttributes[i] = MyUtil.createTextArea(TEXTFIELDWIDTH);
         }
@@ -469,8 +469,11 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     }
     
     for(int i=0; i<cstAttributesNames.length; ++i){
-      if(cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1]) ||
-         cstAttributesNames[i].equalsIgnoreCase("created") ||
+      
+      if(!GridPilot.ADVANCED_MODE && cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
+        MyUtil.setJEditable(tcCstAttributes[i], false);
+      }
+      if(cstAttributesNames[i].equalsIgnoreCase("created") ||
          cstAttributesNames[i].equalsIgnoreCase("lastModified")){
         MyUtil.setJEditable(tcCstAttributes[i], false);
       }
@@ -543,8 +546,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   /**
    *  Edit a executable
    */
-  public void editExecutable(int executableID,
-      String runtimeEnvironmentName){
+  public void editExecutable(int executableID, String runtimeEnvironmentName){
     for(int i =0; i<tcCstAttributes.length; ++i){
       for(int j=0; j<executableFields.length;++j){
         if(executableFields[j].toString().equalsIgnoreCase(
@@ -566,7 +568,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
                     GridBagConstraints.HORIZONTAL,
                     new Insets(5, 5, 5, 5), 0, 0));
           }
-          if(editing){
+          if(editing && !cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
             try{
               MyUtil.setJText(tcCstAttributes[i], executable.values[j].toString());
                 Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
@@ -604,7 +606,16 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       else if(cbRuntimeEnvironmentSelection!=null &&
           runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
           cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
-        MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+        if(GridPilot.ADVANCED_MODE){
+          tcCstAttributes[i].updateUI();
+          String existingRte = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
+          if(!existingRte.trim().matches(runtimeEnvironmentName) && !existingRte.matches(".*[\\s\\n\\r]+"+runtimeEnvironmentName+"[\\s\\n\\r]*.*")){
+            MyUtil.setJText(tcCstAttributes[i], existingRte+" "+runtimeEnvironmentName);
+          }
+        }
+        else{
+          MyUtil.setJText(tcCstAttributes[i], runtimeEnvironmentName);
+        }
       }
     }
   }
@@ -626,7 +637,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     final String [] cstAttr = new String[tcCstAttributes.length];
 
     for(int i=0; i<cstAttr.length; ++i){
-      cstAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
+      cstAttr[i] = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]).trim();
     }
 
   Debug.debug("create executable",  1);
