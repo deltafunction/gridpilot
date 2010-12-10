@@ -265,7 +265,7 @@ public class ATLASDatabase extends DBCache implements Database{
     DBResult ret = null;
     try{
       if(useCaching && queryResults.containsKey(selectRequest)){
-        Debug.debug("Returning cached result for "+selectRequest, 2);
+        Debug.debug("Returning cached result for "+selectRequest+"-->"+queryResults.get(selectRequest), 2);
         return (DBResult) queryResults.get(selectRequest);
       }
       
@@ -814,9 +814,9 @@ public class ATLASDatabase extends DBCache implements Database{
           checksum = "";
         }
         String catalogs = "";
-        Debug.debug("Finding PFNs "+findPFNs, 2);
+        Debug.debug("Finding PFNs "+lookupPFNs(), 2);
         Debug.debug("Using guid "+guid+" extracted from "+MyUtil.arrayToString(record), 2);
-        if(findPFNs){
+        if(lookupPFNs()){
           PFNResult pfnRes = null;
           try{
             pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll);
@@ -1119,7 +1119,7 @@ public class ATLASDatabase extends DBCache implements Database{
         return res;
       }
       public void run(){
-        if(getStop() || !findPFNs){
+        if(getStop() || !lookupPFNs()){
           return;
         }
         try{
@@ -1706,7 +1706,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     Vector<String> locations = getOrderedLocations(vuid);
     String [] locationsArray = locations.toArray(new String[locations.size()]);
     PFNResult res = new PFNResult();
-    if(getStop() || !findPFNs){
+    if(getStop() || !lookupPFNs()){
       return res;
     }
     try{
@@ -1716,7 +1716,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         if(locationsArray[i]==null || locationsArray[i].matches("\\s*")){
           continue;
         }
-        if(getStop() || !findPFNs){
+        if(getStop() || !lookupPFNs()){
           return res;
         }
         String [] pfns = null;
@@ -2239,7 +2239,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
    * Returns the files registered in DQ for a given dataset id (vuid).
    */
   public DBResult getFiles(String datasetID){
-    boolean oldFindPFNs = findPFNs;
+    boolean oldFindPFNs = lookupPFNs();
     setFindPFNs(false);
     DBResult res = select("SELECT * FROM file WHERE vuid = "+datasetID, "guid", false);
     setFindPFNs(oldFindPFNs);
