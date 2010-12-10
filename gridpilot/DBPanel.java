@@ -424,7 +424,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     panelSelectPanel.add(showHidePanel,
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.WEST,
-            GridBagConstraints.NONE, new Insets(10, 10, 10, 10), 0, 0));
+            GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0));
     panelSelectPanel.add(pButtonSelectPanel,
         new GridBagConstraints(0, 1, 1, 1, 1.0, 0.0,
             GridBagConstraints.EAST,
@@ -745,11 +745,12 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
     });
     bLoadSQL.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(ActionEvent e) {loadSQL();}});
-    showHidePanel.add(bShowFilter);
+    showHidePanel.add(bShowFilter, BorderLayout.LINE_START);
     showHidePanel.add(bHideFilter);
     showHidePanel.add(bHideFilter);
     if(GridPilot.ADVANCED_MODE){
       showHidePanel.add(bLoadSQL);
+      bLoadSQL.setPreferredSize(new Dimension(24, 26));
     }
   }
   
