@@ -62,6 +62,9 @@ public class JobCreator{
   private String currentDatasetID;
   private String inputDatasetName;
   private String inputDatasetID;
+  private boolean lookupPfns = true;
+  private int nPartitions = 1;
+  private String pfnsField;
 
   // This is what's actually filled in by the user in the field "nEvents".
   // If >0 and totalEvents of the dataset also >0, and there's not event
@@ -70,12 +73,14 @@ public class JobCreator{
   // This is the totalEvents of the (output) dataset
   private int totalEventsOut =-1;
 
+
   public final static String EVENT_MIN = "eventMin";
   public final static String EVENT_MAX = "eventMax";
   public final static String N_EVENTS = "nEvents";
   public final static String INPUT_FILE_NAMES = "inputFileNames";
   public final static String INPUT_FILE_URLS = "inputFileURLs";
   public final static String OUPUT_FILE_NAMES = "outputFileNames";
+  private static String [] PFN_LOOKUP_CHECK_STRS = new String[] {INPUT_FILE_NAMES, INPUT_FILE_URLS, "$u", "$f", "$p"};
   
   public final static String TOTAL_EVENTS = "totalEvents";
   
@@ -109,6 +114,7 @@ public class JobCreator{
     stdOut = _stdOut;
     cstAttrNames =  _cstAttrNames;
     jobParamNames = _jobParamNames;
+    Debug.debug("jobParamNames: "+MyUtil.arrayToString(jobParamNames), 3);
     outMapNames = _outMapNames;
     stdOutNames = _stdOutNames;
     closeWhenDone = _closeWhenDone;
@@ -121,7 +127,14 @@ public class JobCreator{
     dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     
     datasetIdFiles = new HashMap<String, DBResult>();
-
+    
+    String lookupPfnsStr = GridPilot.getClassMgr().getConfigFile().getValue("Computing systems", "Lookup pfns");
+    if(lookupPfnsStr!=null){
+      if(lookupPfnsStr.equalsIgnoreCase("no") || lookupPfnsStr.equalsIgnoreCase("no")){
+        lookupPfns = false;
+      }
+    }
+    
     getNEventsOut();
     createAllJobDefs();
     
@@ -278,6 +291,7 @@ public class JobCreator{
       inputDatasetName = null;
       inputDatasetID = null;
     }
+    pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
   }
 
   private int[] getSplitFromInputCatalog() {
@@ -526,13 +540,13 @@ public class JobCreator{
   }
 
   private String evaluate(String ss, int var, String datasetName, String runNumber,
-      String [] inputFileURLs, String [] inputFileNames, String outputDest,
+      Vector<String> inputFileURLs, Vector<String> inputFileNames, String outputDest,
       String inputSource)
      throws ArithmeticException, SyntaxException {
     // expression format : ${<arithmExpr>[:length]}
     // arithmExpr : operator priority : (*,/,%), (+,-), left associative
     Debug.debug("Evaluating, "+ss+" : "+var+" : "+datasetName+" : "+runNumber+" : "+
-        MyUtil.arrayToString(inputFileURLs)+" : "+MyUtil.arrayToString(inputFileNames)+" : "+outputDest, 3);
+        MyUtil.arrayToString(inputFileURLs.toArray(new String[inputFileURLs.size()]))+" : "+inputFileNames+" : "+outputDest, 3);
     int pos = -1;
     int pos1 = -1;
     int pos2 = -1;
@@ -584,27 +598,28 @@ public class JobCreator{
           }
         }
       }
+      
       // Fill in inputFileNames
       pos4 = sss.indexOf("$f");
       if(pos4>=0){
-        String [] names = new String[inputFileNames.length];
-        for(int i=0; i<inputFileNames.length; ++i){
+        String [] names = new String[inputFileNames.size()];
+        for(int i=0; i<inputFileNames.size(); ++i){
           //names[i] = getBaseAndExtension(inputFileNames[i])[0];
           //String [] bn = getBaseAndExtension(inputFileNames[i]);
           //names[i] = bn[0] + bn[1];
-          names[i] = inputFileNames[i];
+          names[i] = inputFileNames.get(i);
         }
         sss.replace(pos4, pos4+2, MyUtil.arrayToString(names));
       }
       // Fill in inputFileURLs
       pos5 = sss.indexOf("$u");
       if(pos5>=0){
-        sss.replace(pos5, pos5+2, MyUtil.arrayToString(inputFileURLs));
+        sss.replace(pos5, pos5+2, MyUtil.arrayToString(inputFileURLs.toArray(new String[inputFileURLs.size()])));
       }
       // Fill in the relative path of the first input file URL
       pos6 = sss.indexOf("$p");
       if(pos6>=0 && inputSource!=null){
-        String path = inputFileURLs[0];
+        String path = inputFileURLs.get(0);
         if(inputSource!=null){
           if(MyUtil.isLocalFileName(path)){
             if(path.startsWith("file:")){
@@ -622,17 +637,17 @@ public class JobCreator{
         }
         // If the outputLocation of the input dataset does not match
         // the location of this input file, we cannot find a relative path.
-        if(path.equals(inputFileURLs[0])){
+        if(path.equals(inputFileURLs.get(0))){
           Debug.debug("Could not find relative path for "+path, 2);
           sss.replace(pos6, pos6+2, "");
         }
         else{
-          path = path.replaceFirst(escapeRegChars(inputFileNames[0])+"$", "");
+          path = path.replaceFirst(escapeRegChars(inputFileNames.get(0))+"$", "");
           // If the input file is on a web server and has spaces in its name,
           // the inputFileNames[0] will have to be URL encoded to match
           Debug.debug("Path: "+path, 3);
-          Debug.debug("Replacing in path: "+MyUtil.urlEncode(escapeRegChars(inputFileNames[0]))+"$", 3);
-          path = path.replaceFirst(MyUtil.urlEncode(escapeRegChars(inputFileNames[0]))+"$", "");
+          Debug.debug("Replacing in path: "+MyUtil.urlEncode(escapeRegChars(inputFileNames.get(0)))+"$", 3);
+          path = path.replaceFirst(MyUtil.urlEncode(escapeRegChars(inputFileNames.get(0)))+"$", "");
           Debug.debug("Path now: "+path, 2);
           sss.replace(pos6, pos6+2, path);
         }
@@ -807,12 +822,12 @@ public class JobCreator{
     catch(Exception e){
     }
     String inputDataset = null;
-    String inputSource = null;
+    String inputSourceDirUrl = null;
     boolean fileCatalogInput = false;
     // Construct input file names
     if(inputMgr!=null){
       inputDataset = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("inputDataset");
-      inputSource = (String) inputMgr.getDataset(inputMgr.getDatasetID(inputDataset)).getValue("outputLocation");
+      inputSourceDirUrl = (String) inputMgr.getDataset(inputMgr.getDatasetID(inputDataset)).getValue("outputLocation");
     }
     if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
       fileCatalogInput = evaluateAllWithInput();
@@ -832,59 +847,28 @@ public class JobCreator{
       Debug.debug("No event information in dataset "+currentDatasetID+
           ":"+inputJobDefRecords.getValue(0, EVENT_MIN)+inputJobDefRecords.getValue(0, EVENT_MAX), 2);
     }
-    String [] inputFileURLs = new String[]{};
+    Vector<String> inputFileURLs = new Vector<String>();
+    Vector<String> inputFileNames = new Vector<String>();
     try{
-      inputFileURLs = findInputFiles(evtMin, evtMax, currentPartition, lastPartition,
+      findInputFiles(inputFileURLs, evtMin, evtMax, currentPartition, lastPartition,
          fileCatalogInput, eventsPresent, inputJobDefIds!=null && inputJobDefIds.length>0);
     }
     catch(Exception e){
       e.printStackTrace();
     }
-    // construct the (short) file names for the job script arguments
-    Vector<String> inputFileNamesVec = new Vector<String>();
-    if(inputFileURLs!=null){
-      String [] fils = null;
-      String addFils = "";
-      String name = null;
-      String protocol = null;
-      for(int j=0; j<inputFileURLs.length; ++j){
-        fils = MyUtil.split(inputFileURLs[j], "/");
-        if(fils.length>0){
-          addFils = fils[fils.length-1];
-        }
-        else{
-          addFils = inputFileURLs[j];
-        }
-        fils = MyUtil.split(addFils, "\\\\");
-        if(fils.length>0){
-          name = fils[fils.length-1];
-        }
-        else{
-          name = addFils;
-        }
-        protocol = null;
-        try{
-          protocol = (new GlobusURL(inputFileURLs[j])).getProtocol();
-        }
-        catch(Exception ee){
-        }
-        if("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol)){
-          name = MyUtil.urlDecode(name);
-        }
-        inputFileNamesVec.add(name);
-      }
-      Debug.debug("Inputs: "+inputFileNamesVec, 2);
+    // If needed, construct the (short) file names for the job script arguments
+    if(checkForDollarUFP()){
+      getFileNames(currentPartition, inputFileURLs, inputFileNames);
     }
-    String[] inputFileNames = inputFileNamesVec.toArray(new String[inputFileNamesVec.size()]);
-    
+ 
     // jobDefinition fields
     ArrayList<String> jobattributenames = fillInResCstAttr(eventSplits, currentPartition, datasetName, runNumber,
-        outputDest, inputSource, evtMin, evtMax, inputFileURLs, inputFileNames);
+        outputDest, inputSourceDirUrl, evtMin, evtMax, inputFileURLs, inputFileNames);
     Debug.debug("Job attributes: "+jobattributenames, 2);
     
     // Job parameters
     fillInJobParams(currentPartition, eventSplits, evtMin, evtMax, datasetName, runNumber,
-        outputDest, inputSource, jobattributenames, inputFileURLs, inputFileNames);
+        outputDest, inputSourceDirUrl, jobattributenames, inputFileURLs, inputFileNames);
 
     // If the destination is left empty on the creation panel and
     // we are using input files from a file catalog, name the output file
@@ -896,31 +880,127 @@ public class JobCreator{
           outMap.length+", "+outMap[0][1]+", "+inputFileNames, 3);
       if(fileCatalogInput && !eventsPresent && outMap.length==1 &&
           (outMap[0][1]==null || outMap[0][1].equals("")) && inputFileNames!=null &&
-          inputFileURLs.length==1){
-        String [] bn = getBaseAndExtension(inputFileNames[0].trim());
+          inputFileURLs.size()==1){
+        String [] bn = getBaseAndExtension(inputFileNames.get(0).trim());
         String dest = "$o/$p"+bn[0]+bn[1];
         resOutMap[0][1] = evaluate(dest,
-            currentPartition, datasetName, runNumber, inputFileURLs, inputFileNames, outputDest, inputSource);
+            currentPartition, datasetName, runNumber, inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
         resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, datasetName, runNumber,
-            inputFileURLs, inputFileNames, outputDest, inputSource);
+            inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
       }
       else{
         for(int i=0; i<resOutMap.length; ++i){
           resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, datasetName, runNumber,
-              inputFileURLs, inputFileNames, outputDest, inputSource);
+              inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
           resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, datasetName, runNumber,
-              inputFileURLs, inputFileNames, outputDest, inputSource);
+              inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
           Debug.debug("output mapping #"+i+":"+resOutMap[i][0]+"-->"+resOutMap[i][1], 3);
         }
       }
     }
     for(int i=0; i<resStdOut.length; ++i){
       resStdOut[i] = evaluate(stdOut[i], currentPartition, datasetName, runNumber,
-          inputFileURLs, inputFileNames, outputDest, inputSource);
+          inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
       Debug.debug("stdout/err #"+i+": "+resStdOut[i], 3);
     }
   }
   
+  private boolean checkForDollarUFP() {
+    if(checkForDollarUFP(cstAttr) ||
+       checkForDollarUFP(jobParamNames) ||
+       checkForDollarUFP(jobParam) ||
+       checkForDollarUFP(outMap) ||
+       checkForDollarUFP(stdOut)){
+      Debug.debug("Found dollar var", 2);
+      return true;
+    }
+    Debug.debug("No dollar var found", 2);
+    return false;
+  }
+
+  private boolean checkForDollarUFP(String[] strs) {
+    for(int i=0; i<strs.length; ++i){
+      for(int j=0; j<PFN_LOOKUP_CHECK_STRS.length; ++j){
+        Debug.debug("Looking for dollar var "+strs[i]+"<->"+PFN_LOOKUP_CHECK_STRS[j], 3);
+        if(strs[i].contains(PFN_LOOKUP_CHECK_STRS[j])){
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean checkForDollarUFP(String[][] strss) {
+    for(int k=0; k<strss.length; ++k){
+      if(checkForDollarUFP(strss[k])){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void getFileNames(int currentPartition, Vector<String> inputFileURLs, Vector<String> inputFileNames) {
+    
+    // If $u, $p or $f is used and lookupPfns is false do a PFN lookup to set inputFileNames and inputFilesUrls.
+    if(!lookupPfns){
+      DBRecord inputFile;
+      String inputUrlsStr;
+      String [] inputUrls;
+      Vector<String> inputUrlsVec = new Vector<String>();
+      // This is because we've just done and cached a search with DBPluginMgr.LOOKUP_PFNS_NONE
+      inputMgr.clearRequestStopLookup();
+      for(int i=0; i<nPartitions; ++i){
+        inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONE);
+        inputUrlsStr = (String) inputFile.getValue(pfnsField);
+        inputUrls = MyUtil.split(inputUrlsStr);
+        // Take the first PFN found
+        String firstInputUrl = inputUrls[0];
+        Debug.debug("Using input file "+firstInputUrl, 2);
+        inputUrlsVec.add(firstInputUrl);
+      }
+      inputFileURLs.clear();
+      inputFileURLs.addAll(inputUrlsVec);
+    }
+    
+    // construct the (short) file names for the job script arguments
+    Vector<String> inputFileNamesVec = new Vector<String>();
+    if(inputFileURLs!=null){
+      String [] fils = null;
+      String addFils = "";
+      String name = null;
+      String protocol = null;
+      for(int j=0; j<inputFileURLs.size(); ++j){
+        fils = MyUtil.split(inputFileURLs.get(j), "/");
+        if(fils.length>0){
+          addFils = fils[fils.length-1];
+        }
+        else{
+          addFils = inputFileURLs.get(j);
+        }
+        fils = MyUtil.split(addFils, "\\\\");
+        if(fils.length>0){
+          name = fils[fils.length-1];
+        }
+        else{
+          name = addFils;
+        }
+        protocol = null;
+        try{
+          protocol = (new GlobusURL(inputFileURLs.get(j))).getProtocol();
+        }
+        catch(Exception ee){
+        }
+        if("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol)){
+          name = MyUtil.urlDecode(name);
+        }
+        inputFileNamesVec.add(name);
+      }
+      Debug.debug("Inputs: "+inputFileNamesVec, 2);
+    }
+    inputFileNames.clear();
+    inputFileNames.addAll(inputFileNamesVec);
+  }
+
   private String[] getBaseAndExtension(String file){
     String ifn = file;
     String [] fullInputNameStrings = MyUtil.split(ifn, "\\.");
@@ -1021,7 +1101,7 @@ public class JobCreator{
     return fileCatalogInput;
   }
 
-  private String [] findInputFiles(int evtMin, int evtMax, int currentPartition, int lastPartition,
+  private void findInputFiles(Vector<String> inputFileURLs, int evtMin, int evtMax, int currentPartition, int lastPartition,
       boolean fileCatalogInput, boolean eventsPresent, boolean inputJobDefsPresent) {
     Debug.debug("findInputFiles "+evtMin+":"+evtMax+":"+currentPartition+":"+fileCatalogInput+":"+eventsPresent+":"+inputJobDefsPresent, 3);
     Vector<String> inputFiles = new Vector<String>();
@@ -1120,11 +1200,12 @@ public class JobCreator{
       }
       Debug.debug("Input files ---> "+inputFiles, 2);
     }
-    return inputFiles.toArray(new String[inputFiles.size()]);
+    inputFileURLs.clear();
+    inputFileURLs.addAll(inputFiles);
   }
 
   private Vector<String> findInputUrlsFromTotalAndNEvents(int currentPartition, int lastPartition) {
-    int nPartitions = 1;
+    nPartitions = 1;
     if(totalEventsOut>0 && nEventsOut>0 && lastPartition<inputFileIds.length){
       int remainder = inputFileIds.length % lastPartition;
       if(remainder>0){
@@ -1138,14 +1219,24 @@ public class JobCreator{
       }
     }
     Vector<String> ret = new Vector<String>();
+    String nameField = MyUtil.getNameField(inputMgr.getDBName(), "file");
+    DBRecord inputFile;
+    String inputUrlsStr;
+    String [] inputUrls;
     for(int i=0; i<nPartitions; ++i){
-      String pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
-      DBRecord inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONE);
-      Debug.debug("Looked up input file "+inputFile, 2);
-      String inputUrlsStr = (String) inputFile.getValue(pfnsField);
-      String [] inputUrls = MyUtil.split(inputUrlsStr);
+      Debug.debug("Looking up PFNs: "+lookupPfns, 2);
+      if(lookupPfns){
+        inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONE);
+        inputUrlsStr = (String) inputFile.getValue(pfnsField);
+      }
+      else{
+        inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_NONE);
+        inputUrlsStr = nameField+":"+((String) inputFile.getValue(nameField));
+      }
+      inputUrls = MyUtil.split(inputUrlsStr);
       // Take the first PFN found
       String firstInputUrl = inputUrls[0];
+      Debug.debug("Using input file "+firstInputUrl, 2);
       ret.add(firstInputUrl);
     }
     return ret;
@@ -1154,7 +1245,7 @@ public class JobCreator{
   private void fillInJobParams(int currentPartition,
       int [][] eventSplits, int evtMin, int evtMax, String name, String number,
       String outputDest, String inputSource, ArrayList<String> jobattributenames,
-      String [] inputFileURLs, String [] inputFileNames) throws ArithmeticException, SyntaxException {
+      Vector<String> inputFileURLs, Vector<String> inputFileNames) throws ArithmeticException, SyntaxException {
     Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
     String metaDataString = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("metaData");
@@ -1177,11 +1268,11 @@ public class JobCreator{
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
           (jobParamNames[i].equalsIgnoreCase(INPUT_FILE_NAMES))){
-        resJobParam[i] = MyUtil.removeQuotes(MyUtil.arrayToString(inputFileNames));
+        resJobParam[i] = MyUtil.removeQuotes(MyUtil.arrayToString(inputFileNames.toArray(new String[inputFileNames.size()])));
       }
       else if((jobParam[i]==null || jobParam[i].equals("")) &&
           (jobParamNames[i].equalsIgnoreCase(INPUT_FILE_URLS))){
-        resJobParam[i] = MyUtil.arrayToString(inputFileURLs);
+        resJobParam[i] = MyUtil.arrayToString(inputFileURLs.toArray(new String[inputFileURLs.size()]));
       }
       // Fill in if it matches one of the jobDefinition fields
       //else if(jobdefinitionFields.contains(jobParamNames[i].toLowerCase())){
@@ -1211,7 +1302,7 @@ public class JobCreator{
   }
 
   private ArrayList<String> fillInResCstAttr(int [][] eventSplits, int currentPartition, String datasetName, String runNumber,
-     String outputDest, String inputSource, int evtMin, int evtMax, String [] inputFileURLs, String [] inputFileNames)
+     String outputDest, String inputSource, int evtMin, int evtMax, Vector<String> inputFileURLs, Vector<String> inputFileNames)
      throws ArithmeticException, SyntaxException {
     // Add eventMin, eventMax and inputFileURLs if they are
     // present in the fields of jobDefinition, but not in the fixed
@@ -1286,11 +1377,11 @@ public class JobCreator{
       }
       else if(cstAttrNames[i].equalsIgnoreCase(INPUT_FILE_URLS)){
         // all files from input dataset containing the needed events
-        Debug.debug("setting input files "+MyUtil.arrayToString(inputFileURLs), 3);
-        resCstAttr[i] = MyUtil.arrayToString(inputFileURLs);
+        Debug.debug("setting input files "+inputFileURLs, 3);
+        resCstAttr[i] = MyUtil.arrayToString(inputFileURLs.toArray(new String[inputFileURLs.size()]));
       }
       else if(cstAttrNames[i].equalsIgnoreCase("depJobs") && inputFileURLs!=null &&
-          inputFileURLs.length>0){
+          inputFileURLs.size()>0){
         String[] depJobs = null;
         try{
           depJobs = findDepJobs(inputFileURLs);
@@ -1309,7 +1400,7 @@ public class JobCreator{
     return jobattributenames;
   }
 
-  private String[] findDepJobs(String[] inputFileURLs) throws Exception {
+  private String[] findDepJobs(Vector<String> inputFileURLs) throws Exception {
     if(inputMgr==null){
       return null;
     }
@@ -1322,7 +1413,7 @@ public class JobCreator{
     //String [] outNames;
     String outFileMapping;
     String [] outMap;
-    Debug.debug("Looking for file/job dependencies: "+MyUtil.arrayToString(inputFileURLs), 3);
+    Debug.debug("Looking for file/job dependencies: "+inputFileURLs, 3);
     for(Iterator<DBRecord> it=jobDefRecs.iterator(); it.hasNext();){
       jobDefRec = it.next();
       jobDefID = (String) jobDefRec.getValue(jobDefIdField);
@@ -1331,7 +1422,7 @@ public class JobCreator{
       for(int i=0; i<outMap.length/2; ++i){
         outUrl = outMap[2*i+1];
         Debug.debug("Checking for dep --> "+outUrl, 3);
-        if(MyUtil.arrayContains(inputFileURLs, outUrl)){
+        if(inputFileURLs.contains(outUrl)){
           depJobDefIDs.add(jobDefID);
         }
       }
