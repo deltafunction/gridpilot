@@ -18,11 +18,12 @@ public interface Database{
   public static final int ABORTED = 7;
   public static final int UNEXPECTED = 8;
   
-  // int argument lookupPFNs to getFile() must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns
+  // int argument lookupPFNs to getFile() must be 0, 1 or 2: 0=no lookup, 1=lookup one pfn, 2=lookup all pfns, 3=lookup only catalog URLs
   public static final int LOOKUP_PFNS_NONE = 0;
   public static final int LOOKUP_PFNS_ONE = 1;
   public static final int LOOKUP_PFNS_ALL = 2;
-  
+  public static final int LOOKUP_PFNS_ONLY_CATALOG_URLS = 3;
+
   public void disconnect();
   // TODO: implement in plugins and make menu point active.
   public void clearCaches();

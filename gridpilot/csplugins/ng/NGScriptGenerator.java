@@ -159,6 +159,9 @@ public class NGScriptGenerator extends ScriptGenerator{
             inputFiles[i].startsWith("httpg://")){
           inputFileURL = inputFiles[i];
         }
+        else if(inputFiles[i].startsWith("lfc://")){
+          inputFileURL = inputFiles[i].replaceFirst("(lfc://[^/]+):/", "$1/");
+        }
         else{
           // URL is full path of input file
           inputFileURL = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));

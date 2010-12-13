@@ -760,6 +760,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       if(manualSelectRequest!=null && !manualSelectRequest.equals("") && (selectRequest==null || !selectRequest.equals(manualSelectRequest))){
         clear();
         MyUtil.setEnabledRecursively(selectPanel, false);
+        manualSelectRequest = manualSelectRequest.replaceAll("(?s)[\\t\\n\\r\\f\\a\\e]", " ");
+        manualSelectRequest = manualSelectRequest.replaceAll("(?s)\\s+", " ");
         selectRequest = manualSelectRequest;
       }
       Debug.debug("Manual SQL: "+manualSelectRequest, 3);

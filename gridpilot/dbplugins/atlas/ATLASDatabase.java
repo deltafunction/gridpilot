@@ -291,7 +291,24 @@ public class ATLASDatabase extends DBCache implements Database{
     return ret;
   }
   
-  public /*synchronized*/ DBResult doSelect(String selectRequest, String idField, boolean findAll){
+  // Just a wrapper calling doDoSelect an appropriate number of times if ORs are present
+  public DBResult doSelect(String selectRequest, String idField, boolean findAll){
+    if(!selectRequest.toLowerCase().contains(" or ")){
+      return doDoSelect(selectRequest, idField, findAll);
+    }
+    // First see if the last non-OR wildcard search covers the current.
+    String [] selects = selectRequest.split("(?i)\\s+or\\s+");
+    DBResult[] ret = new DBResult[selects.length];
+    String select = selects[0];
+    ret[0] = doDoSelect(select, idField, findAll);
+    for(int i=1; i<selects.length; ++i){
+      select = select.replaceFirst("(?i)\\s+where\\s+(.*)$", " WHERE "+selects[i]);
+      ret[i] = doDoSelect(select, idField, findAll);
+    }
+    return DBResult.merge(ret);
+  }
+    
+  public /*synchronized*/ DBResult doDoSelect(String selectRequest, String idField, boolean findAll){
         
     JProgressBar pb = null;
     String req = selectRequest;
@@ -819,7 +836,7 @@ public class ATLASDatabase extends DBCache implements Database{
         if(lookupPFNs()){
           PFNResult pfnRes = null;
           try{
-            pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll);
+            pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
             catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
             bytes = (bytes.equals("")&&pfnRes.getBytes()!=null&&
                !pfnRes.getBytes().equals("")?pfnRes.getBytes():bytes);
@@ -1696,7 +1713,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
   }
   
-  private PFNResult findPFNs(String vuid, String dsn, String _guid, String lfn, boolean findAll){
+  private PFNResult findPFNs(String vuid, String dsn, String _guid, String lfn, int findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
@@ -1743,18 +1760,22 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
                 locationsArray[i]);
             continue;
           }
+          if(findAll==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
+            res.getCatalogs().add(catalogServer);
+            continue;
+          }
           Debug.debug("Querying "+i+"-->"+catalogServer+" for "+lfName, 2);
           GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
           try{
             try{
-              pfns = lookupPFNs(catalogServer, dsn, guid, lfName, findAll);
+              pfns = lookupPFNs(catalogServer, dsn, guid, lfName, findAll==Database.LOOKUP_PFNS_ALL);
             }
             catch(Exception e){
               e.printStackTrace();
             }
             if(fallbackServer!=null && (pfns==null || pfns.length==0)){
               Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
-              pfns = lookupPFNs(fallbackServer, dsn, guid, lfName, findAll);
+              pfns = lookupPFNs(fallbackServer, dsn, guid, lfName, findAll==Database.LOOKUP_PFNS_ALL);
               catalogServer = fallbackServer;
               if(pfns!=null && pfns.length>2){
                 Debug.debug("Switching to http for "+locationsArray[i], 2);
@@ -1781,7 +1802,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         }
         Debug.debug("Found PFNs "+res.getPfns(), 2);
         // break out after first location, if "Find all" is not checked
-        if(!findAll && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
+        if(findAll!=Database.LOOKUP_PFNS_ALL && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
           break;
         }
         // if we did not find anything on this location, put it last in the
@@ -1802,6 +1823,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           Debug.debug("New location cache for "+vuid+
               ": "+MyUtil.arrayToString((dqLocationsCache.get(vuid)).toArray()), 2);
         }
+      }
+      if(findAll==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
+        return res;
       }
       // Eliminate duplicates
       Vector<String> pfnShortVector = new Vector<String>();
@@ -1934,8 +1958,8 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     Vector<String> resultVector = new Vector<String>();
     String pfns = "";
     String catalogs = "";
-    if(findAllPFNs!=Database.LOOKUP_PFNS_NONE){
-      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, findAllPFNs==Database.LOOKUP_PFNS_ALL);
+    if(findAllPFNs==Database.LOOKUP_PFNS_ONE || findAllPFNs==Database.LOOKUP_PFNS_ALL){
+      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, Database.LOOKUP_PFNS_ALL);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
       for(int j=0; j<pfnRes.getPfns().size(); ++j){
         resultVector.add(pfnRes.getPfns().get(j));
@@ -1946,6 +1970,10 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           !pfnRes.getBytes().equals("")?pfnRes.getBytes():bytes);
       checksum = (checksum.equals("")&&pfnRes.getChecksum()!=null&&
           !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
+    }
+    else if(findAllPFNs==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
+      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, Database.LOOKUP_PFNS_ONLY_CATALOG_URLS);
+      catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
     }
         
     return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, guid, bytes, checksum});

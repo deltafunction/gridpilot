@@ -100,10 +100,10 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
     // Get remote input files
     writeBlock(bufScript, "input files download", 1, "# ");
+    String name;
     for(int i=0; i<lfcInputFilesList.size(); ++i){
-      writeLine(bufScript, "lcg-cp "+lfcInputFilesList.get(i)+
-          "file://`pwd`/"+
-          (lfcInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1")));
+      name = lfcInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1");
+      writeLine(bufScript, "lcg-cp lfn:"+name+" file://`pwd`/"+name);
     }
     String localName;
     String remoteName;
@@ -355,7 +355,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         else if(MyUtil.isLocalFileName(inputFiles[i]) && !inputFiles[i].startsWith("file:")){
           // do nothing
         }
-        else if(inputFiles[i].toLowerCase().startsWith("lfn:")){
+        else if(inputFiles[i].toLowerCase().startsWith("lfc:")){
           lfcInputFilesList.add(inputFileURL);
         }
         else{
@@ -376,15 +376,22 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       job.setDownloadFiles(remoteInputFilesArray);
   
       if(!lfcInputFilesList.isEmpty()){
-        jdlLine = "InputData = {";
+        jdlLine = "DataRequirements = {[\n";
+        jdlLine += "InputData = {";
         String lfcHost = null;
         String oldLfcHost = null;
         String cat = null;
+        String name;
         for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
           cat = it.next();
           if(cat.startsWith("lfc:")){
-            lfcHost = cat.replaceFirst("lfc:/*(.*)[:/]", "$1");
-            jdlLine += "\"lfn:"+cat+"\", ";
+            name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
+            lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
+            if(lfcHost.equals(cat)){
+              logFile.addMessage("WARNING: could not parse LFC host from "+cat);
+              lfcHost = null;
+            }
+            jdlLine += "\"lfn:"+name+"\", ";
             if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
               throw new IOException("ERROR: cannot use more than one catalog per job. "+
                   lfcHost+"!="+oldLfcHost);
@@ -396,10 +403,16 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         jdlLine = jdlLine.replaceFirst(", }","  }") ;
         writeLine(bufJdl, jdlLine);
         if(lfcHost!=null){
-          writeLine(bufJdl, "DataCatalog = \""+lfcHost+"\";");
+          writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
         }
       }
-      
+      jdlLine = "DataCatalogType = \"DLI\";";
+      writeLine(bufJdl, jdlLine);
+      jdlLine = "]};";
+      writeLine(bufJdl, jdlLine);
+      jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
+      writeLine(bufJdl, jdlLine);
+            
       // Various options
       //writeLine(bufJdl, "DataAccessProtocol =  {\"rfio\", \"gsiftp\", \"gsidcap\"};");
       Vector<String> reqVec = new Vector<String>();

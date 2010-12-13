@@ -1220,6 +1220,8 @@ public class JobCreator{
     }
     Vector<String> ret = new Vector<String>();
     String nameField = MyUtil.getNameField(inputMgr.getDBName(), "file");
+    String catalogsField = "catalogs";
+    String catalogPrefix = "";
     DBRecord inputFile;
     String inputUrlsStr;
     String [] inputUrls;
@@ -1230,8 +1232,19 @@ public class JobCreator{
         inputUrlsStr = (String) inputFile.getValue(pfnsField);
       }
       else{
-        inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_NONE);
-        inputUrlsStr = nameField+":"+((String) inputFile.getValue(nameField));
+        inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONLY_CATALOG_URLS);
+        try{
+          catalogPrefix = ((String) inputFile.getValue(catalogsField));
+          catalogPrefix = MyUtil.split(catalogPrefix)[0];
+          if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
+            catalogPrefix = catalogPrefix+"/";
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          catalogPrefix = "";
+        }
+        inputUrlsStr = catalogPrefix+((String) inputFile.getValue(nameField));
       }
       inputUrls = MyUtil.split(inputUrlsStr);
       // Take the first PFN found
