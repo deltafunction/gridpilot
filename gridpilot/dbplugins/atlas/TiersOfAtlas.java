@@ -81,8 +81,8 @@ public class TiersOfAtlas {
         }
       }
       Debug.debug("Wrote cache of TiersOfATLAS in "+toaFile.getAbsolutePath(), 2);
-      // have the file deleted on exit
-      GridPilot.addTmpFile(toaFile.getName(), toaFile);
+      // have the tmp file deleted on exit
+      GridPilot.addTmpFile(tmpFile.getName(), toaFile);
     }
     catch(Exception e){
       String error = "WARNING: could not load tiers of ATLAS file. File catalog lookups " +
