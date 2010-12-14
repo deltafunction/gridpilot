@@ -47,6 +47,10 @@ public interface MyComputingSystem extends ComputingSystem {
   public static final int RUN_WAIT = 1;
   /** The job failed submission. */
   public static final int RUN_FAILED = 2;
+  
+  /** When LFC input files are used and LFNs are not looked up, they will be downloaded
+   * on the worker nodes with file names input_file_0, input_file_1, ... */
+  public static String LFC_INPUT_FILE_BASE_NAME = "input_file_";
 
   /**
    * Returns user information from the credentials used by this plugin

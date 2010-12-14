@@ -1219,7 +1219,8 @@ public class JobCreator{
       }
     }
     Vector<String> ret = new Vector<String>();
-    String nameField = MyUtil.getNameField(inputMgr.getDBName(), "file");
+    String idField = MyUtil.getIdentifierField(inputMgr.getDBName(), "file");
+    String nameField = MyUtil.getIdentifierField(inputMgr.getDBName(), "name");
     String catalogsField = "catalogs";
     String catalogPrefix = "";
     DBRecord inputFile;
@@ -1236,15 +1237,23 @@ public class JobCreator{
         try{
           catalogPrefix = ((String) inputFile.getValue(catalogsField));
           catalogPrefix = MyUtil.split(catalogPrefix)[0];
-          if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
-            catalogPrefix = catalogPrefix+"/";
+          if(catalogPrefix.toLowerCase().startsWith("lfc")){
+            if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
+              catalogPrefix = catalogPrefix.replaceFirst("(lfc:/*[^/^:]+)[/:].*", "$1/:");
+            }
+            inputUrlsStr = catalogPrefix+"guid="+((String) inputFile.getValue(idField));
+          }
+          else{
+            if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
+              catalogPrefix = catalogPrefix+"/";
+            }
+            inputUrlsStr = catalogPrefix+((String) inputFile.getValue(nameField));
           }
         }
         catch(Exception e){
           e.printStackTrace();
-          catalogPrefix = "";
+          inputUrlsStr = (String) inputFile.getValue(nameField);
         }
-        inputUrlsStr = catalogPrefix+((String) inputFile.getValue(nameField));
       }
       inputUrls = MyUtil.split(inputUrlsStr);
       // Take the first PFN found

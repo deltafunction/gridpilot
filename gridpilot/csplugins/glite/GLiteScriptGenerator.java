@@ -6,6 +6,7 @@ import gridfactory.common.LocalStaticShell;
 import gridfactory.common.jobrun.ScriptGenerator;
 import gridpilot.DBPluginMgr;
 import gridpilot.GridPilot;
+import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.MyUtil;
 
@@ -100,10 +101,24 @@ public class GLiteScriptGenerator extends ScriptGenerator {
 
     // Get remote input files
     writeBlock(bufScript, "input files download", 1, "# ");
+    String url;
+    String guid;
     String name;
+    int lfc_input_file_nr = 0;
     for(int i=0; i<lfcInputFilesList.size(); ++i){
-      name = lfcInputFilesList.get(i).toString().replaceFirst("^.*/([^/]+)", "$1");
-      writeLine(bufScript, "lcg-cp lfn:"+name+" file://`pwd`/"+name);
+      url = lfcInputFilesList.get(i);
+      guid = url.toString().replaceFirst(".*guid=(.+)", "$1");
+      name = url.toString().replaceFirst("^.*/([^/]+)", "$1");
+      if(!url.equals(guid)){
+        writeLine(bufScript, "lcg-cp guid:"+guid+" file://`pwd`/"+MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr);
+        ++lfc_input_file_nr;
+      }
+      else if(!url.equals(name)){
+        writeLine(bufScript, "lcg-cp lfn:"+name+" file://`pwd`/"+name);
+      }
+      else{
+        logFile.addMessage("WARNING: could not parse guid or lfn from "+url);
+      }
     }
     String localName;
     String remoteName;
@@ -201,7 +216,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         // moves them locally on the client to their final destination
         uploadVector.add(new String [] {localName, remoteName});
       }
-      else if(remoteName.toLowerCase().startsWith("lfn:")){
+      else if(remoteName.toLowerCase().startsWith("lfn:") || remoteName.toLowerCase().startsWith("guid:")){
         writeLine(bufScript, "lcg-cr -l "+remoteName+" file://`pwd`/"+localName+" "+remoteName);
       }
       else if(remoteName.startsWith("srm:")){
@@ -381,17 +396,27 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         String lfcHost = null;
         String oldLfcHost = null;
         String cat = null;
+        String guid;
         String name;
         for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
           cat = it.next();
           if(cat.startsWith("lfc:")){
             name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
+            guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
             lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
             if(lfcHost.equals(cat)){
               logFile.addMessage("WARNING: could not parse LFC host from "+cat);
               lfcHost = null;
             }
-            jdlLine += "\"lfn:"+name+"\", ";
+            if(!guid.equals(cat)){
+              jdlLine += "\"guid:"+guid+"\", ";
+            }
+            else if(!name.equals(cat)){
+              jdlLine += "\"lfn:"+name+"\", ";
+            }
+            else{
+              logFile.addMessage("WARNING: could not parse lfn or guid from "+cat);
+            }
             if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
               throw new IOException("ERROR: cannot use more than one catalog per job. "+
                   lfcHost+"!="+oldLfcHost);
@@ -400,7 +425,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           }
         }
         jdlLine += "};";
-        jdlLine = jdlLine.replaceFirst(", }","  }") ;
+        jdlLine = jdlLine.replaceFirst(", }","}") ;
         writeLine(bufJdl, jdlLine);
         if(lfcHost!=null){
           writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
@@ -451,7 +476,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       reqVec.add("(other.GlueCEStateStatus == \"Production\")");
       writeLine(bufJdl, "rank = -other.GlueCEStateEstimatedResponseTime;");
       writeLine(bufJdl, "DefaultRank = -other.GlueCEStateEstimatedResponseTime;");
-      writeLine(bufJdl, "SignificantAttributes = { \"Requirements\",\"Rank\",\"FuzzyRank\" };");
+      writeLine(bufJdl, "SignificantAttributes = {\"Requirements\", \"Rank\", \"FuzzyRank\"};");
       //if(GridPilot.vo!=null && !GridPilot.vo.equals("")){
       //  writeLine(bufJdl, "VirtualOrganisation = \"" + GridPilot.vo + "\";");
       //}

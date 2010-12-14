@@ -9,6 +9,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.jobrun.ScriptGenerator;
 import gridpilot.DBPluginMgr;
+import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -138,7 +139,8 @@ public class NGScriptGenerator extends ScriptGenerator{
       String [] inputFiles = new String[inputFiles1.length+inputFiles2.length];
       System.arraycopy(inputFiles1, 0, inputFiles, 0, inputFiles1.length);
       System.arraycopy(inputFiles2, 0, inputFiles, inputFiles1.length, inputFiles2.length);
-            
+      
+      int lfc_input_file_nr = 0;
       for(int i=0; i<inputFiles.length; ++i){
         // Find unqualified name of input file and use this for destination
         lastSlash = inputFiles[i].replaceAll("\\\\", "/").lastIndexOf("/");
@@ -160,7 +162,9 @@ public class NGScriptGenerator extends ScriptGenerator{
           inputFileURL = inputFiles[i];
         }
         else if(inputFiles[i].startsWith("lfc://")){
-          inputFileURL = inputFiles[i].replaceFirst("(lfc://[^/]+):/", "$1/");
+          inputFileURL = inputFiles[i];
+          inputFileName = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
+          ++lfc_input_file_nr;
         }
         else{
           // URL is full path of input file
