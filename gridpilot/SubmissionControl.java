@@ -485,9 +485,8 @@ public class SubmissionControl{
     JobMgr jobMgr = null;
     HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
     monitorStatusBar.setLabel("Updating job status...");
-    while(jobs.size()>0){
-      job = (MyJobInfo) jobs.iterator().next();
-      jobs.remove(job);
+    for(Iterator<MyJobInfo>it=jobs.iterator(); it.hasNext();){
+      job = it.next();
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       if(!submitables.keySet().contains(job.getDBName())){
         submitables.put(job.getDBName(), new Vector<MyJobInfo>());
