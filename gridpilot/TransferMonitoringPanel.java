@@ -245,7 +245,11 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
 
     miResubmit.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        resubmit();
+        (new Thread(){
+          public void run(){
+            resubmit();
+          }
+        }).start();
       }
     });
 
@@ -550,6 +554,27 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Requeues selected transfers.
    */
   private void resubmit(){
+    if(SwingUtilities.isEventDispatchThread()){
+      doResubmit();
+    }
+    else{
+      SwingUtilities.invokeLater(
+        new Runnable(){
+          public void run(){
+            try{
+              doResubmit();
+            }
+            catch(Exception ex){
+              Debug.debug("Could not resubmit...", 1);
+              ex.printStackTrace();
+            }
+          }
+        }
+      );
+    }
+  }
+  
+  private void doResubmit(){
     transferControl = GridPilot.getClassMgr().getTransferControl();
     Vector<TransferInfo> transfers = getTransfersAtRows(statusTable.getSelectedRows());
     try{
