@@ -433,7 +433,9 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       }
       jdlLine = "DataCatalogType = \"DLI\";";
       writeLine(bufJdl, jdlLine);
-      jdlLine = "]};";
+      if(!lfcInputFilesList.isEmpty()){
+        jdlLine = "]};";
+      }
       writeLine(bufJdl, jdlLine);
       jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
       writeLine(bufJdl, jdlLine);
