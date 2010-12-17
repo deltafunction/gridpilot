@@ -570,7 +570,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
           }
           if(editing && !cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
             try{
-              MyUtil.setJText(tcCstAttributes[i], executable.values[j].toString());
+              MyUtil.setJText(tcCstAttributes[i], executable.values[j].toString().trim());
                 Debug.debug(i+": "+cstAttributesNames[i].toString()+"="+
                     executableFields[j]+". Setting to "+MyUtil.getJTextOrEmptyString(tcCstAttributes[i]),3);
             }
@@ -604,13 +604,14 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         }
       }
       else if(cbRuntimeEnvironmentSelection!=null &&
-          runtimeEnvironmentName!=null && !runtimeEnvironmentName.equals("") &&
+          runtimeEnvironmentName!=null && !runtimeEnvironmentName.trim().equals("") &&
           cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
         if(GridPilot.ADVANCED_MODE){
           tcCstAttributes[i].updateUI();
           String existingRte = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
           if(!existingRte.trim().matches(runtimeEnvironmentName) && !existingRte.matches(".*[\\s\\n\\r]+"+runtimeEnvironmentName+"[\\s\\n\\r]*.*")){
-            MyUtil.setJText(tcCstAttributes[i], existingRte+" "+runtimeEnvironmentName);
+            MyUtil.setJText(tcCstAttributes[i],
+                (existingRte!=null&&!existingRte.trim().equals("")?existingRte+" ":"")+runtimeEnvironmentName.trim());
           }
         }
         else{

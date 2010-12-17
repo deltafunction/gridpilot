@@ -1375,7 +1375,7 @@ public class MyTransferControl extends TransferControl {
       if((checksum==null || checksum.equals("") || checksum.equals("-1")) &&
           !MyUtil.urlIsRemote(destination)){
         try{
-          checksum = "md5:"+MyUtil.md5sum(destination);
+          checksum = "md5:"+MyUtil.md5sum(null, destination);
         }
         catch(Exception e){
         }
