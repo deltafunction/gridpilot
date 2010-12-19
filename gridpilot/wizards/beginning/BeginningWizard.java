@@ -1394,7 +1394,7 @@ public class BeginningWizard{
       "The field 'users names' must be filled in with a user name for each host.\n" +
       "The field 'passwords' must be filled in with a password for each host.\n\n" +
       "If 'user names' or 'passwords' is not filled in, you will be prompted for it when submitting jobs.\n\n" +
-      "It is not recommended to fill in 'passwords' because the passwords will be store in clear text.\n\n";
+      "It is not recommended to fill in 'passwords' because the passwords will be stored in clear text.\n\n";
     pane = new JEditorPane("text/html", "<html>"+sshPoolString.replaceAll("\n", "<br>")+"</html>");
     pane.setEditable(false);
     pane.setOpaque(false);
