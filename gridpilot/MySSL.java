@@ -111,7 +111,7 @@ public class MySSL extends SSL{
       }
     }
     Debug.debug("Activating SSL with password "+GridPilot.KEY_PASSWORD, 2);
-    super.activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR, GridPilot.TRUSTSTORE_FILE);
+    activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR, GridPilot.TRUSTSTORE_FILE);
     credential = super.getCredential();
     sslOk = true;
   }
@@ -250,7 +250,7 @@ public class MySSL extends SSL{
           myVomsdir = new File(clearTildeLocally(clearFile(_vomsdir)));
           if(!LocalStaticShell.existsFile(_vomsdir) || LocalStaticShell.listFiles(_vomsdir).length==0){
             LocalStaticShell.mkdir(_vomsdir);
-            File tmpDir =  mkTmpVomsDir();
+            File tmpDir = mkTmpVomsDir();
             LocalStaticShell.copyDirectory(tmpDir, myVomsdir);
           }
         }

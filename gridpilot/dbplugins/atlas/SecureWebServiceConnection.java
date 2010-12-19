@@ -106,7 +106,7 @@ public class SecureWebServiceConnection extends WebServiceConnection {
     km = kmf.getKeyManagers();  
 
     SSLContext ctx = SSLContext.getInstance("SSL");
-    SecureRandom secran=SecureRandom.getInstance("SHA1PRNG");
+    SecureRandom secran = SecureRandom.getInstance("SHA1PRNG");
     ctx.init(km, tm, secran);
     SSLSocketFactory sfcy= ctx.getSocketFactory();
     HttpsURLConnection.setDefaultSSLSocketFactory (sfcy);
