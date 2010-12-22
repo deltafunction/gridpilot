@@ -54,6 +54,7 @@ public class NGComputingSystem implements MyComputingSystem{
   public static final String NG_STATUS_FINISHED = "FINISHED" ;
   public static final String NG_STATUS_EXECUTED = "EXECUTED" ;
   public static final String NG_STATUS_DELETED = "DELETED" ;
+  public static final String NG_STATUS_KILLED = "KILLED" ;
   public static final String NG_STATUS_CANCELLING = "CANCELLING";
   public static final String NG_STATUS_SUBMITTING = "SUBMITTING";
   public static final String NG_STATUS_INLRMSQ = "INLRMS: Q";
@@ -411,16 +412,15 @@ public class NGComputingSystem implements MyComputingSystem{
         }
       }
       else if(job.getCSStatus().equals(NG_STATUS_FAILURE) ||
-          job.getCSStatus().equals(NG_STATUS_FAILED)){
+          job.getCSStatus().equals(NG_STATUS_FAILED) ||
+          job.getCSStatus().equals(NG_STATUS_KILLED) ||
+          job.getCSStatus().equals(NG_STATUS_DELETED)){
         //getOutput(job);
         job.setStatusFailed();
       }
       else if(job.getCSStatus().equals(NG_STATUS_ERROR)){
         // try to clean up, just in case...
         //getOutput(job);
-        job.setStatusError();
-      }
-      else if(job.getCSStatus().equals(NG_STATUS_DELETED)){
         job.setStatusError();
       }
       else if(job.getCSStatus().equals(NG_STATUS_INLRMSR) ||
