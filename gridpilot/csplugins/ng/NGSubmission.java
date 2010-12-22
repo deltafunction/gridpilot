@@ -371,7 +371,8 @@ public class NGSubmission{
   private String[] discardExcludedClusters(String[] _clusters) {
     Vector<String> okClustersVec = new Vector<String>();
     for(int i=0; i<_clusters.length; ++i){
-      if(MyUtil.arrayContainsMatch(excludedClusters, _clusters[i])){
+      if(excludedClusters!=null &&
+          MyUtil.arrayContainsMatch(excludedClusters, _clusters[i])){
         continue;
       }
       okClustersVec.add(_clusters[i]);
