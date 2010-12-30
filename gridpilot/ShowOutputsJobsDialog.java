@@ -10,6 +10,8 @@ import javax.swing.SwingUtilities;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.HierarchyListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -515,6 +517,19 @@ public class ShowOutputsJobsDialog extends JOptionPane{
           filesPaths[i].lastIndexOf("/") + 1);
       outputs.add(panel, tabName);
     }
-    showMessageDialog(parent, mainPanel, header, INFORMATION_MESSAGE);
+    // Make the JOptionPane resizable using the HierarchyListener
+    mainPanel.addHierarchyListener(new HierarchyListener() {
+        public void hierarchyChanged(HierarchyEvent e) {
+            Window window = SwingUtilities.getWindowAncestor(mainPanel);
+            if (window instanceof Dialog) {
+                Dialog dialog = (Dialog)window;
+                if (!dialog.isResizable()) {
+                    dialog.setResizable(true);
+                }
+            }
+        }
+    });
+    
+    JOptionPane.showMessageDialog(parent, mainPanel, header, INFORMATION_MESSAGE);
   }
 }

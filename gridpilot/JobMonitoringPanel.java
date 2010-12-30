@@ -1,9 +1,11 @@
 package gridpilot;
 
+import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.MyLinkedHashSet;
+import gridfactory.common.ResThread;
 
 import javax.swing.*;
 
@@ -82,12 +84,23 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
   });
 
+  private int decideTimeout;
+
   /**
    * Constructor
    * @throws Exception 
    */
   public JobMonitoringPanel() throws Exception{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
+    String timeout = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "File catalog timeout");
+    if(timeout!=null){
+      try{
+        decideTimeout = Integer.parseInt(timeout);
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not parse decide timeout", e);
+      }
+    }
   }
   
   public void activate() throws Exception {
@@ -422,8 +435,8 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     mShow.add(miShowOutput);
     mShow.add(miShowScripts);
 
-    //statusTable.addMenuSeparator();
-    //statusTable.addMenuItem(miStopUpdate);
+    statusTable.addMenuSeparator();
+    statusTable.addMenuItem(miStopUpdate);
     statusTable.addMenuSeparator();
     statusTable.addMenuItem(miKill);
     statusTable.addMenuItem(miClean);
@@ -554,24 +567,68 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
           dbChoices[i]  = options[choices[i]];
         }
       }
+      doDecide(jobs, dbChoices);
+    }
+  }
 
-      JobMgr jobMgr = null;
-      int i = 0;
-      MyJobInfo job;
-      for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
-        job = it.next();
-        if(job.getDBStatus()!=dbChoices[i]){
-          jobMgr = getJobMgr(job);
-          jobMgr.updateDBStatus(job, dbChoices[i]);
-          if(dbChoices[i] != DBPluginMgr.UNDECIDED){
-            job.setNeedsUpdate(false);
+  private void doDecide(final Set<MyJobInfo> jobs, final int[] dbChoices) {
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          int i = 0;
+          MyJobInfo job;
+          for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+            job = it.next();
+            if(!doDoDecide(job, dbChoices[i]) && it.hasNext()){             
+              ConfirmBox confirmBox = new ConfirmBox(GridPilot.getClassMgr().getGlobalFrame());
+              String confirmString =
+                  "Would you like to continue deciding the remaining job(s)?\n";
+              int choice = -1;
+              choice = confirmBox.getConfirmPlainText("Continue deciding?", confirmString,
+                  new Object[] {
+                  MyUtil.mkButton(null, "Continue", "Continue with remaining job(s)"),
+                  MyUtil.mkButton(null, "Stop", "Stop deciding job(s)")},
+                  null, Color.WHITE, true, false);
+              if(choice!=0){
+                return;
+              }           
+            }
+            ++i;
+          }
+          statusTable.updateSelection();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        finally{
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        }
+      }
+    };
+    t.start();
+  }
+
+  private boolean doDoDecide(final MyJobInfo job, final int dbChoice) {
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          if(job.getDBStatus()!=dbChoice){
+            JobMgr jobMgr = getJobMgr(job);
+            jobMgr.updateDBStatus(job, dbChoice);
+            if(dbChoice!= DBPluginMgr.UNDECIDED){
+              job.setNeedsUpdate(false);
+            }
+            jobMgr.updateJobsByStatus();
           }
         }
-        ++i;
+        catch(Exception e){
+          e.printStackTrace();
+        }
       }
-      statusTable.updateSelection();
-      jobMgr.updateJobsByStatus();
-    }
+    };
+    t.start();
+    return MyUtil.waitForThread(t, "Decide job status", decideTimeout, "decide", GridPilot.getClassMgr().getLogFile());
   }
 
   /**

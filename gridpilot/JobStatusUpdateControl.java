@@ -3,6 +3,7 @@ package gridpilot;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
+import gridfactory.common.ResThread;
 
 import java.net.URL;
 import java.util.Iterator;
@@ -68,7 +69,7 @@ public class JobStatusUpdateControl{
    * Thread vector. <p>
    * @see #checkingJobs
    */
-  public Vector<Thread> checkingThreads = new Vector<Thread>();
+  public Vector<ResThread> checkingThreads = new Vector<ResThread>();
 
   private ImageIcon iconChecking;
 
@@ -85,12 +86,18 @@ public class JobStatusUpdateControl{
           //Debug.debug(checkingThreads.size()+":"+maxSimultaneousChecking +":"+
           //   !toCheckJobs.isEmpty(), 3);
           if(checkingThreads.size()<maxSimultaneousChecking && !toCheckJobs.isEmpty()){
-            Thread t = new Thread(){
+            ResThread t = new ResThread(){
               public void run(){
                 Debug.debug("Checking...", 3);
-                trigCheck();
+                try{
+                  trigCheck(this);
+                }
+                catch(Exception e){
+                  logFile.addMessage("WARNING: could not check job status.", e);
+                }
                 checkingThreads.remove(this);
-            }};
+              }
+            };
             checkingThreads.add(t);
             t.start();
           }
@@ -238,7 +245,7 @@ public class JobStatusUpdateControl{
 
   /**
    * Called by <code>timerChecking</code> time outs. <p>
-   * This method is invocated in a thread. <br>
+   * This method is invoked in a thread - passed along as an argument (allowing to detect requests to stop). <br>
    * Takes the maximum number of jobs in <code>toCheckJobs</code>, saves their status
    * and calls the computing system plugin with these jobs. <br>
    * If a status has changed, an action is performed: <ul>
@@ -249,22 +256,26 @@ public class JobStatusUpdateControl{
    * <li>STATUS_FAILED : call jobMgr.jobFailure
    * </ul>
    *
+   *@param t the container thread
    */
-  private void trigCheck() {
+  private void trigCheck(ResThread t) {
 
     Debug.debug("trigCheck", 1);
 
     Vector<MyJobInfo> jobs = new Vector<MyJobInfo>();
     synchronized(toCheckJobs){
-      if(toCheckJobs.isEmpty()){
+      if(toCheckJobs.isEmpty() || t.isStopRequested()){
         return;
       }
       String csName = ((MyJobInfo) toCheckJobs.get(0)).getCSName();
 
       int currentJob = 0;
       while((jobs.size()<((Integer) maxJobsByUpdate.get(csName)).intValue() ||
-          ((Integer) maxJobsByUpdate.get(csName)).intValue()==0 )
+          ((Integer) maxJobsByUpdate.get(csName)).intValue()==0)
             && currentJob<toCheckJobs.size()){
+        if(t.isStopRequested()){
+          return;
+        }
         Debug.debug("Adding job to toCheckJobs "+currentJob, 3);
         if(((MyJobInfo) toCheckJobs.get(
             currentJob)).getCSName().toString().equalsIgnoreCase(csName)){
@@ -275,10 +286,16 @@ public class JobStatusUpdateControl{
         }
       }
     }
+    if(t.isStopRequested()){
+      return;
+    }
     checkingJobs.addAll(jobs);
 
     int [] previousStatus = new int [jobs.size()];
     for(int i=0; i<jobs.size(); ++i){
+      if(t.isStopRequested()){
+        return;
+      }
       Debug.debug("Setting value for job "+i, 3);
       statusTable.setValueAt(iconChecking, ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
       previousStatus[i] = ((MyJobInfo) jobs.get(i)).getStatus();
@@ -286,6 +303,9 @@ public class JobStatusUpdateControl{
     
     Debug.debug("Updating status of "+jobs.size()+" jobs", 3);
 
+    if(t.isStopRequested()){
+      return;
+    }
     GridPilot.getClassMgr().getCSPluginMgr().updateStatus(MyUtil.toJobInfos(jobs));
 
     Debug.debug("Removing "+jobs.size()+" jobs from checkingJobs", 3);
@@ -293,13 +313,23 @@ public class JobStatusUpdateControl{
     checkingJobs.removeAll(jobs);
 
     for(int i=0; i<jobs.size(); ++i){
+      if(t.isStopRequested()){
+        return;
+      }
       Debug.debug("Setting value of job #"+i, 3);
       statusTable.setValueAt(null, ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_CONTROL);
       statusTable.setValueAt(((MyJobInfo) jobs.get(i)).getCSStatus(),
           ((MyJobInfo) jobs.get(i)).getTableRow(), JobMgr.FIELD_STATUS);
     }
   
+    if(t.isStopRequested()){
+      return;
+    }
+
     for(int i=0; i<jobs.size(); ++i){
+      if(t.isStopRequested()){
+        return;
+      }
       MyJobInfo job = (MyJobInfo) jobs.get(i);
       Debug.debug("Setting computing system status of job #"+i+"; "+
           job.getStatus()+"<->"+previousStatus[i], 3);
@@ -348,9 +378,16 @@ public class JobStatusUpdateControl{
       }
     }
     
+    if(t.isStopRequested()){
+      return;
+    }
+
     Debug.debug("Updating "+jobs.size()+" jobs by status", 3);
     jobMgrs = GridPilot.getClassMgr().getJobMgrs();
     for(Iterator<JobMgr> it = jobMgrs.iterator(); it.hasNext();){
+      if(t.isStopRequested()){
+        return;
+      }
       it.next().updateJobsByStatus();
       // fix
       break;
@@ -358,6 +395,9 @@ public class JobStatusUpdateControl{
     
     Debug.debug("Finished trigCheck", 3);
 
+    if(t.isStopRequested()){
+      return;
+    }
     if(!timerChecking.isRunning()){
       timerChecking.restart();
     }
@@ -369,18 +409,18 @@ public class JobStatusUpdateControl{
    * Called by : <ul>
    */
   public void reset(){
+    timerChecking.stop();
     toCheckJobs.removeAllElements();
 
     for(int i=0; i<checkingThreads.size(); ++i){
-      Thread t = (Thread) checkingThreads.get(i);
-      Debug.debug("wait for thread " + i + "...", 2);
+      ResThread t = checkingThreads.get(i);
+      Debug.debug("Requesting thread " + i + " to stop ...", 2);
       try{
-        t.join();
+        t.requestStop();
       }
-      catch(InterruptedException ie){
+      catch(Exception ie){
         ie.printStackTrace();
       }
-      Debug.debug("joined", 2);
     }
     // When selecting "Stop checking",
     // if a large number of threads were running, one could not refresh anymore.

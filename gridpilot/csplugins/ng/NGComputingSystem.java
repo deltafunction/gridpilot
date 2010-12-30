@@ -78,6 +78,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private String defaultUser;
   private String error = "";
   private boolean useInfoSystem = false;
+  private boolean fastSubmission = false;
   private String [] clusters;
   private String [] excludedClusters;
   private String [] giises;
@@ -125,10 +126,12 @@ public class NGComputingSystem implements MyComputingSystem{
     
     defaultUser = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "Default user");
     String useInfoSys = configFile.getValue(csName, "Use information system");
-    useInfoSystem = useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes");
+    useInfoSystem = useInfoSys!=null && (useInfoSys.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes"));
     clusters = configFile.getValues(csName, "clusters");
     excludedClusters = configFile.getValues(csName, "Excluded clusters");
     giises = configFile.getValues(csName, "giises");
+    String fastSub = configFile.getValue(csName, "Fast submission");
+    fastSubmission = fastSub!=null && (fastSub.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes"));
        
     arcDiscovery = new ARCDiscovery();
 
@@ -225,10 +228,11 @@ public class NGComputingSystem implements MyComputingSystem{
         };
         rt.start();
       }
-      ngSubmission = new NGSubmission(csName, nonExcludedResources.toArray(new ARCResource[nonExcludedResources.size()]));
+      ngSubmission = new NGSubmission(csName,
+          nonExcludedResources.toArray(new ARCResource[nonExcludedResources.size()]), fastSubmission);
     }
     else{
-      ngSubmission = new NGSubmission(csName, clusters, excludedClusters);
+      ngSubmission = new NGSubmission(csName, clusters, excludedClusters, fastSubmission);
     }
     
     Debug.debug("Clusters: "+MyUtil.arrayToString(clusters), 2);

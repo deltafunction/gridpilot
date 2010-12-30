@@ -47,37 +47,34 @@ public class NGSubmission{
   private int clusterIndex = 0;
   private ARCResource [] resources = null;
   private NGScriptGenerator scriptGenerator;
-  private String xrslFileName;
   private List<String> files;
   private List<String> fileNames;
-  private String xrsl;
-  private String submissionHost;
-  private String queue;
-  private static String[] LAST_SELECTED_CLUSTERS;
-  private static ARCResource[] LAST_SELECTED_RESOURCES;
-  private static boolean REMEMBER_CLUSTERS = false;
-  private static int MAX_SUBMIT_RETRIES = 3;
+  private boolean fastSubmission = false;
+  private String[] lastSelectedClusters;
+  private ARCResource[] lastSelectedResources;
+  private boolean rememberClusters = false;
+  private int maxSubmitRetries = 3;
 
-  public NGSubmission(String _csName, String [] _clusters, String [] _excludedClusters){
+  public NGSubmission(String _csName, String [] _clusters, String [] _excludedClusters, boolean _fastSubmission){
     Debug.debug("Loading class NGSubmission", 3);
     logFile = GridPilot.getClassMgr().getLogFile();
     csName = _csName;
     clusters = _clusters;
     excludedClusters = _excludedClusters;
+    fastSubmission = _fastSubmission;
   }
 
-  public NGSubmission(String _csName, ARCResource [] _resources){
+  public NGSubmission(String _csName, ARCResource [] _resources, boolean _fastSubmission){
     Debug.debug("Loading class NGSubmission", 3);
     logFile = GridPilot.getClassMgr().getLogFile();
     csName = _csName;
-    resources = _resources;
-    rankResources(resources);
+    resources = rankResources(_resources);
+    fastSubmission = _fastSubmission;
   }
 
-  public boolean submit(JobInfo job, String scriptName, String _xrslFileName) throws ARCDiscoveryException,
-  MalformedURLException, IOException{
+  public boolean submit(JobInfo job, String scriptName, String xrslFileName) throws ARCDiscoveryException,
+     MalformedURLException, IOException{
 
-    xrslFileName = _xrslFileName;
     scriptGenerator =  new NGScriptGenerator(csName);
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     
@@ -107,7 +104,7 @@ public class NGSubmission{
     }
     String ngJobId = null;
     try{
-      ngJobId = doSubmit();
+      ngJobId = doSubmit(xrslFileName);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -124,11 +121,11 @@ public class NGSubmission{
     }
   }
 
-  private String doSubmit() throws ARCDiscoveryException,
+  private String doSubmit(String xrslFileName) throws ARCDiscoveryException,
   MalformedURLException, ARCGridFTPJobException, IOException, GeneralSecurityException, GSSException{
     
-    queue = null;
-    xrsl = "";
+    String queue = null;
+    String xrsl = "";
     BufferedReader in = null;
     try{
       Debug.debug("Reading file "+xrslFileName, 3);
@@ -156,20 +153,20 @@ public class NGSubmission{
                          "\tException\t: " + ioe.getMessage(), ioe);
       throw ioe;
     }
-    submissionHost = null;
+    String submissionHost = null;
     if(resources==null){
       String [] selectedClusters;
-      if(REMEMBER_CLUSTERS){
-        selectedClusters = LAST_SELECTED_CLUSTERS;
+      if(rememberClusters){
+        selectedClusters = lastSelectedClusters;
       }
       else{
-        if(clusters.length==1){
+        if(clusters!=null && clusters.length==1){
           selectedClusters = clusters;
         }
         else{
           selectedClusters = selectClusters(clusters);
         }
-        LAST_SELECTED_CLUSTERS = selectedClusters;
+        lastSelectedClusters = selectedClusters;
       }
       // No information system.
       // Extremely simple brokering, but without the information system
@@ -197,7 +194,9 @@ public class NGSubmission{
       queue = "";
     }
     else{
-      findQueueWithInfoSys();
+      String [] hostAndQueue = findQueueWithInfoSys(xrsl);
+      submissionHost = hostAndQueue[0];
+      queue = hostAndQueue[1];
     }
     Debug.debug("Submitting to "+ submissionHost, 2);
 
@@ -226,17 +225,24 @@ public class NGSubmission{
     Debug.debug("Submitting with input files: "+MyUtil.arrayToString(files.toArray()), 2);
     Debug.debug("Submitting with input file names: "+MyUtil.arrayToString(fileNames.toArray()), 2);
 
-    return arcSubmit();
+    return arcSubmit(submissionHost, xrsl);
   }
   
-  private void findQueueWithInfoSys() throws ARCDiscoveryException, IOException, GeneralSecurityException {
+  /**
+   * Find suitable host and queue.
+   * @return string array with 2 elements: host and queue
+   * @throws ARCDiscoveryException
+   * @throws IOException
+   * @throws GeneralSecurityException
+   */
+  private String [] findQueueWithInfoSys(String xrsl) throws ARCDiscoveryException, IOException, GeneralSecurityException {
     // Use information system
     Matcher matcher = new SimpleMatcher();
     
     ARCResource resource = null;
     ARCResource selectedResources [];
-    if(REMEMBER_CLUSTERS){
-      selectedResources = LAST_SELECTED_RESOURCES;
+    if(rememberClusters){
+      selectedResources = lastSelectedResources;
     }
     else{
       if(resources.length==1){
@@ -245,35 +251,41 @@ public class NGSubmission{
       else{
         selectedResources = selectResources(resources);
       }
-      LAST_SELECTED_RESOURCES = selectedResources;
+      lastSelectedResources = selectedResources;
     }
-
+    
+    String submissionHost = null;
+    String queue = null;
+    
+    int maxFreeJobs = 0;
     for(int i=0; i<selectedResources.length; ++i){
       try{
         Debug.debug("Checking resource "+selectedResources[i].getClusterName()+
             "/"+selectedResources[i].getQueueName()+
             //". RTES: "+MyUtil.arrayToString(resources[i].getRuntimeenvironment().toArray())+
             ". Min CPU time: "+selectedResources[i].getMinCpuTime()+
-            ". Max CPU time: "+selectedResources[i].getMaxCpuTime(), 2);
-        // Very simple brokering.
-        // If resource is suitable and has free slots, the job
-        // is submitted, otherwise try next resource.
-        // If no free slots are found, submit to the resource
-        // with highest number of CPUs
+            ". Max CPU time: "+selectedResources[i].getMaxCpuTime()+
+            ". Free jobs: "+selectedResources[i].getFreejobs(), 2);
+        // Very simple brokering:
+        // The job is submitted to the suitable resource with the most free slots.
+        // If no free slots are found, submit to the resource with highest number of CPUs
         if(matcher.isResourceSuitable(xrsl, selectedResources[i]) &&
-            selectedResources[i].getFreejobs()>0){
+            selectedResources[i].getFreejobs()>maxFreeJobs){
           submissionHost = selectedResources[i].getClusterName();
           queue = selectedResources[i].getQueueName();
-          Debug.debug("Submitting to: "+submissionHost+"/"+queue, 2);
-          break;
+          maxFreeJobs = selectedResources[i].getFreejobs();
+          Debug.debug("New submission target: "+submissionHost+"/"+queue, 2);
+          if(fastSubmission){
+            break;
+          }
         }
         else{
-          Debug.debug("Resources "+selectedResources[i].getClusterName()+"/"+selectedResources[i].getQueueName()+" does not match requirements. Free jobs: "+
+          Debug.debug("Resource "+selectedResources[i].getClusterName()+"/"+selectedResources[i].getQueueName()+" does not match requirements. Free jobs: "+
               selectedResources[i].getFreejobs(), 2);
         }
       }
       catch(ARCGridFTPJobException ae){
-        Debug.debug("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+        Debug.debug("ARCGridFTPJobException during submission of " + xrsl + ":\n" +
             "\tException\t: " + ae.getMessage(), 2);
         ae.printStackTrace();
       }
@@ -284,12 +296,16 @@ public class NGSubmission{
         try{
           if(matcher.isResourceSuitable(xrsl, selectedResources[i]) &&
               (resource==null ||
-                  selectedResources[i].getTotalQueueCPUs()>resource.getTotalQueueCPUs() ||
+                  selectedResources[i].getTotalQueueCPUs()-selectedResources[i].getQueued()>
+                  resource.getTotalQueueCPUs()-resource.getQueued() ||
                   selectedResources[i].getFreejobs()>resource.getFreejobs())){
               resource = selectedResources[i];
-              queue = resource.getQueueName();
-              Debug.debug("Submitting to: "+submissionHost+"/"+queue, 2);          
-              break;
+              Debug.debug("New submission target: "+
+                  selectedResources[i].getClusterName()+"/"+resource.getQueueName()+"-->"+
+                  selectedResources[i].getTotalQueueCPUs()+"/"+resource.getQueued(), 2);          
+              if(fastSubmission){
+                break;
+              }
            }
            else{
              logFile.addInfo("Resource rejected: \n"+
@@ -303,7 +319,12 @@ public class NGSubmission{
       }
       if(resource!=null){
         submissionHost = resource.getClusterName();
+        queue = resource.getQueueName();
+        Debug.debug("Submitting to: "+submissionHost+"/"+queue, 2);          
       }
+    }
+    else{
+      Debug.debug("Submitting to: "+submissionHost+"/"+queue, 2);
     }
     if(submissionHost==null){
       throw new ARCDiscoveryException("No suitable clusters found.");
@@ -321,9 +342,15 @@ public class NGSubmission{
       submissionHost = "gsiftp://"+submissionHost+":2811/jobs";
     }
     Debug.debug("Submitting to: "+submissionHost+"/"+queue, 2);
+    
+    return new String[]{submissionHost, queue};
   }
 
-  private String[] selectClusters(String[] _clusters) {
+  private synchronized String[] selectClusters(String[] _clusters) {
+    
+    if(rememberClusters && lastSelectedClusters!=null && lastSelectedClusters.length>0){
+      return lastSelectedClusters;
+    }
     
     String[] nonExcludedClusters = discardExcludedClusters(_clusters);
 
@@ -355,7 +382,7 @@ public class NGSubmission{
     
     if(choice==displayObjects.length-3){
       if(cbRemember.isSelected()){
-        REMEMBER_CLUSTERS = true;
+        rememberClusters = true;
       }
       Vector<String> retVec = new Vector<String>();
       for(int i=0; i<cbsClusters.length; ++i){
@@ -402,7 +429,7 @@ public class NGSubmission{
     return retVec.toArray(new ARCResource[retVec.size()]);
   }
 
-  private String arcSubmit() throws IOException, GeneralSecurityException, GSSException {
+  private String arcSubmit(String submissionHost, String xrsl) throws IOException, GeneralSecurityException, GSSException {
     String ngJobId = null;
     int i = 0;
     ARCGridFTPJob gridJob = null;
@@ -424,9 +451,9 @@ public class NGSubmission{
       }
       catch(ARCGridFTPJobException ae){
         gridJob.disconnect();
-        logFile.addMessage("ARCGridFTPJobException during submission of " + xrslFileName + ":\n" +
+        logFile.addMessage("ARCGridFTPJobException during submission of " + xrsl + ":\n" +
             "\tException\t: " + ae.getMessage(), ae);
-        if(i>MAX_SUBMIT_RETRIES){
+        if(i>maxSubmitRetries){
           Debug.debug("WARNING: could not submit job", 1);
           break;
         }
@@ -447,7 +474,10 @@ public class NGSubmission{
   }
 
   private ARCResource [] rankResources(ARCResource [] resources){
-    ARCResource [] ret = null;
+    if(resources==null){
+      return resources;
+    }
+    ARCResource [] ret = new ARCResource [resources.length];
     for(int i=0; i<resources.length; ++i){
       // It seems that only getFreejobs and getTotalQueueCPUs can be trusted
       Debug.debug("Resource "+resources[i].getClusterName(), 2);
@@ -459,6 +489,7 @@ public class NGSubmission{
       Debug.debug("   getQueueName: "+resources[i].getQueueName(), 2);
       Debug.debug("   getTotalClusterCPUs: "+resources[i].getTotalClusterCPUs(), 2);
       Debug.debug("   getTotalQueueCPUs: "+resources[i].getTotalQueueCPUs(), 2);
+      ret[i] = resources[i];
     }
     return ret;
   }

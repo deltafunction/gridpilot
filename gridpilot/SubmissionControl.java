@@ -789,7 +789,7 @@ public class SubmissionControl{
       preprocessedJobsByCS = mgr.getPreprocessedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         ppJobsByCS[i] += preprocessedJobsByCS[i];
-        Debug.debug("Upping preprocessed job count for CS "+csNames[i]+" with "+preprocessedJobsByCS[i], 3);
+        //Debug.debug("Upping preprocessed job count for CS "+csNames[i]+" with "+preprocessedJobsByCS[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
         }
@@ -798,7 +798,7 @@ public class SubmissionControl{
       submittedJobsByCS = mgr.getSubmittedJobsByCS();
       for(int i=0; i<csNames.length; ++i){
         rJobsByCS[i] += submittedJobsByCS[i];
-        Debug.debug("Upping submitted job count for CS "+csNames[i]+" with "+submittedJobsByCS[i], 3);
+        //Debug.debug("Upping submitted job count for CS "+csNames[i]+" with "+submittedJobsByCS[i], 3);
         if(csNames[i].equalsIgnoreCase(job.getCSName())){
           jobCsIndex = i;
         }
@@ -814,7 +814,7 @@ public class SubmissionControl{
       tmpJob = it.next();
       for(int i=0; i<csNames.length; ++i){
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
-          Debug.debug("Upping preprocessing job count for CS "+csNames[i], 3);
+          //Debug.debug("Upping preprocessing job count for CS "+csNames[i], 3);
           ++preprossingJobsByCS[i];
         }
       }

@@ -31,6 +31,7 @@ public class JobValidation{
   private java.util.Timer timer = new java.util.Timer();
   private String [] errorPatterns = null;
   private String [] errorAntiPatterns = null;
+  private boolean validateOutput = false;
   
   public JobValidation(){
     logFile =  GridPilot.getClassMgr().getLogFile();
@@ -39,6 +40,20 @@ public class JobValidation{
   }
 
   public void loadValues(){
+    String validateOutputStr = configFile.getValue("Computing systems", "Validate output");
+    if(validateOutputStr!=null){
+      try{
+        validateOutput = validateOutputStr.trim().equalsIgnoreCase("yes") || validateOutputStr.trim().equalsIgnoreCase("true");
+      }
+      catch(Exception e){
+        logFile.addMessage("Value of \"validate output\" "+
+                           "cannot be parsed as boolean. Defaulting to "+validateOutput, e);
+      }
+    }
+    else{
+      logFile.addMessage(configFile.getMissingMessage("Computing systems", "delay before validation") + "\n" +
+                         "Default value = " + delayBeforeValidation);
+    }
     String delay = configFile.getValue("Computing systems", "Delay before validation");
     if(delay!=null){
       try{
@@ -75,7 +90,7 @@ public class JobValidation{
    * Adds the specified job into the job to validate queue after
    * <code>delayBeforeValidation</code> ms. <p>
    * After this delay, and if there is not too much pending validation, this job
-   * validation is started immediatly. <p>
+   * validation is started immediately. <p>
    */
   public synchronized void validate(MyJobInfo job){
     Debug.debug("validate " + job.getName() + " at " + Calendar.getInstance().getTime().toString(), 2);
@@ -149,12 +164,11 @@ public class JobValidation{
    * update database, warns, and checks for a new validation. <p>
    */
   private void endOfValidation(MyJobInfo job, int dbStatus){
-    
     if(dbStatus!=job.getDBStatus()){
       JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       jobMgr.updateDBStatus(job, dbStatus);
     }
-    if(dbStatus!=job.getDBStatus()){ // checks that updateDBStatus succeded
+    if(dbStatus!=job.getDBStatus()){ // checks that updateDBStatus succeeded
       logFile.addMessage("update DB status failed after validation ; " +
                          "this job is set back updatable, and will be revalidated later " +
                          "(after redetection of this job end", job);
@@ -164,7 +178,7 @@ public class JobValidation{
 
     if(!GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()).updateJobValidationResult(
         job.getIdentifier(), job.getValidationResult())){
-      logFile.addMessage("DB updateJobStdoutErr(" + job.getIdentifier() + ", " +
+      logFile.addMessage("DB updateJobValidationResult(" + job.getIdentifier() + ", " +
                          job.getValidationResult() +
                          ") failed", job);
     }
@@ -224,6 +238,11 @@ public class JobValidation{
    * Called by {@link #newValidation()}
    */
   private int doValidate(MyJobInfo job){
+    
+    if(!validateOutput ){
+      return DBPluginMgr.VALIDATED;
+    }
+    
     int exitValue;
     String [] outs = null;
     long beginTime = new Date().getTime();
