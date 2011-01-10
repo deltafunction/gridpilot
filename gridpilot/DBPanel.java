@@ -476,7 +476,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
+          // TODO: the double-click speed is too low on Mac OS X.
+          if(e.getClickCount()==2 /*&& !MyUtil.onMacOSX()*/){
             editDataset();
           }
         }
@@ -546,7 +547,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
+          if(e.getClickCount()==2  /*&& !MyUtil.onMacOSX()*/){
             editFile();
           }
         }
@@ -589,7 +590,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
+          if(e.getClickCount()==2  /*&& !MyUtil.onMacOSX()*/){
             editJobDef();
           }
         }
@@ -641,7 +642,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
+          if(e.getClickCount()==2  /*&& !MyUtil.onMacOSX()*/){
             editExecutable();
           }
         }
@@ -662,7 +663,7 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
       
       tableResults.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent e){
-          if(e.getClickCount()==2){
+          if(e.getClickCount()==2  /*&& !MyUtil.onMacOSX()*/){
             editRuntimeEnvironment();
           }
         }

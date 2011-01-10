@@ -288,6 +288,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       Hashtable clusterTable =
         mds.search(BDII_BASE_DN, "(GlueSubClusterName=*)",
             new String [] {"GlueSubClusterName"}, MDS.SUBTREE_SCOPE);
+      Debug.debug("Checking glite rtes. All hosts: "+clusterTable.values(), 2);
       Enumeration<MDSResult> en = clusterTable.elements();
       Enumeration<MDSResult> enn = null;
       Hashtable<String, MDSResult> rteTable = null;
@@ -295,15 +296,16 @@ public class GLiteComputingSystem implements MyComputingSystem{
       MDSResult rteRes = null;
       String host = null;
       String rte = null;
-      Debug.debug("rteClusters: "+MyUtil.arrayToString(rteClusters), 2);
+      Debug.debug("rteClusters: "+MyUtil.arrayToString(rteClusters, ":"), 2);
       while(en.hasMoreElements()){
         hostRes = en.nextElement();
         host = hostRes.getFirstValue("GlueSubClusterName").toString();
-        // If runtime hosts are defined, ignore non-mathing hosts
-        if(rteClusters!=null && !Arrays.asList(rteClusters).contains(host)){
+        // If runtime hosts are defined, ignore non-matching hosts
+        Debug.debug("host -> "+host, 3);
+        if(rteClusters!=null && !MyUtil.arrayContainsMatch(rteClusters, host)){
           continue;
         }
-        Debug.debug("host -> "+host, 2);
+        Debug.debug("continuing with host -> "+host, 2);
         rteTable = mds.search(BDII_BASE_DN, "(GlueSubClusterName="+host+")",
             new String [] {"GlueHostApplicationSoftwareRunTimeEnvironment"},
             MDS.SUBTREE_SCOPE);

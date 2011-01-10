@@ -55,6 +55,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   private String[] datasetExecutableReference;
   private String[] datasetExecutableVersionReference;
 
+  private boolean detailsAreShown = false;
+
   /**
    * Constructor
    */
@@ -606,7 +608,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
       else if(cbRuntimeEnvironmentSelection!=null &&
           runtimeEnvironmentName!=null && !runtimeEnvironmentName.trim().equals("") &&
           cstAttributesNames[i].equalsIgnoreCase(executableRuntimeReference[1])){
-        if(GridPilot.ADVANCED_MODE){
+        if(GridPilot.ADVANCED_MODE && detailsAreShown){
           tcCstAttributes[i].updateUI();
           String existingRte = MyUtil.getJTextOrEmptyString(tcCstAttributes[i]);
           if(!existingRte.trim().matches(runtimeEnvironmentName) && !existingRte.matches(".*[\\s\\n\\r]+"+runtimeEnvironmentName+"[\\s\\n\\r]*.*")){
@@ -667,6 +669,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     for(Iterator<JComponent> it=detailFields.iterator(); it.hasNext(); ){
       it.next().setVisible(show);
     }
+    detailsAreShown = show;
   }
 
   private boolean isDetail(String fieldName){
