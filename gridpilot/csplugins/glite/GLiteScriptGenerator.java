@@ -38,6 +38,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   private String[] clusters = null;
   private String[] excludedClusters = null;
   private boolean sendJobsToData = false;
+  private String lfcHost = null;
 
   // These files will be uploaded to the sandbox.
   protected List<String> localInputFilesList = null;
@@ -115,8 +116,12 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     for(int i=0; i<lfcInputFilesList.size(); ++i){
       url = lfcInputFilesList.get(i);
       guid = url.toString().replaceFirst(".*guid=(.+)", "$1");
-      name = url.toString().replaceFirst("^.*/([^/]+)", "$1");
+      //name = url.toString().replaceFirst("^.*/([^/]+)", "$1");
+      name = url.toString().replaceFirst(".*lfn=(.+)", "$1");
       if(!url.equals(guid)){
+        writeLine(bufScript, "export LCG_CATALOG_TYPE=lfc");
+        writeLine(bufScript, "export LFC_HOST="+lfcHost);
+        writeLine(bufScript, "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${GLITE_EXTERNAL_ROOT}/usr/lib64");
         writeLine(bufScript, "lcg-cp guid:"+guid+" file://`pwd`/"+MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr);
         ++lfc_input_file_nr;
       }
@@ -401,22 +406,23 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         if(sendJobsToData){
           jdlLine = "DataRequirements = {[\n";
           jdlLine += "InputData = {";
-          String lfcHost = null;
-          String oldLfcHost = null;
-          String cat = null;
-          String guid;
-          String name;
-          for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
-            cat = it.next();
-            if(cat.startsWith("lfc:")){
-              //name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
-              name = cat.toString().replaceFirst(".*lfn=(.+)", "$1");
-              guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
-              lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
-              if(lfcHost.equals(cat)){
-                logFile.addMessage("WARNING: could not parse LFC host from "+cat);
-                lfcHost = null;
-              }
+        }
+        String oldLfcHost = null;
+        String cat = null;
+        String guid;
+        String name;
+        for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
+          cat = it.next();
+          if(cat.startsWith("lfc:")){
+            //name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
+            name = cat.toString().replaceFirst(".*lfn=(.+)", "$1");
+            guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
+            lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
+            if(lfcHost.equals(cat)){
+              logFile.addMessage("WARNING: could not parse LFC host from "+cat);
+              lfcHost = null;
+            }
+            if(sendJobsToData){
               if(!guid.equals(cat)){
                 jdlLine += "\"guid:"+guid+"\", ";
               }
@@ -426,13 +432,15 @@ public class GLiteScriptGenerator extends ScriptGenerator {
               else{
                 logFile.addMessage("WARNING: could not parse lfn or guid from "+cat);
               }
-              if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
-                throw new IOException("ERROR: cannot use more than one catalog per job. "+
-                    lfcHost+"!="+oldLfcHost);
-              }
-              oldLfcHost = lfcHost;
             }
+            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
+              throw new IOException("ERROR: cannot use more than one catalog per job. "+
+                  lfcHost+"!="+oldLfcHost);
+            }
+            oldLfcHost = lfcHost;
           }
+        }
+        if(sendJobsToData){
           jdlLine += "};";
           jdlLine = jdlLine.replaceFirst(", }","}") ;
           writeLine(bufJdl, jdlLine);
