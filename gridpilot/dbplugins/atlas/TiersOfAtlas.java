@@ -1,6 +1,7 @@
 package gridpilot.dbplugins.atlas;
 
 import gridfactory.common.Debug;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Util;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -66,7 +67,7 @@ public class TiersOfAtlas {
       }
       if(_localCacheFile==null || _localCacheFile.trim().equals("")){
         if(!tmpFile.exists() || tmpFile.length()<1000){
-          throw new IOException("ERROR: "+toaURL+" not available and no old cache file present.");
+          throw new IOException("ERROR: "+toaURL+" not available and not using cache.");
         }
         toaFile = tmpFile;
       }
@@ -77,7 +78,8 @@ public class TiersOfAtlas {
         }
         else{
           toaFile.delete();
-          tmpFile.renameTo(toaFile);
+          LocalStaticShell.copyFile(tmpFile.getAbsolutePath(), toaFile.getAbsolutePath());
+          tmpFile.delete();
         }
       }
       Debug.debug("Wrote cache of TiersOfATLAS in "+toaFile.getAbsolutePath(), 2);
