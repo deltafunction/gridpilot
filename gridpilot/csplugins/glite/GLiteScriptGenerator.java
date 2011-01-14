@@ -18,26 +18,26 @@ import java.util.Vector;
 
 public class GLiteScriptGenerator extends ScriptGenerator {
 
-  String cpuTime = null;
-  String memory = null;
-  String reRun = null;
-  List<String> remoteInputFilesList = null;
-  List<String> lfcInputFilesList = null;
-  String replicaCatalog = null;
-  String [] uses = null;
+  private String cpuTime = null;
+  private String memory = null;
+  private String reRun = null;
+  private List<String> remoteInputFilesList = null;
+  private List<String> lfcInputFilesList = null;
+  private String [] uses = null;
   protected HashMap<String, String> reverseRteTranslationMap;
   protected HashMap<String, String> rteApproximationMap;
-  DBPluginMgr dbPluginMgr = null;
-  MyJobInfo job = null;
-  String exeFileName = null;
-  String jdlFileName = null;
-  String [] outputFileNames = null;
-  String shortScriptName = null;
-  String jobDefID = null;
-  ConfigFile configFile;
-  String csName;
-  String[] clusters = null;
-  String[] excludedClusters = null;
+  private  DBPluginMgr dbPluginMgr = null;
+  private MyJobInfo job = null;
+  private String exeFileName = null;
+  private String jdlFileName = null;
+  private String [] outputFileNames = null;
+  private String shortScriptName = null;
+  private String jobDefID = null;
+  private ConfigFile configFile;
+  private String csName;
+  private String[] clusters = null;
+  private String[] excludedClusters = null;
+  private boolean sendJobsToData = false;
 
   // These files will be uploaded to the sandbox.
   protected List<String> localInputFilesList = null;
@@ -52,11 +52,18 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     cpuTime = configFile.getValue(csName, "CPU time");
     memory = configFile.getValue(csName, "Memory");
     reRun = configFile.getValue(csName, "Max rerun");
-    replicaCatalog = configFile.getValue(csName, "ReplicaCatalog");
     clusters = configFile.getValues(csName, "Clusters");
     excludedClusters = configFile.getValues(csName, "Excluded clusters");
     reverseRteTranslationMap = GridPilot.getClassMgr().getReverseRteTranslationMap(csName);
     rteApproximationMap = GridPilot.getClassMgr().getRteApproximationMap(csName);
+    String sendJobsToDataStr = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Send jobs to data");
+    if(sendJobsToDataStr==null || sendJobsToDataStr.equalsIgnoreCase("")){
+      sendJobsToData = false;
+    }
+    else{
+      sendJobsToData = ((sendJobsToDataStr.equalsIgnoreCase("yes")||
+          sendJobsToDataStr.equalsIgnoreCase("true"))?true:false);
+    }
     localInputFilesList = new Vector<String>();
     remoteInputFilesList = new Vector<String>();
     lfcInputFilesList = new Vector<String>();
@@ -391,53 +398,57 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       job.setDownloadFiles(remoteInputFilesArray);
   
       if(!lfcInputFilesList.isEmpty()){
-        jdlLine = "DataRequirements = {[\n";
-        jdlLine += "InputData = {";
-        String lfcHost = null;
-        String oldLfcHost = null;
-        String cat = null;
-        String guid;
-        String name;
-        for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
-          cat = it.next();
-          if(cat.startsWith("lfc:")){
-            name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
-            guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
-            lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
-            if(lfcHost.equals(cat)){
-              logFile.addMessage("WARNING: could not parse LFC host from "+cat);
-              lfcHost = null;
+        if(sendJobsToData){
+          jdlLine = "DataRequirements = {[\n";
+          jdlLine += "InputData = {";
+          String lfcHost = null;
+          String oldLfcHost = null;
+          String cat = null;
+          String guid;
+          String name;
+          for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
+            cat = it.next();
+            if(cat.startsWith("lfc:")){
+              //name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
+              name = cat.toString().replaceFirst(".*lfn=(.+)", "$1");
+              guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
+              lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
+              if(lfcHost.equals(cat)){
+                logFile.addMessage("WARNING: could not parse LFC host from "+cat);
+                lfcHost = null;
+              }
+              if(!guid.equals(cat)){
+                jdlLine += "\"guid:"+guid+"\", ";
+              }
+              else if(!name.equals(cat)){
+                jdlLine += "\"lfn:"+name+"\", ";
+              }
+              else{
+                logFile.addMessage("WARNING: could not parse lfn or guid from "+cat);
+              }
+              if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
+                throw new IOException("ERROR: cannot use more than one catalog per job. "+
+                    lfcHost+"!="+oldLfcHost);
+              }
+              oldLfcHost = lfcHost;
             }
-            if(!guid.equals(cat)){
-              jdlLine += "\"guid:"+guid+"\", ";
-            }
-            else if(!name.equals(cat)){
-              jdlLine += "\"lfn:"+name+"\", ";
-            }
-            else{
-              logFile.addMessage("WARNING: could not parse lfn or guid from "+cat);
-            }
-            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
-              throw new IOException("ERROR: cannot use more than one catalog per job. "+
-                  lfcHost+"!="+oldLfcHost);
-            }
-            oldLfcHost = lfcHost;
+          }
+          jdlLine += "};";
+          jdlLine = jdlLine.replaceFirst(", }","}") ;
+          writeLine(bufJdl, jdlLine);
+          if(lfcHost!=null){
+            writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
+          }
+          jdlLine = "DataCatalogType = \"DLI\";";
+          writeLine(bufJdl, jdlLine);
+          if(!lfcInputFilesList.isEmpty()){
+            jdlLine = "]};";
           }
         }
-        jdlLine += "};";
-        jdlLine = jdlLine.replaceFirst(", }","}") ;
-        writeLine(bufJdl, jdlLine);
-        if(lfcHost!=null){
-          writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
-        }
-      }
-      jdlLine = "DataCatalogType = \"DLI\";";
-      writeLine(bufJdl, jdlLine);
-      if(!lfcInputFilesList.isEmpty()){
-        jdlLine = "]};";
       }
       writeLine(bufJdl, jdlLine);
-      jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
+      //jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
+      jdlLine = "DataAccessProtocol = {\"rfio\", \"gsidcap\", \"gsiftp\"};";
       writeLine(bufJdl, jdlLine);
             
       // Various options
