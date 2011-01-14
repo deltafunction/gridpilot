@@ -407,6 +407,9 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           jdlLine = "DataRequirements = {[\n";
           jdlLine += "InputData = {";
         }
+        else{
+          jdlLine = "";
+        }
         String oldLfcHost = null;
         String cat = null;
         String guid;
@@ -453,8 +456,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
             jdlLine = "]};";
           }
         }
+        writeLine(bufJdl, jdlLine);
       }
-      writeLine(bufJdl, jdlLine);
       //jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
       jdlLine = "DataAccessProtocol = {\"rfio\", \"gsidcap\", \"gsiftp\"};";
       writeLine(bufJdl, jdlLine);
