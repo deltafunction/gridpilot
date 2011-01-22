@@ -200,7 +200,7 @@ public class JobMgr{
         MyJobInfo job = new MyJobInfo(selectedJobDefs[i], jobName);
 
         int dbStatus = DBPluginMgr.getStatusId(dbPluginMgr.getJobDefStatus(job.getIdentifier()));
-        Debug.debug("Setting job db status :"+dbStatus+":", 3);
+        Debug.debug("Setting job db status :"+dbStatus+":", 2);
         job.setDBStatus(dbStatus);
         Debug.debug("Setting job DB :"+dbName+":", 3);
         job.setDBName(dbName);
@@ -246,17 +246,21 @@ public class JobMgr{
                            dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
             break;
           case DBPluginMgr.FAILED:
+            Debug.debug(job.getName()+" is failed",3);
+            job.setNeedsUpdate(false);
+            job.setOutputs(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()),
+                dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
+            break;
           case DBPluginMgr.UNDECIDED:
             Debug.debug(job.getName()+" exited with state undecided",3);
             stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
             stdErr = dbPluginMgr.getRunInfo(job.getIdentifier(), "errTmp");
-            if(stdErr==null || stdErr.trim().length()==0 ||
-               stdErr.equalsIgnoreCase("null")){
+            if(stdErr==null || stdErr.trim().length()==0 || stdErr.equalsIgnoreCase("null")){
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
             setUpdateNeeded(job);
-            // ! no break
+            break;
           case DBPluginMgr.UNEXPECTED:
             Debug.debug(job.getName()+" ran with unexpected errors",3);
             stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
@@ -267,7 +271,7 @@ public class JobMgr{
             }
             job.setOutputs(stdOut, stdErr);
             setUpdateNeeded(job);
-            // ! no break
+            break;
           case DBPluginMgr.SUBMITTED:
             stdOut = dbPluginMgr.getRunInfo(job.getIdentifier(), "outTmp");
             stdErr = dbPluginMgr.getRunInfo(job.getIdentifier(), "errTmp");
