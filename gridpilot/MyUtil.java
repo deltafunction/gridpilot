@@ -711,7 +711,7 @@ private static String fixUrl(String _url){
         GridPilot.WAIT_FOREVER = true;
       }
       try{
-        GridPilot.getClassMgr().getGlobalFrame().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+        GridPilot.getClassMgr().getGlobalFrame().getContentPane().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
       }
       catch(Exception e){ 
       }
