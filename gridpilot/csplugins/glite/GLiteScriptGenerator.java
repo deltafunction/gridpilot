@@ -38,6 +38,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
   private String[] clusters = null;
   private String[] excludedClusters = null;
   private boolean sendJobsToData = false;
+  private boolean forceSpecificCatalog = false;
   private String lfcHost = null;
 
   // These files will be uploaded to the sandbox.
@@ -64,6 +65,14 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     else{
       sendJobsToData = ((sendJobsToDataStr.equalsIgnoreCase("yes")||
           sendJobsToDataStr.equalsIgnoreCase("true"))?true:false);
+    }
+    String forceSpecificCatalogStr = GridPilot.getClassMgr().getConfigFile().getValue(csName, "Force specific catalog");
+    if(forceSpecificCatalogStr==null || forceSpecificCatalogStr.equalsIgnoreCase("")){
+      forceSpecificCatalog = false;
+    }
+    else{
+      forceSpecificCatalog = ((forceSpecificCatalogStr.equalsIgnoreCase("yes")||
+          forceSpecificCatalogStr.equalsIgnoreCase("true"))?true:false);
     }
     localInputFilesList = new Vector<String>();
     remoteInputFilesList = new Vector<String>();
@@ -119,9 +128,18 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       //name = url.toString().replaceFirst("^.*/([^/]+)", "$1");
       name = url.toString().replaceFirst(".*lfn=(.+)", "$1");
       if(!url.equals(guid)){
+        writeLine(bufScript, "echo \"uname -a\"; uname -a");
+        writeLine(bufScript, "echo \"getconf LONG_BIT\"; getconf LONG_BIT");
         writeLine(bufScript, "export LCG_CATALOG_TYPE=lfc");
-        writeLine(bufScript, "export LFC_HOST="+lfcHost);
-        writeLine(bufScript, "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${GLITE_EXTERNAL_ROOT}/usr/lib64");
+        if(sendJobsToData && !forceSpecificCatalog && GridPilot.VO!=null && !GridPilot.VO.trim().equals("")){
+          writeLine(bufScript, "export LFC_HOST=lcg-infosites --vo "+GridPilot.VO+" lfc");
+        }
+        else{
+          writeLine(bufScript, "export LFC_HOST="+lfcHost);
+        }
+        writeLine(bufScript, "if [ \"`uname -a | grep -r 'i[3456]86'`\" ]; " +
+        		"then export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${GLITE_EXTERNAL_ROOT}/usr/lib; else " +
+        		"export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${GLITE_EXTERNAL_ROOT}/usr/lib64; fi");
         writeLine(bufScript, "lcg-cp guid:"+guid+" file://`pwd`/"+MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr);
         ++lfc_input_file_nr;
       }
@@ -416,16 +434,16 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         String name;
         for(Iterator<String> it=lfcInputFilesList.iterator(); it.hasNext();){
           cat = it.next();
-          if(cat.startsWith("lfc:")){
-            //name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
-            name = cat.toString().replaceFirst(".*lfn=(.+)", "$1");
-            guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
-            lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
-            if(lfcHost.equals(cat)){
-              logFile.addMessage("WARNING: could not parse LFC host from "+cat);
-              lfcHost = null;
-            }
-            if(sendJobsToData){
+          if(sendJobsToData){
+            if(cat.startsWith("lfc:")){
+              //name = cat.toString().replaceFirst("^.*/([^/]+)", "$1");
+              name = cat.toString().replaceFirst(".*lfn=(.+)", "$1");
+              guid = cat.toString().replaceFirst(".*guid=(.+)", "$1");
+              lfcHost = cat.replaceFirst("lfc:/*([^:^/]+)[:/].*", "$1");
+              if(lfcHost.equals(cat)){
+                logFile.addMessage("WARNING: could not parse LFC host from "+cat);
+                lfcHost = null;
+              }
               if(!guid.equals(cat)){
                 jdlLine += "\"guid:"+guid+"\", ";
               }
@@ -435,26 +453,30 @@ public class GLiteScriptGenerator extends ScriptGenerator {
               else{
                 logFile.addMessage("WARNING: could not parse lfn or guid from "+cat);
               }
+              if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
+                throw new IOException("ERROR: cannot use more than one catalog per job. "+
+                    lfcHost+"!="+oldLfcHost);
+              }
+              oldLfcHost = lfcHost;
             }
-            if(oldLfcHost!=null && !lfcHost.equals(oldLfcHost)){
-              throw new IOException("ERROR: cannot use more than one catalog per job. "+
-                  lfcHost+"!="+oldLfcHost);
+            else{
+              logFile.addMessage("WARNING: LFC file list contains non-lfc URL: "+cat);
+              jdlLine += "\""+cat+"\", ";
             }
-            oldLfcHost = lfcHost;
           }
         }
+        // sendJobsToData implies that we'll download files with lcg-cp guid:... instead of lcg-cp srm://...
         if(sendJobsToData){
           jdlLine += "};";
           jdlLine = jdlLine.replaceFirst(", }","}") ;
           writeLine(bufJdl, jdlLine);
-          if(lfcHost!=null){
+          // Not necessary, in fact not wanted - it'll likely cause jobs not to be picked up.
+          if(lfcHost!=null && forceSpecificCatalog){
             writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
+            jdlLine = "DataCatalogType = \"DLI\";";
           }
-          jdlLine = "DataCatalogType = \"DLI\";";
           writeLine(bufJdl, jdlLine);
-          if(!lfcInputFilesList.isEmpty()){
-            jdlLine = "]};";
-          }
+          jdlLine = "]};";
         }
         writeLine(bufJdl, jdlLine);
       }
