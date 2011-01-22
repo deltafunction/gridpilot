@@ -1233,6 +1233,7 @@ public class JobCreator{
         inputUrlsStr = (String) inputFile.getValue(pfnsField);
       }
       else{
+        Debug.debug("Getting file <-- "+inputDatasetName+":"+currentPartition+":"+i+":"+inputFileIds[currentPartition-1+i], 2);
         inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONLY_CATALOG_URLS);
         try{
           catalogPrefix = ((String) inputFile.getValue(catalogsField));
