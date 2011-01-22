@@ -3355,4 +3355,16 @@ public class HSQLDBDatabase extends DBCache implements Database{
   public void clearRequestStopLookup() {
   }
 
+  public String[] getChildrenDatasetNames(String datasetName)
+      throws InterruptedException {
+    // TODO
+    return null;
+  }
+
+  public String[] getParentDatasetNames(String datasetName)
+      throws InterruptedException {
+    // TODO
+    return null;
+  }
+
 }

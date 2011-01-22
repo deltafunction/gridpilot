@@ -161,7 +161,7 @@ public class WebServiceConnection {
 		String physicalAccessName = createFullPath(path);
 		physicalAccessName = physicalAccessName + (physicalAccessName.indexOf("?")>-1?"&":"?") + params;
 		URL getURL = new URL(physicalAccessName);
-		return  get(getURL);		
+		return get(getURL);		
 	}
 
 	

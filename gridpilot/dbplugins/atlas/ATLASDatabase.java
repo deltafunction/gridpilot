@@ -1713,7 +1713,54 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
   }
   
-  private PFNResult findPFNs(String vuid, String dsn, String _guid, String lfn, int findAll){
+  private PFNResult findPFNs(String vuid, String dsn, String guid, String lfn, int findAll){
+    if(dsn.endsWith("/")){
+      return findPFNsOfContainer(vuid, dsn, guid, lfn, findAll);
+    }
+    else{
+      return doFindPFNs(vuid, dsn, guid, lfn, findAll);
+    }
+  }
+  
+  private PFNResult findPFNsOfContainer(String vuid, String dsn, String guid, String lfn, int findAll){
+    PFNResult res = new PFNResult();
+    try{
+      String [] childrenDsns = getChildrenDatasetNames(dsn);
+      String childVuid;
+      PFNResult partRes;
+      Vector<String> existingPfns;
+      String pfn;
+      for(int i=0; i<childrenDsns.length; ++i){
+        if(getStop() || !lookupPFNs()){
+          return res;
+        }
+        childVuid = getDatasetID(childrenDsns[i]);
+        partRes = doFindPFNs(childVuid, childrenDsns[i], guid, lfn, findAll);
+        res.getCatalogs().addAll(partRes.getCatalogs());
+        if(res.getBytes()==null || res.getBytes().trim().equals("")){
+          res.setBytes(partRes.getBytes());
+        }
+        if(res.getChecksum()==null || res.getChecksum().trim().equals("")){
+          res.setChecksum(partRes.getChecksum());
+        }
+        existingPfns = res.getPfns();
+        for(Iterator<String>it=partRes.getPfns().iterator(); it.hasNext();){
+          pfn = it.next();
+          if(!existingPfns.contains(pfn)){
+            existingPfns.add(pfn);
+          }
+        }
+        res.setPfns(existingPfns);
+      }
+    }
+    catch(InterruptedException e){
+      e.printStackTrace();
+      return res;
+    }
+    return res;
+  }
+  
+  private PFNResult doFindPFNs(String vuid, String dsn, String _guid, String lfn, int findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
@@ -3005,5 +3052,29 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
   // release the semaphore
   private void stopWorking(){
     working = false;
+  }
+
+  public String[] getChildrenDatasetNames(String datasetName)
+      throws InterruptedException {
+    String[] ret = new String[0];
+    try{
+      if(!datasetName.endsWith("/")){
+        return ret;
+      }
+      String res = dq2Access.getDatasetsInContainer(datasetName);
+      Debug.debug("getDatasetsInContainer --> "+ret, 2);
+      ret = MyUtil.split(res.replaceAll("'", "").replaceFirst("\\[", "").replaceFirst("\\]", ""), ", ");
+      Debug.debug("container datasets --> "+MyUtil.arrayToString(ret, ":"), 2);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    return ret;
+  }
+
+  public String[] getParentDatasetNames(String datasetID)
+      throws InterruptedException {
+    // Not implemented by this plugin (no DQ2 call available?).
+    return null;
   }
 }

@@ -38,6 +38,7 @@ public class DQ2Access {
   private final String addLocationsURL = "ws_location/rpc?operation=addDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String deleteLocationsURL = "ws_location/rpc?operation=deleteDatasetReplica&API="+ATLASDatabase.DQ2_API_VERSION;
   private final String deleteFilesURL = "ws_content/rpc?operation=deleteFilesFromDataset&API="+ATLASDatabase.DQ2_API_VERSION;
+  private final String listDatasetsInContainerURL = "ws_dq2/rpc?operation=container_retrieve&API="+ATLASDatabase.DQ2_API_VERSION;
   private boolean checkingProxy = false;
   private boolean proxyOk = false;
   
@@ -133,6 +134,35 @@ public class DQ2Access {
     for(int i=0; i<3; ++i){
       try{
         response = wsSecure.post(getLocationsURL, keys, values);
+        if(response!=null){
+          break;
+        }
+        Thread.sleep(3000);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return response;
+  }
+
+  /**
+   * Find the locations of a dataset
+   * @param dsn The Name of the DataSet to be located
+   * returns the raw response from the DQ2 web server  
+   */
+  public String getDatasetsInContainer(String containerName) throws Exception
+  {
+    Debug.debug("Checking proxy", 3);
+    checkProxy();
+    String keys[]={"name"};
+    String values[]={containerName};
+    Debug.debug("Finding datasets in container with web service on "+listDatasetsInContainerURL, 1);
+    // Try 3 times.
+    String response = null;
+    for(int i=0; i<3; ++i){
+      try{
+        response = wsSecure.get(listDatasetsInContainerURL, keys, values);
         if(response!=null){
           break;
         }
