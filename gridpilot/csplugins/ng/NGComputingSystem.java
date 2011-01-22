@@ -814,67 +814,8 @@ public class NGComputingSystem implements MyComputingSystem{
     String stdOutFile = job.getOutTmp();
     String stdErrFile = job.getErrTmp();
     
-    boolean resyncFirst = true;
-
-    if(resyncFirst){
-
-      // move existing files out of the way.
-      // - do it only if job.getOutTmp is not the final destination, that is,
-      // if syncCurrentOutputs will not get
-      // stdout/stderr from the final destination
-      boolean isValidated = false;
-      String dirName = runDir(job);
-      if(!LocalStaticShell.existsFile(dirName) || job.getDBStatus()==DBPluginMgr.VALIDATED){
-        isValidated = true;
-      }
-      if(!isValidated && stdOutFile!=null && !stdOutFile.equals("") &&
-          LocalStaticShell.existsFile(stdOutFile)){
-        LocalStaticShell.moveFile(stdOutFile, stdOutFile+".bk");
-      }
-      if(!isValidated && stdErrFile!=null && !stdErrFile.equals("") &&
-          LocalStaticShell.existsFile(stdErrFile)){
-        LocalStaticShell.moveFile(stdErrFile, stdErrFile+".bk");
-      }
-      
-      // if retrieval of files fails, move old files back in place
-      if(!syncCurrentOutputs((MyJobInfo) job)){
-        if(!isValidated){
-          try{
-            if(LocalStaticShell.existsFile(stdOutFile+".bk")){
-              LocalStaticShell.deleteFile(stdOutFile);
-              LocalStaticShell.moveFile(stdOutFile+".bk", stdOutFile);
-            }
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-          try{
-            if(LocalStaticShell.existsFile(stdErrFile+".bk")){
-              LocalStaticShell.deleteFile(stdErrFile);
-              LocalStaticShell.moveFile(stdErrFile+".bk", stdErrFile);
-            }
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-        }
-      }
-      // delete backup files
-      else{
-        Debug.debug("WARNING: could not update stdout/stderr for job "+
-            job.getName(), 2);
-        if(!isValidated){
-          try{
-            LocalStaticShell.deleteFile(stdOutFile+".bk");
-            LocalStaticShell.deleteFile(stdErrFile+".bk");
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }    
-        }
-      }
-    }
-        
+    resyncOutputs(job);
+    
     String [] res = new String[2];
 
     if(stdOutFile!=null && !stdOutFile.equals("")){
@@ -907,6 +848,68 @@ public class NGComputingSystem implements MyComputingSystem{
        }
     }
     return res;
+  }
+  
+  private void resyncOutputs(JobInfo job){
+    
+    String stdOutFile = job.getOutTmp();
+    String stdErrFile = job.getErrTmp();
+    
+    // move existing files out of the way.
+    // - do it only if job.getOutTmp is not the final destination, that is,
+    // if syncCurrentOutputs will not get
+    // stdout/stderr from the final destination
+    boolean isValidated = false;
+    String dirName = runDir(job);
+    if(!LocalStaticShell.existsFile(dirName) || job.getDBStatus()==DBPluginMgr.VALIDATED){
+      isValidated = true;
+    }
+    if(!isValidated && stdOutFile!=null && !stdOutFile.equals("") &&
+        LocalStaticShell.existsFile(stdOutFile)){
+      LocalStaticShell.moveFile(stdOutFile, stdOutFile+".bk");
+    }
+    if(!isValidated && stdErrFile!=null && !stdErrFile.equals("") &&
+        LocalStaticShell.existsFile(stdErrFile)){
+      LocalStaticShell.moveFile(stdErrFile, stdErrFile+".bk");
+    }
+    
+    // if retrieval of files fails, move old files back in place
+    if(!syncCurrentOutputs((MyJobInfo) job)){
+      if(!isValidated){
+        try{
+          if(LocalStaticShell.existsFile(stdOutFile+".bk")){
+            LocalStaticShell.deleteFile(stdOutFile);
+            LocalStaticShell.moveFile(stdOutFile+".bk", stdOutFile);
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        try{
+          if(LocalStaticShell.existsFile(stdErrFile+".bk")){
+            LocalStaticShell.deleteFile(stdErrFile);
+            LocalStaticShell.moveFile(stdErrFile+".bk", stdErrFile);
+          }
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+      }
+    }
+    // delete backup files
+    else{
+      Debug.debug("WARNING: could not update stdout/stderr for job "+
+          job.getName(), 2);
+      if(!isValidated){
+        try{
+          LocalStaticShell.deleteFile(stdOutFile+".bk");
+          LocalStaticShell.deleteFile(stdErrFile+".bk");
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }    
+      }
+    }
   }
   
   public ARCJob getJobFromIS(JobInfo job) throws ARCGridFTPJobException{
@@ -1331,7 +1334,7 @@ public class NGComputingSystem implements MyComputingSystem{
         File stdoutSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getOutTmp())));
         emptyFile = finalStdOut.startsWith("https") && stdoutSourceFile.length()==0;
         transferControl.upload(stdoutSourceFile, finalStdOut);
-        job.setOutTmp(finalStdOut);
+        //job.setOutTmp(finalStdOut);
       }
       catch(Throwable e){
         error = "ERROR copying stdout: "+e.getMessage();
@@ -1370,7 +1373,7 @@ public class NGComputingSystem implements MyComputingSystem{
         File stderrSourceFile = new File(MyUtil.clearTildeLocally(MyUtil.clearFile(job.getErrTmp())));
         emptyFile = finalStdOut.startsWith("https") && stderrSourceFile.length()==0;
         transferControl.upload(stderrSourceFile, finalStdErr);
-        job.setErrTmp(finalStdErr);
+        //job.setErrTmp(finalStdErr);
       }
       catch(Throwable e){
         error = "ERROR copying stderr: "+e.getMessage();
