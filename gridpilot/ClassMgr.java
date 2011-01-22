@@ -351,7 +351,7 @@ public class ClassMgr{
   public StatisticsPanel getJobStatisticsPanel(){
     if(jobStatisticsPanel==null){
       Debug.debug("jobStatisticsPanel null", 3);
-      jobStatisticsPanel = new JobStatisticsPanel("Jobs statistics");
+      jobStatisticsPanel = new JobStatisticsPanel("Job statistics");
     }
     return jobStatisticsPanel;
   }
@@ -359,7 +359,7 @@ public class ClassMgr{
   public StatisticsPanel getTransferStatisticsPanel(){
     if(transferStatisticsPanel==null){
       Debug.debug("transferStatisticsPanel null", 3);
-      transferStatisticsPanel = new TransferStatisticsPanel("Transfers statistics");
+      transferStatisticsPanel = new TransferStatisticsPanel("Transfer statistics");
     }
     return transferStatisticsPanel;
   }
