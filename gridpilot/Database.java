@@ -94,6 +94,8 @@ public interface Database{
   public DBRecord getDataset(String datasetID) throws InterruptedException;
   public String getDatasetExecutableName(String datasetID) throws InterruptedException;
   public String getDatasetExecutableVersion(String datasetID) throws InterruptedException;
+  public String[] getChildrenDatasetNames(String datasetName) throws InterruptedException;
+  public String[] getParentDatasetNames(String datasetName) throws InterruptedException;
 
   // ####### Job definition table
   public boolean isJobRepository() throws InterruptedException;
