@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Vector;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -829,6 +830,80 @@ public class DBPluginMgr extends DBCache implements Database{
     }
     else{
       return "-1";
+    }
+  }
+
+  public String[] getChildrenDatasetNames(final String datasetName)
+     throws InterruptedException {
+    ResThread t = new ResThread(){
+      String[] res = new String[0];
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
+      public void run(){
+        try{
+          db.clearError();
+          res = db.getChildrenDatasetNames(datasetName);
+        }
+        catch(Throwable t){
+          db.appendError(t.getMessage());
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetName, t);
+        }
+      }
+      public String[] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getChildrenDatasetNames")){
+      return t.getString2Res();
+    }
+    else{
+      return null;
+    }
+  }
+
+  public String[] getParentDatasetNames(final String datasetName)
+     throws InterruptedException {
+    ResThread t = new ResThread(){
+      String[] res = null;
+      public void requestStop(){
+        db.requestStop();
+      }
+      public void clearRequestStop(){
+        db.clearRequestStop();
+      }
+      public void run(){
+        try{
+          db.clearError();
+          res = db.getParentDatasetNames(datasetName);
+        }
+        catch(Throwable t){
+          db.appendError(t.getMessage());
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + dbName + " " +
+                             datasetName, t);
+        }
+      }
+      public String[] getString2Res(){
+        return res;
+      }
+    };
+  
+    t.start();
+  
+    if(MyUtil.myWaitForThread(t, dbName, dbTimeOut, "getParentDatasetNames")){
+      return t.getString2Res();
+    }
+    else{
+      return null;
     }
   }
 
@@ -3062,7 +3137,7 @@ public class DBPluginMgr extends DBCache implements Database{
   public DBResult getFiles(final String datasetID){
     
     ResThread t = new ResThread(){
-      DBResult res = null;
+      DBResult ret = null;
       public void requestStop(){
         db.requestStop();
       }
@@ -3070,9 +3145,28 @@ public class DBPluginMgr extends DBCache implements Database{
         db.clearRequestStop();
       }
       public void run(){
+        Vector<DBResult> res = new Vector<DBResult>();
         try{
           db.clearError();
-          res = db.getFiles(datasetID);
+          String[] children = null;
+          try{
+            String name;
+            name = db.getDatasetName(datasetID);
+            children = db.getChildrenDatasetNames(name);
+          }
+          catch(Exception ee){
+          }
+          if(children!=null && children.length>0){
+            String childId;
+            for(int i=0; i<children.length; ++i){
+              childId = db.getDatasetID(children[i]);
+              res.add(db.getFiles(childId));
+            }
+          }
+          else{
+            res.add(db.getFiles(datasetID));
+          }
+          ret = DBResult.merge(res.toArray(new DBResult[res.size()]));
         }
         catch(Throwable t){
           db.appendError(t.getMessage());
@@ -3082,7 +3176,7 @@ public class DBPluginMgr extends DBCache implements Database{
         }
       }
       public DBResult getDBResultRes(){
-        return res;
+        return ret;
       }
     };
   
