@@ -219,7 +219,7 @@ public class ClassMgr{
         Debug.debug("csPluginMgr: "+csPluginMgr, 3);
       }
       catch(Throwable e){
-        Debug.debug("Could not load plugins. "+e.getMessage(), 3);
+        logFile.addMessage("Could not load plugin.", e);
         e.printStackTrace();
       }
     }

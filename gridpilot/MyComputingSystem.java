@@ -67,8 +67,9 @@ public interface MyComputingSystem extends ComputingSystem {
    * do necessary setup.
    * 
    * @param csName the name of the computing system
+   * @throws Exception 
    */
-  public void setupRuntimeEnvironments(String csName);
+  public void setupRuntimeEnvironments(String csName) throws Exception;
 
   /**
    * Clear entries written by setupRuntimeEnvironments.

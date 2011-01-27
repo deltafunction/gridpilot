@@ -138,10 +138,12 @@ public class CSPluginMgr implements MyComputingSystem{
       Debug.debug("arguments: "+MyUtil.arrayToString(csArgs), 3);
       try{
         cs.put(csNames[i], MyUtil.loadClass(csClass, csArgsType, csArgs, logFile));
-        ((MyComputingSystem) cs.get(csNames[i])).setupRuntimeEnvironments(csNames[i]);
+        MyComputingSystem myCs = (MyComputingSystem) cs.get(csNames[i]);
+        Debug.debug("Discovering RTEs for "+myCs.getClass().getCanonicalName(), 2);
+        myCs.setupRuntimeEnvironments(csNames[i]);
       }
       catch(Throwable e){
-        Debug.debug("ERROR: plugin " + csNames[i] + "(" + csClass + ") not loaded. "+e.getMessage(), 2);
+        logFile.addMessage("ERROR: plugin " + csNames[i] + "(" + csClass + ") not loaded. ", e);
         e.printStackTrace();
       }
     }
@@ -850,7 +852,7 @@ public class CSPluginMgr implements MyComputingSystem{
     }
   }
   
-  public void setupRuntimeEnvironments(final String csName){
+  public void setupRuntimeEnvironments(final String csName) throws Exception{
     if(csName==null || csName.equals("")){
       return;
     }
@@ -862,17 +864,20 @@ public class CSPluginMgr implements MyComputingSystem{
         try{
           ((MyComputingSystem) cs.get(csName)).setupRuntimeEnvironments(csName);
         }
-        catch(Throwable t){
-          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                             " from plugin " + csName +
-                             " during setupRuntimeEnvironments", t);
+        catch(Exception e){
+          setException(e);
         }
       }
     };
 
     t.start();
 
-    MyUtil.myWaitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments");
+    if(!MyUtil.myWaitForThread(t, csName, setupTimeOut, "setupRuntimeEnvironments")){
+      throw new Exception("Timed out setting up runtime environments.");
+    }
+    if(t.getException()!=null){
+      throw t.getException();
+    }
   }
 
   public void cleanupRuntimeEnvironments(final String csName){
