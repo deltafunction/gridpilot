@@ -181,10 +181,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }
     try{
-      wmUrls = GridPilot.getClassMgr().getConfigFile().getValues(
-          csName, "WMProxy URLs");
-      lbUrls = GridPilot.getClassMgr().getConfigFile().getValues(
-          csName, "LB URLs");
+      wmUrls = GridPilot.getClassMgr().getConfigFile().getValues(csName, "WMProxy URLs");
+      wmProxyAPIs = new WMProxyAPI[wmUrls.length];
+      lbGetJobStatuses = new LBGetJobStatus[wmUrls.length];
+      lbUrls = GridPilot.getClassMgr().getConfigFile().getValues(csName, "LB URLs");
       if(lbUrls==null || lbUrls.length==0){
         lbUrls = new String[wmUrls.length];
         GlobusURL globusWmUrl;
@@ -198,23 +198,18 @@ public class GLiteComputingSystem implements MyComputingSystem{
       
       mds = new MDS(bdiiHost, BDII_PORT, BDII_BASE_DN);
       
-      // This seems to be necessary...
-      for(int i=0; i<wmUrls.length; ){
-        getVMProxyAPI((new GlobusURL(wmUrls[i]).getHost())).getInterfaceVersion();
-      }
+      runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
+          csName, "runtime databases");
       
-      try{
-        runtimeDBs = GridPilot.getClassMgr().getConfigFile().getValues(
-            csName, "runtime databases");
-      }
-      catch(Exception e){
-        Debug.debug("ERROR getting runtime database: "+e.getMessage(), 1);
-        e.printStackTrace();
-      }      
+      Debug.debug("GLite runtime databases: "+MyUtil.arrayToString(runtimeDBs), 2);
+      // This seems to be necessary...
+      getVMProxyAPI();
+      //getVMProxyAPI((new GlobusURL(wmUrls[0]).getHost())).getInterfaceVersion();
+
+      
     }
     catch(Exception e){
-      Debug.debug("ERROR initializing "+csName+". "+e.getMessage(), 1);
-      e.printStackTrace();
+      logFile.addMessage("ERROR initializing "+csName+".", e);
     }
     
   }
@@ -229,10 +224,11 @@ public class GLiteComputingSystem implements MyComputingSystem{
   /**
    * The runtime environments are simply found from the
    * information system.
+   * @throws Exception 
    */
-  public void setupRuntimeEnvironments(final String csName){
+  public void setupRuntimeEnvironments(final String csName) throws Exception{
     if(runtimeDBs==null || runtimeDBs.length==0){
-      return;
+      throw new Exception("WARNING: not runtime DB defined.");
     }
     final Vector<Exception> excpts = new Vector<Exception>();
     for(int i=0; i<runtimeDBs.length; ++i){
@@ -274,13 +270,16 @@ public class GLiteComputingSystem implements MyComputingSystem{
         }
         catch(Exception e){
           e.printStackTrace();
-          excpts.add(e);
+          setException(e);
         }
       }
     };
     t.start();
     if(!MyUtil.waitForThread(t, "gLite RTE setup", mdsTimeout , "setupRuntimeEnvironments", false, logFile)){
       excpts.add(new TimeoutException("MDS timeout."));
+    }
+    if(t.getException()!=null){
+      excpts.add(t.getException());
     }
     return excpts;
   }
@@ -642,7 +641,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
       logFile.addMessage("WARNING: could not initialize GSI security.", ee);
     }
     if(wmProxyAPIs[i]==null){
-      Debug.debug("Creating new WMProxyAPI; "+MySSL.getProxyFile().getAbsolutePath()+
+      Debug.debug("Creating new WMProxyAPI; "+wmHost+" : "+MySSL.getProxyFile().getAbsolutePath()+
           " : "+GridPilot.getClassMgr().getSSL().getCaCertsTmpDir(), 2);
       wmProxyAPIs[i] = new WMProxyAPI(wmUrls[i], MySSL.getProxyFile().getAbsolutePath(),
                                   GridPilot.getClassMgr().getSSL().getCaCertsTmpDir());

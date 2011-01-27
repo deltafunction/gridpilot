@@ -473,9 +473,8 @@ public class GLiteScriptGenerator extends ScriptGenerator {
           // Not necessary, in fact not wanted - it'll likely cause jobs not to be picked up.
           if(lfcHost!=null && forceSpecificCatalog){
             writeLine(bufJdl, "DataCatalog = \"http://"+lfcHost+":8085\";");
-            jdlLine = "DataCatalogType = \"DLI\";";
           }
-          writeLine(bufJdl, jdlLine);
+          writeLine(bufJdl, "DataCatalogType = \"DLI\";");
           jdlLine = "]};";
         }
         writeLine(bufJdl, jdlLine);
