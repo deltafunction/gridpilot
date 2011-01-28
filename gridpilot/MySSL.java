@@ -67,8 +67,6 @@ public class MySSL extends SSL{
   private boolean sslOk = false;
   private boolean proxyOk = false;
   private CoGProperties prop = null;
-  /** Whether or not this app was loaded from a jar. -1: not checked, 0 NOT loaded from jar, 1 loaded from jar. */
-  private static int FROM_JAR = -1;
 
   private final static String PROXY_TYPE_OLD = "OLD";
   private final static String PROXY_TYPE_GLOBUS = "GLOBUS";
@@ -232,20 +230,9 @@ public class MySSL extends SSL{
   
   private String setupDefaultVomsDir(String _vomsdir) {
     try{
-      if(FROM_JAR==-1){
-        // try and see if SSl.class was loaded from a jar
-        try{
-          FROM_JAR = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0?1:0;
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          Debug.debug("this class NOT loaded from jar.", 2);
-          FROM_JAR = 0;
-        }
-      }
       File myVomsdir;
       // if so, extract vomsdir to the vomsdir dir
-      if(FROM_JAR==1){
+      if(GridPilot.getClassMgr().fromJar()){
         if(_vomsdir!=null && !_vomsdir.trim().equals("")){
           myVomsdir = new File(clearTildeLocally(clearFile(_vomsdir)));
           if(!LocalStaticShell.existsFile(_vomsdir) || LocalStaticShell.listFiles(_vomsdir).length==0){

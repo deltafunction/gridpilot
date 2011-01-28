@@ -66,6 +66,8 @@ public class ClassMgr{
      new HashMap<String, HashMap<String, String>>();
   private HashMap<String, HashMap<String, String>> rteApproximationMap =
     new HashMap<String, HashMap<String, String>>();
+  /** Whether or not this app was loaded from a jar. -1: not checked, 0 NOT loaded from jar, 1 loaded from jar. */
+  private int fromJar = -1;
   // only accessed directly by GridPilot.exit()
   public CSPluginMgr csPluginMgr;
   
@@ -600,6 +602,21 @@ public class ClassMgr{
       rteApproximationMap.put(csName, new HashMap<String, String>());
     }
     return rteApproximationMap.get(csName);
+  }
+
+  public boolean fromJar() {
+    if(fromJar==-1){
+      // try and see if SSl.class was loaded from a jar
+      try{
+        fromJar = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0?1:0;
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        Debug.debug("this class NOT loaded from jar.", 2);
+        fromJar = 0;
+      }
+    }
+    return fromJar==1;
   }
   
 }

@@ -2,7 +2,12 @@ package gridpilot;
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.URL;
 
 import javax.swing.*;
@@ -379,9 +384,25 @@ public class GlobalFrame extends GFrame{
 
   // Help -> About action performed
   protected void menuHelpAbout_actionPerformed(){
-    URL aboutURL = null;
+    String aboutURLStr = null;
     try{
-      aboutURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "about.htm");
+      URL aboutURL = GridPilot.class.getResource(GridPilot.RESOURCES_PATH + "about.htm");
+      // If loaded from a jar, extract to a tmp file
+      if(GridPilot.getClassMgr().fromJar()){
+        File tmpFile = File.createTempFile(/*prefix*/"GridPilot-about", /*suffix*/".htm");
+        BufferedReader in = new BufferedReader(new InputStreamReader(aboutURL.openStream()));
+        PrintWriter out = new PrintWriter(new FileWriter(tmpFile));
+        String line;
+        while((line = in.readLine())!=null){
+          out.println(line);
+        }
+        in.close();
+        out.close();
+        aboutURLStr = "file:///"+tmpFile.getAbsolutePath();
+      }
+      else{
+        aboutURLStr = aboutURL.toExternalForm();
+      }
     }
     catch(Exception e){
       Debug.debug("Could not find file "+ GridPilot.RESOURCES_PATH + "about.htm", 3);
@@ -389,7 +410,7 @@ public class GlobalFrame extends GFrame{
     } 
     try{
       BrowserPanel wb = new BrowserPanel(this, "About",
-          aboutURL.toExternalForm(), "", false, false, false, null, null, true);
+          aboutURLStr, "", false, false, false, null, null, true);
       wb.setCancelButtonEnabled(false);
     }
     catch(Exception e){
