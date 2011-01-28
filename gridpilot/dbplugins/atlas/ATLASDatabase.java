@@ -1847,14 +1847,14 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         catch(Exception e){
           e.printStackTrace();
         }
-        Debug.debug("Found PFNs "+res.getPfns(), 2);
+        Debug.debug("Found PFNs "+MyUtil.arrayToString(pfns, "-->")+". All PFNs now "+res.getPfns(), 2);
         // break out after first location, if "Find all" is not checked
         if(findAll!=Database.LOOKUP_PFNS_ALL && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
           break;
         }
         // if we did not find anything on this location, put it last in the
         // HashMap of locations
-        if(pfns==null || pfns.length==0 || pfns[0]==null || pfns[0].equals("")){
+        if(pfns==null || pfns.length<3 || pfns[2]==null || pfns[2].equals("")){
           Vector<String> tl = dqLocationsCache.get(vuid);
           int j=0;
           for(j=0; j<tl.size(); ++j){
@@ -1864,7 +1864,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           }
           int len = tl.size();
           Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
-              j+":"+len+":"+(-len+j+1), 2);
+              j+":"+len+":"+(-len+j+1)+"-->"+findAll, 2);
           Collections.rotate(dqLocationsCache.get(vuid).subList(j, len),
               len-j-1);
           Debug.debug("New location cache for "+vuid+
@@ -2006,7 +2006,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String pfns = "";
     String catalogs = "";
     if(findAllPFNs==Database.LOOKUP_PFNS_ONE || findAllPFNs==Database.LOOKUP_PFNS_ALL){
-      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, Database.LOOKUP_PFNS_ALL);
+      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, findAllPFNs);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
       for(int j=0; j<pfnRes.getPfns().size(); ++j){
         resultVector.add(pfnRes.getPfns().get(j));

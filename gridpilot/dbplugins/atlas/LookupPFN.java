@@ -22,6 +22,11 @@ public class LookupPFN {
     catalogUrl = new GlobusURL(catalogServer);
   }
   
+  /**
+   * Lookup file size, checksum and physical locations.
+   * @return a list of the form size, checksum, pfn1, pfn2, ...
+   * @throws Exception
+   */
   public String [] lookup() throws Exception {
     return null;
   }
