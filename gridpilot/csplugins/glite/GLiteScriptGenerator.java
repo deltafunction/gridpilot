@@ -132,7 +132,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         writeLine(bufScript, "echo \"getconf LONG_BIT\"; getconf LONG_BIT");
         writeLine(bufScript, "export LCG_CATALOG_TYPE=lfc");
         if(sendJobsToData && !forceSpecificCatalog && GridPilot.VO!=null && !GridPilot.VO.trim().equals("")){
-          writeLine(bufScript, "export LFC_HOST=lcg-infosites --vo "+GridPilot.VO+" lfc");
+          writeLine(bufScript, "export LFC_HOST=`lcg-infosites --vo "+GridPilot.VO+" lfc`");
         }
         else{
           writeLine(bufScript, "export LFC_HOST="+lfcHost);

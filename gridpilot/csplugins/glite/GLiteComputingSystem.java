@@ -507,19 +507,19 @@ public class GLiteComputingSystem implements MyComputingSystem{
       if(delegationId==null){
         delegationId = UUIDGenerator.getInstance().generateTimeBasedUUID().toString();
         Debug.debug("using delegation id "+delegationId, 3);
-        vmProxyApi = getVMProxyAPI();
-        if(vmProxyApi==null){
-          logFile.addMessage("No WMProxyAPI object available. Something is misconfigured.");
-          return false;
-        }
-        String vmProxyVersion = vmProxyApi.getVersion();
-        Debug.debug("wmProxyAPI version: "+vmProxyVersion, 3);
-        // setup credentials
-        Debug.debug("putting proxy", 3);
-        String proxyReq = vmProxyApi.grstGetProxyReq(delegationId);
-        Debug.debug("proxy req "+proxyReq, 3);
-        vmProxyApi.grstPutProxy(delegationId, proxyReq);
       }
+      vmProxyApi = getVMProxyAPI();
+      if(vmProxyApi==null){
+        logFile.addMessage("No WMProxyAPI object available. Something is misconfigured.");
+        return false;
+      }
+      String vmProxyVersion = vmProxyApi.getVersion();
+      Debug.debug("wmProxyAPI version: "+vmProxyVersion, 3);
+      // upload credentials
+      Debug.debug("putting proxy", 3);
+      String proxyReq = vmProxyApi.grstGetProxyReq(delegationId);
+      Debug.debug("proxy req "+proxyReq, 3);
+      vmProxyApi.grstPutProxy(delegationId, proxyReq);
       // create script and JDL
       String scriptName = runDir(job) + File.separator + job.getName() + ".job";
       String jdlName = runDir(job) + File.separator + job.getName() + ".jdl";
