@@ -23,6 +23,7 @@ import gridfactory.common.ConfigNode;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.GFrame;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.LogFile;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
@@ -398,10 +399,16 @@ public class GlobalFrame extends GFrame{
         }
         in.close();
         out.close();
-        MyUtil.extractFromJAR(GridPilot.RESOURCES_PATH + "splash.png", tmpFile.getParentFile(), this.getClass());
+        File tmpDir = tmpFile.getParentFile();
+        File splashDir = new File(tmpDir, GridPilot.RESOURCES_PATH);
+        MyUtil.extractFromJAR(GridPilot.RESOURCES_PATH + "splash.png", splashDir, this.getClass());
+        File splashFile0 = new File(splashDir, "splash.png");
+        File splashFile = new File(tmpDir, "splash.png");
+        LocalStaticShell.moveFile(splashFile0.getAbsolutePath(), splashFile.getAbsolutePath());
         aboutURLStr = "file:///"+tmpFile.getAbsolutePath();
         tmpFile.deleteOnExit();
-        (new File(tmpFile.getParentFile(), "splash.png")).deleteOnExit();
+        splashDir.deleteOnExit();
+        splashFile.deleteOnExit();
       }
       else{
         aboutURLStr = aboutURL.toExternalForm();
