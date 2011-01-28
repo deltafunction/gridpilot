@@ -398,7 +398,10 @@ public class GlobalFrame extends GFrame{
         }
         in.close();
         out.close();
+        MyUtil.extractFromJAR(GridPilot.RESOURCES_PATH + "splash.png", tmpFile.getParentFile(), this.getClass());
         aboutURLStr = "file:///"+tmpFile.getAbsolutePath();
+        tmpFile.deleteOnExit();
+        (new File(tmpFile.getParentFile(), "splash.png")).deleteOnExit();
       }
       else{
         aboutURLStr = aboutURL.toExternalForm();
