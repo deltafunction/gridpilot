@@ -1239,8 +1239,8 @@ public class JobCreator{
           catalogPrefix = ((String) inputFile.getValue(catalogsField));
           catalogPrefix = MyUtil.split(catalogPrefix)[0];
           if(catalogPrefix.toLowerCase().startsWith("lfc")){
-            if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
-              catalogPrefix = catalogPrefix.replaceFirst("(lfc:/*[^/^:]+)[/:].*", "$1/:");
+            if(catalogPrefix!=null && !catalogPrefix.equals("") /*&& !catalogPrefix.endsWith("/")*/){
+              catalogPrefix = catalogPrefix.replaceFirst("(lfc:/*[^/:]+)[/:].*", "$1/:");
             }
             inputUrlsStr = catalogPrefix+"guid="+((String) inputFile.getValue(idField));
           }

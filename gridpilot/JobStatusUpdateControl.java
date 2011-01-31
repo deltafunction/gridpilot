@@ -332,10 +332,18 @@ public class JobStatusUpdateControl{
       }
       MyJobInfo job = (MyJobInfo) jobs.get(i);
       Debug.debug("Setting computing system status of job #"+i+"; "+
-          job.getStatus()+"<->"+previousStatus[i], 3);
-      if(job.getStatus()!=previousStatus[i]){       
+          job.getStatus()+"<->"+previousStatus[i]+"-->"+job.getHost(), 3);
+      if(job.getStatus()!=previousStatus[i]){
+        if(job.getStatus()>MyJobInfo.STATUS_DEFINED && job.getHost()!=null){
+          try{
+            statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
+        }
         switch(job.getStatus()){
-        case MyJobInfo.STATUS_READY :
+        case MyJobInfo.STATUS_READY:
           break;
         case MyJobInfo.STATUS_DONE:
           job.setNeedsUpdate(false);
@@ -351,7 +359,7 @@ public class JobStatusUpdateControl{
           }
           break;
         case MyJobInfo.STATUS_RUNNING:
-          statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
+          //statusTable.setValueAt(job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
           break;
         case MyJobInfo.STATUS_ERROR:
           // Without the line below: leave as refreshable, in case the error is intermittent.

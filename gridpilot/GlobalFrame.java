@@ -401,7 +401,7 @@ public class GlobalFrame extends GFrame{
         out.close();
         File tmpDir = tmpFile.getParentFile();
         File splashDir = new File(tmpDir, GridPilot.RESOURCES_PATH);
-        MyUtil.extractFromJAR(GridPilot.RESOURCES_PATH + "splash.png", splashDir, this.getClass());
+        MyUtil.extractFromJAR(GridPilot.RESOURCES_PATH + "splash.png", tmpDir, this.getClass());
         File splashFile0 = new File(splashDir, "splash.png");
         File splashFile = new File(tmpDir, "splash.png");
         LocalStaticShell.moveFile(splashFile0.getAbsolutePath(), splashFile.getAbsolutePath());

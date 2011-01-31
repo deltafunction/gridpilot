@@ -259,7 +259,8 @@ public class JobMgr{
               stdErr = null;
             }
             job.setOutputs(stdOut, stdErr);
-            setUpdateNeeded(job);
+            //setUpdateNeeded(job);
+            job.setNeedsUpdate(false);
             break;
           case DBPluginMgr.UNEXPECTED:
             Debug.debug(job.getName()+" ran with unexpected errors",3);

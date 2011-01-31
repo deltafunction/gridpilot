@@ -480,6 +480,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         writeLine(bufJdl, jdlLine);
       }
       //jdlLine = "DataAccessProtocol = {\"https\", \"http\", \"srm\", \"gridftp\", \"file\"};";
+      //jdlLine = "DataAccessProtocol = {\"rfio\", \"gsidcap\", \"gsiftp\", \"https\", \"http\"};";
       jdlLine = "DataAccessProtocol = {\"rfio\", \"gsidcap\", \"gsiftp\"};";
       writeLine(bufJdl, jdlLine);
             
