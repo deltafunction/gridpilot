@@ -2451,10 +2451,10 @@ public class DBPluginMgr extends DBCache implements Database{
       public void run(){
         try{
           if(cleanup){
-            res = purgeJobFiles(jobDefID);
-            boolean purgeOk = deleteJobDefinition(jobDefID);
-            res = res && purgeOk;
+            res = res && purgeJobFiles(jobDefID);
           }
+          boolean purgeOk = deleteJobDefinition(jobDefID);
+          res = res && purgeOk;
         }
         catch(Throwable t){
           db.appendError(t.getMessage());

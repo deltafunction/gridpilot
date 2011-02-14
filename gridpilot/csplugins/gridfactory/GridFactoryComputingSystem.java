@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
@@ -23,6 +24,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.jobrun.RTEMgr;
 import gridfactory.lrms.LRMS;
 
@@ -52,7 +54,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
   private static int RTE_SYNC_DELAY = 60000;
-  
+  private String [] requiredRuntimeEnvs = null;
+
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
@@ -76,6 +79,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       submitHosts[i] = (new GlobusURL(submitURLs[i])).getHost();
     }
     rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "Runtime catalog URLs");
+    requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     String virtualizeStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "virtualize");
@@ -111,7 +115,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     // Skip local files that are not present
     // - they are expected to be present on the worker node
     int initialLen = job.getInputFileUrls()!=null&&job.getInputFileUrls().length>0?job.getInputFileUrls().length:0;
-    Vector<String> newInputs = new Vector<String>();
+    MyLinkedHashSet<String> newInputs = new MyLinkedHashSet<String>();
     for(int i=0; i<initialLen; ++i){
       if(fileIsRemoteOrPresent(job.getInputFileUrls()[i])){
         newInputs.add(job.getInputFileUrls()[i]);
@@ -158,30 +162,36 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes0 = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     Debug.debug("The job "+job.getIdentifier()+" requires RTEs: "+MyUtil.arrayToString(rtes0), 2);
-    if(rtes0==null || rtes0.length==0){
-      return;
+    MyLinkedHashSet<String> allRtes = new MyLinkedHashSet<String>();
+    if(rtes0!=null){
+      Collections.addAll(allRtes, rtes0);
     }
-    Vector<String> rtesVec = new Vector<String>();
-    for(int i=0; i<rtes0.length; ++i){
+    if(requiredRuntimeEnvs!=null){
+      Collections.addAll(allRtes, requiredRuntimeEnvs);
+    }
+    MyLinkedHashSet<String> rtes = new MyLinkedHashSet<String>();
+    String rte;
+    for(Iterator<String> it=allRtes.iterator(); it.hasNext();){
+      rte = it.next();
       // Check if any of the RTEs is a BaseSystem - if so, set job.getOpsys() instead of job.getRTEs().
       // TODO: consider using RTEMgr.isVM() instead of relying on people starting their
       //       VM RTE names with VM/
-      if(MyUtil.checkOS(rtes0[i])){
+      if(MyUtil.checkOS(rte)){
         if(job.getOpSys()==null || job.getOpSys().equals("")){
-          job.setOpSys(rtes0[i]);
+          job.setOpSys(rte);
         }
       }
-      else if(MyUtil.checkOS(rtes0[i]) || rtes0[i].startsWith(RTEMgr.VM_PREFIX)){
+      else if(MyUtil.checkOS(rte) || rte.startsWith(RTEMgr.VM_PREFIX)){
         if(job.getOpSys()==null || job.getOpSys().equals("")){
-          job.setOpSys(rtes0[i]);
+          job.setOpSys(rte);
         }
       }
       else{
-        rtesVec.add(rtes0[i]);
+        rtes.add(rte);
       }
     }
-    if(rtesVec.size()>0){
-      job.setRTEs(rtesVec.toArray(new String[rtesVec.size()]));
+    if(rtes.size()>0){
+      job.setRTEs(rtes.toArray(new String[rtes.size()]));
     }
   }
 
@@ -225,7 +235,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
      *  -u [id] : unique identifier of the form https://server/job/dir/hash
      */
     try{
-      Debug.debug("Submitting", 3);
+      Debug.debug("Submitting job with output files "+MyUtil.arrayToString(job.getOutputFileNames()), 3);
       job.setAllowedVOs(allowedVOs);
       String stdoutFile = runDir(job) +"/"+job.getName()+ ".stdout";
       String stderrFile = runDir(job) +"/"+job.getName()+ ".stderr";
@@ -236,9 +246,10 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       if(!scriptGenerator.createWrapper(shell, (MyJobInfo) job, job.getName()+getCommandSuffix((MyJobInfo) job))){
         throw new IOException("Could not create wrapper script.");
       }
+      String[] nonDownloadInputFileUrls = removeDownloadFiles((MyJobInfo) job);
       String [] values = new String []{
           job.getName(),
-          MyUtil.arrayToString(job.getInputFileUrls()),
+          MyUtil.arrayToString(nonDownloadInputFileUrls),
           MyUtil.arrayToString(job.getExecutables()),
           Integer.toString(job.getRunningSeconds()),
           Integer.toString(job.getRamMB()),
@@ -273,13 +284,38 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     return true;
   }
   
+  private String[] removeDownloadFiles(MyJobInfo job) {
+    if(job.getDownloadFiles()==null){
+      return job.getInputFileUrls();
+    }
+    Vector<String> nonDlUrls = new Vector<String>();
+    for(int i=0; i<job.getInputFileUrls().length; ++i){
+      if(MyUtil.arrayContainsMatch(job.getDownloadFiles(), job.getInputFileUrls()[i]) ||
+          MyUtil.arrayContainsMatch(job.getDownloadFiles(), ".*/"+job.getInputFileUrls()[i])){
+        continue;
+      }
+      nonDlUrls.add(job.getInputFileUrls()[i]);
+    }
+    return nonDlUrls.toArray(new String[nonDlUrls.size()]);
+  }
+
   // We're using an undocumented feature of GridFactory (Util.parseJobScript, QueueMgr):
   // output files specified as
   // file1 https://some.server/some/dir/file1 file2 https://some.server/some/dir/file2 ...
   // are delivered.
   private String constructOutputFilesString(JobInfo job) {
     StringBuffer ret = new StringBuffer();
+    // Don't inform GridFactory about files that will be uploaded by the script itself.
+    String[] uploadFileNames = new String[0];
+    if(((MyJobInfo) job).getUploadFiles()!=null && ((MyJobInfo) job).getUploadFiles().length>0){
+      uploadFileNames = ((MyJobInfo) job).getUploadFiles()[0];
+    }
+    Debug.debug("Checking output files "+MyUtil.arrayToString(job.getOutputFileNames())+" : "+
+        MyUtil.arrayToString(uploadFileNames), 2);
     for(int i=0; i<job.getOutputFileNames().length; ++i){
+      if(uploadFileNames!=null && MyUtil.arrayContainsMatch(uploadFileNames, job.getOutputFileNames()[i])){
+        continue;
+      }
       ret.append(" " + job.getOutputFileNames()[i]);
       if(MyUtil.urlIsRemote(job.getOutputFileDestinations()[i])){
         ret.append(" " + job.getOutputFileDestinations()[i]);
@@ -288,7 +324,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         ret.append(" " + job.getOutputFileNames()[i]);
       }
     }
-    return ret.toString().trim();
+    String res = ret.toString().trim();
+    Debug.debug("Returning output files string "+res, 2);
+    return res;
   }
 
   private void mkRemoteDir(String url) throws Exception{
@@ -350,7 +388,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
     }
     catch(Exception e){
-      error = "ERROR: could not upload requested files. "+e.getMessage();
+      error = "ERROR: will not be able to upload output files. "+e.getMessage();
       logFile.addMessage(error, e);
       return false;
     }
@@ -358,12 +396,54 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       setInputFiles(job);
       setOutputFiles(job);
       setRTEs(job);
+      if(!setRemoteOutputFiles((MyJobInfo) job)){
+        throw new IOException("Problem with remote output files.");
+      }
+      if(!setRemoteInputFiles((MyJobInfo) job)){
+        throw new IOException("Problem with remote input files.");
+      }
     }
     catch(Exception e){
       e.printStackTrace();
       return false;
     }
     return true;
+  }
+
+  /**
+   * Checks which input files are remote and can be downloaded with
+   * command(s) from remoteCopyCommands and tags these
+   * with job.setDownloadFiles. They will then be taken care of by the
+   * job script itself.
+   * @param job description of the computing job
+   * @return True if the operation completes, false otherwise
+   */
+  public static boolean setRemoteInputFiles(MyJobInfo job){
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] inputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
+    Vector<String> remoteFilesVec = new Vector<String>();
+    boolean ok = true;
+    String protocol;
+    try{
+      for(int i=0; i<inputFiles.length; ++i){
+        protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
+        if(remoteCopyCommands==null || inputFiles[i].equals(protocol) || 
+           !remoteCopyCommands.containsKey(protocol)){
+          continue;
+        }
+        // These are considered remote
+        if(inputFiles[i]!=null && !inputFiles[i].equals("") && !inputFiles[i].startsWith("file:") &&
+            !inputFiles[i].startsWith("/") && !inputFiles[i].matches("\\w:.*")){
+          remoteFilesVec.add(inputFiles[i]);
+        }
+      }
+      job.setDownloadFiles(remoteFilesVec.toArray(new String[remoteFilesVec.size()]));
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      ok = false;
+    }
+    return ok;
   }
 
   public boolean postProcess(JobInfo job){
@@ -394,16 +474,31 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     Vector<String> outNamesVec = new Vector<String>();
     Vector<String> outDestsVec = new Vector<String>();
     if(outputFiles!=null && outputFiles.length>0){
+      String protocol;
       for(int i=0; i<outputFiles.length; ++i){
-        // Files that have remote destinations will have been uploaded by GridFactory.
-        if(!MyUtil.urlIsRemote(outputDestinations[i])){
+        protocol = null;
+        try{
+          protocol = (new GlobusURL(outputDestinations[i])).getProtocol();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        if(MyUtil.urlIsRemote(outputDestinations[i])){
+          // Files that have been delivered by the script itself
+          if(remoteCopyCommands!=null && remoteCopyCommands.containsKey(protocol)){
+            outNamesVec.add(outputFiles[i]);
+            outDestsVec.add(outputDestinations[i]);
+          }
+          // Files that have remote https destinations will have been uploaded by GridFactory.
+          if(protocol.equalsIgnoreCase("https")){
+            outNamesVec.add(outputFiles[i]);
+            outDestsVec.add(outputDestinations[i]);
+          }
+        }
+        else{
           fileTransfer.getFile(
               new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
               new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
-        }
-        else{
-          outNamesVec.add(outputFiles[i]);
-          outDestsVec.add(outputDestinations[i]);
         }
       }
       if(!outDestsVec.isEmpty()){
@@ -427,8 +522,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     //ret += "DB location: "+job.getDBLocation()+"\n";
     //ret += "Job DB URL: "+job.getDBURL()+"\n";
     try{
-      ret += "Job status: "+JobInfo.getStatusName(getLRMS().getJobStatus(
-          MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null));
+      ret += getLRMS().getLongJobStatus(
+          MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
     }
     catch(Exception e){
       e.printStackTrace();

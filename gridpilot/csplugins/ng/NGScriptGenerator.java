@@ -190,7 +190,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       
       String [] remoteInputFilesArray = new String [remoteInputFilesList.size()];
       for(int i=0; i<remoteInputFilesList.size(); ++i){
-        remoteInputFilesArray[i] = (String) remoteInputFilesList.get(i);
+        remoteInputFilesArray[i] = remoteInputFilesList.get(i);
       }
       job.setDownloadFiles(remoteInputFilesArray);
 

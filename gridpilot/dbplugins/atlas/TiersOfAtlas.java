@@ -121,7 +121,7 @@ public class TiersOfAtlas {
     }
     
     Debug.debug(_siteAcronym+" NOT in cache "+MyUtil.arrayToString(fileCatalogs.keySet().toArray())+
-        " : "+preferHttp, 3);
+        " : "+preferHttp, 2);
     
     StringBuffer siteAcronym = new StringBuffer(_siteAcronym);
     

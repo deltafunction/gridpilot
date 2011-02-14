@@ -20,6 +20,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
@@ -751,7 +752,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   
   /**
    * Checks which output files are remote and can be uploaded with
-   * command(s) from remoteCopyCommands and adds these
+   * command(s) from remoteCopyCommands and tags these
    * with job.setUploadFiles. They will then be taken care of by the
    * job script itself.
    * @param job description of the computing job
@@ -762,8 +763,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
     Vector<String> remoteNamesVector = new Vector<String>();
     String remoteName = null;
-    Vector<String> outNames = new Vector<String>();
-    Vector<String> outDestinations = new Vector<String>();
+    MyLinkedHashSet<String> outNames = new MyLinkedHashSet<String>();
+    MyLinkedHashSet<String> outDestinations = new MyLinkedHashSet<String>();
     boolean ok = true;
     try{
       for(int i=0; i<outputFiles.length; ++i){
@@ -771,15 +772,14 @@ public class ForkComputingSystem implements MyComputingSystem{
         String protocol = remoteName.replaceFirst("^(\\w+):.*$", "$1");
         if(remoteCopyCommands==null || remoteName.equals(protocol) || 
            !remoteCopyCommands.containsKey(protocol)){
-          continue;
+          outNames.add(outputFiles[i]);
+          outDestinations.add(remoteName);
         }
         // These are considered remote
-        if(remoteName!=null && !remoteName.equals("") && !remoteName.startsWith("file:") &&
+        else if(remoteName!=null && !remoteName.trim().equals("") && !remoteName.startsWith("file:") &&
             !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
           remoteNamesVector.add(outputFiles[i]);
         }
-        outNames.add(outputFiles[i]);
-        outDestinations.add(remoteName);
       }
       if(job.getUploadFiles()==null){
         String [][] uploadFiles = new String [2][remoteNamesVector.size()];
@@ -788,6 +788,7 @@ public class ForkComputingSystem implements MyComputingSystem{
               remoteNamesVector.get(i));
           uploadFiles[1][i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
               remoteNamesVector.get(i));
+          Debug.debug("Setting upload file "+uploadFiles[0][i]+" --> "+uploadFiles[1][i], 2);
         }
         job.setUploadFiles(uploadFiles);
       }

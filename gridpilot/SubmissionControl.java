@@ -771,14 +771,14 @@ public class SubmissionControl{
     MyJobInfo tmpJob;
     int [] jobsByStatus = null;
     int [] rJobsByCS = new int[csNames.length];
-    int [] preprossingJobsByCS = new int[csNames.length];
+    int [] preprocessingJobsByCS = new int[csNames.length];
     int [] ppJobsByCS = new int[csNames.length];
     int [] submittingJobsByCS = new int[csNames.length];
     int [] submittedJobsByCS = new int[csNames.length];
     int [] preprocessedJobsByCS = new int[csNames.length];
     int jobCsIndex = -1;
     for(int i=0; i<csNames.length; ++i){
-      preprossingJobsByCS[i] = 0;
+      preprocessingJobsByCS[i] = 0;
       rJobsByCS[i] = 0;
     }
     for(Iterator<JobMgr> it=GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){
@@ -815,7 +815,7 @@ public class SubmissionControl{
       for(int i=0; i<csNames.length; ++i){
         if(csNames[i].equalsIgnoreCase(tmpJob.getCSName())){
           //Debug.debug("Upping preprocessing job count for CS "+csNames[i], 3);
-          ++preprossingJobsByCS[i];
+          ++preprocessingJobsByCS[i];
         }
       }
     }
@@ -871,7 +871,7 @@ public class SubmissionControl{
     }
     else if((job.getDBStatus()==DBPluginMgr.DEFINED || job.getDBStatus()==DBPluginMgr.ABORTED) &&
         preprocessingJobs.size()<totalMaxPreprocessing &&
-        preprossingJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
+        preprocessingJobsByCS[jobCsIndex]<maxPreprocessingPerCS[jobCsIndex]){
       // If the CS in question is one that has "max running jobs per host" set and
       // there's a running host with free slot(s), tag the job to use it already now.
       tagJobHost(job);
@@ -887,7 +887,7 @@ public class SubmissionControl{
         job.getHost()+":"+
         DBPluginMgr.getStatusName(job.getDBStatus())+":"+
         MyUtil.arrayToString(csNames)+
-        " :: "+MyUtil.arrayToString(preprossingJobsByCS)+
+        " :: "+MyUtil.arrayToString(preprocessingJobsByCS)+
         " --> "+MyUtil.arrayToString(maxPreprocessingPerCS)+
         " :: "+MyUtil.arrayToString(rJobsByCS)+
         " --> "+MyUtil.arrayToString(maxRunningOnEachCS), 3);
@@ -1149,7 +1149,7 @@ public class SubmissionControl{
     //statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr);
     Debug.debug("Trying to submit : " + job.getName()+" : "+
         job.getIdentifier()+" : "+DBPluginMgr.getStatusName(dbStatus)+" : "+runOk+" : "+
-        statusTable.getRowCount()+" : "+job.getTableRow(), 2);
+        statusTable.getRowCount()+" : "+job.getTableRow()+" --> "+MyUtil.arrayToString(job.getOutputFileNames()), 2);
     
     boolean ok = false;
     int submitRes = -1;

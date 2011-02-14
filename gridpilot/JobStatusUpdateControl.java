@@ -270,6 +270,11 @@ public class JobStatusUpdateControl{
       String csName = ((MyJobInfo) toCheckJobs.get(0)).getCSName();
 
       int currentJob = 0;
+      if(maxJobsByUpdate.get(csName)==null){
+        Debug.debug("ERROR: 'max jobs by update' not configured for "+maxJobsByUpdate.get(csName)+
+            ". You probably need to enable this computing system.", 1);
+        return;
+      }
       while((jobs.size()<((Integer) maxJobsByUpdate.get(csName)).intValue() ||
           ((Integer) maxJobsByUpdate.get(csName)).intValue()==0)
             && currentJob<toCheckJobs.size()){

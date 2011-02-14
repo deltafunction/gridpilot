@@ -415,9 +415,11 @@ public class JobMgr{
         status.setForeground(Color.green);
         break;
     }
-
-    statusTable.setValueAt(status, job.getTableRow(), FIELD_DBSTATUS);
-    statusTable.updateSelection();
+    
+    if(job.getTableRow()>-1){
+      statusTable.setValueAt(status, job.getTableRow(), FIELD_DBSTATUS);
+      statusTable.updateSelection();
+    }
   }
 
   /**

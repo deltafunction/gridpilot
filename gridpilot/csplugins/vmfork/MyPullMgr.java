@@ -3,12 +3,12 @@ package gridpilot.csplugins.vmfork;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Vector;
 
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.PullMgr;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
@@ -51,7 +51,7 @@ public class MyPullMgr extends PullMgr {
    */
   // TODO: eliminate code duplication downloadInputsDone() <-> runJob()
   public boolean downloadInputsDone(JobInfo job) throws IOException{
-    Vector<TransferInfo> transfers = jobTransfers.get(job);
+    MyLinkedHashSet<TransferInfo> transfers = jobTransfers.get(job);
     boolean ok = true;
     String transferStatus = null;
     int ts;

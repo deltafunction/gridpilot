@@ -17,6 +17,7 @@ import gridfactory.common.jobrun.ScriptGenerator;
 import gridfactory.common.Shell;
 
 import gridpilot.DBPluginMgr;
+import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -297,9 +298,17 @@ public class ForkScriptGenerator extends ScriptGenerator{
     if(uploadFiles!=null && uploadFiles.length>0 && uploadFiles[0].length>0){
       writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       String protocol = null;
+      String name;
+      int lfc_input_file_nr = 0;
       for(int i=0; i<uploadFiles[0].length; ++i){
+        name = uploadFiles[1][i];
+        // Deal with LFC files
+        if(name.matches(":\\w+=.*")){
+          name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
+          ++lfc_input_file_nr;
+        }
         protocol = uploadFiles[1][i].replaceFirst("^(\\w+):.*$", "$1");
-        writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+uploadFiles[1][i]);
+        writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+name);
       }
       writeLine(buf, "");
     }
@@ -312,12 +321,18 @@ public class ForkScriptGenerator extends ScriptGenerator{
       writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
       String name = null;
       String protocol = null;
+      int lfc_input_file_nr = 0;
       for(int i=0; i<downloadFiles.length; ++i){
         try{
           name = new File((new GlobusURL(downloadFiles[i])).getPath()).getName();
           protocol = downloadFiles[i].replaceFirst("^(\\w+):.*$", "$1");
           if(protocol.equalsIgnoreCase("http") || protocol.equalsIgnoreCase("https")){
             name = MyUtil.urlDecode(name);
+          }
+          // Deal with LFC files
+          if(name.matches(":\\w+=.*")){
+            name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
+            ++lfc_input_file_nr;
           }
         }
         catch(MalformedURLException e){
