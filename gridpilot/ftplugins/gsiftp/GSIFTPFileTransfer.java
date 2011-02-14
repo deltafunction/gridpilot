@@ -371,10 +371,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
     }
     catch(FTPException e){
       if(statusBar!=null){
-        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" done");
+        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" failed");
       }
       //e.printStackTrace();
-      Debug.debug("Could not read "+localPath, 1);
+      Debug.debug("Could not upload to "+localPath, 1);
       throw e;
     }
     finally{
