@@ -73,7 +73,7 @@ public class ATLASDatabase extends DBCache implements Database{
   private boolean forceFileDelete = false;
   private DQ2Access dq2Access = null;
   private LFCConfig lfcConfig = new LFCConfig();
-
+  private String[] fileFields;
  
   private boolean sslActivated = false;
   private boolean proxySslActivated = false;
@@ -90,6 +90,7 @@ public class ATLASDatabase extends DBCache implements Database{
   public String socketTimeout = "30000";
   public String lrcPoolSize = "5";
   public String homeSite;
+
   //public String homeServerMysqlAlias;
 
   public ATLASDatabase(String _dbName) throws IOException, GeneralSecurityException{
@@ -143,6 +144,8 @@ public class ATLASDatabase extends DBCache implements Database{
       error = "ERROR: could connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort;
       logFile.addMessage(error, e);
     }
+    
+    fileFields = getFieldNames("file");
     
     // Set preferred download sites
     preferredSites = configFile.getValues(dbName, "preferred sites");
@@ -266,7 +269,7 @@ public class ATLASDatabase extends DBCache implements Database{
     try{
       if(useCaching && queryResults.containsKey(selectRequest)){
         Debug.debug("Returning cached result for "+selectRequest+"-->"+queryResults.get(selectRequest), 2);
-        return (DBResult) queryResults.get(selectRequest);
+        return queryResults.get(selectRequest);
       }
       
       if(getStop()){
@@ -910,7 +913,7 @@ public class ATLASDatabase extends DBCache implements Database{
         }
         Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
       }
-      DBResult res = new DBResult(fields, values);
+      DBResult res = new DBResult(fields, values, idField);
       queryResults.put(selectRequest, res);
       return res;
     }
@@ -1974,27 +1977,39 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
     return res.getRow(0);*/
     
-    // Alternative, hacky solution
-    
-    String [] fields = getFieldNames("file");
-    
+    // Alternative, hacky (and slow) solution
     String vuid = getDatasetID(dsn);
-    
     DBResult files = getFiles(vuid);
     String lfn = null;
     String guid = null;
     String bytes = "";
     String checksum = "";
-    for(int i=0; i<files.values.length; ++i){
-      Debug.debug("matching file id or name "+idOrName, 3);
-      if(files.getValue(i, idOrNameField).toString().equals(idOrName)){
-        lfn = files.getValue(i, "lfn").toString();
+    if(idOrNameField.equalsIgnoreCase("guid")){
+      DBRecord row;
+      try{
+        row = files.getRow(idOrName);
+        lfn = row.getValue("lfn").toString();
         lfn = lfn.replaceFirst(".*/([^/]+)", "$1");
-        guid = files.getValue(i, "guid").toString();
-        bytes = files.getValue(i, "bytes").toString();
-        checksum = files.getValue(i, "checksum").toString();
-        break;
-      };
+        guid = row.getValue("guid").toString();
+        bytes = row.getValue("bytes").toString();
+        checksum = row.getValue("checksum").toString();        
+      }
+      catch (Exception e) {
+        e.printStackTrace();
+      }
+    }
+    if(lfn==null){
+      for(int i=0; i<files.values.length; ++i){
+        Debug.debug("matching file id or name "+idOrName, 3);
+        if(files.getValue(i, idOrNameField).toString().equals(idOrName)){
+          lfn = files.getValue(i, "lfn").toString();
+          lfn = lfn.replaceFirst(".*/([^/]+)", "$1");
+          guid = files.getValue(i, "guid").toString();
+          bytes = files.getValue(i, "bytes").toString();
+          checksum = files.getValue(i, "checksum").toString();
+          break;
+        };
+      }
     }
     
     if(lfn==null){
@@ -2023,7 +2038,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
     }
         
-    return new DBRecord(fields, new String [] {dsn, lfn, catalogs, pfns, guid, bytes, checksum});
+    return new DBRecord(fileFields, new String [] {dsn, lfn, catalogs, pfns, guid, bytes, checksum});
 
   }
 

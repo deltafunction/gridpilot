@@ -61,6 +61,10 @@ public class JobCreator{
 
   private String currentDatasetID;
   private String inputDatasetName;
+  private DBRecord currentDataset;
+  private String currentDatasetName;
+  private String currentRunNumber;
+  private String inputSourceDirUrl;
   private String inputDatasetID;
   private boolean lookupPfns = true;
   private int nPartitions = 1;
@@ -73,6 +77,14 @@ public class JobCreator{
   // This is the totalEvents of the (output) dataset
   private int totalEventsOut =-1;
 
+  private boolean jobDependencies = true;
+
+  private boolean fileCatalogInput = false;
+  private boolean eventsPresent = true;
+  private boolean inputJobDefsPresent = true;
+  private String[] datasetFields = null;
+  private String[] jobdefFields = null;
+  private String currentDatasetOutputLocation;
 
   public final static String EVENT_MIN = "eventMin";
   public final static String EVENT_MAX = "eventMax";
@@ -101,7 +113,7 @@ public class JobCreator{
                     String [] _outMapNames,
                     String [] _stdOutNames,
                     boolean _closeWhenDone,
-                    Window _parent){
+                    Window _parent) {
     
     statusBar = _statusBar;
 	  dbName = _dbName;
@@ -163,7 +175,7 @@ public class JobCreator{
     }
   }
 
-  private void createAllJobDefs(){
+  private void createAllJobDefs() {
 
     try{
       removeConstants();
@@ -181,20 +193,29 @@ public class JobCreator{
     //  When using recon_detail, version is not known
     for(int i=0; i<datasetIdentifiers.length; ++i){
       
+      jobDependencies = true;
+      
       firstPartition = 1;
       lastPartition  = -1;
 
       currentDatasetID = datasetIdentifiers[i];
       
       try{
-        String totEv = (String) dbPluginMgr.getDataset(currentDatasetID).getValue(TOTAL_EVENTS);
+        String totEv = (String) currentDataset.getValue(TOTAL_EVENTS);
         totalEventsOut = Integer.parseInt(totEv);
       }
       catch(Exception e){
         e.printStackTrace();
       }
 
-      setInputMgrAndDataset();
+      try{
+        setInputMgrAndDataset();
+      }
+      catch(IOException e1){
+        e1.printStackTrace();
+        MyUtil.showError("ERROR: could not get input files.");
+        return;
+      }
       
       Debug.debug("Creating job definitions for dataset "+currentDatasetID, 2);
       // NOTICE: here we assume that the fields totalFiles and totalEvents are
@@ -252,10 +273,14 @@ public class JobCreator{
             firstPartition + ">" + lastPartition);
         return;
       }
+      if(inputMgr!=null){
+        inputSourceDirUrl = (String) inputMgr.getDataset(inputMgr.getDatasetID(inputDatasetName)).getValue("outputLocation");
+      }
+      boolean checkForDollarUFP = checkForDollarUFP();
       int partitionCount = 0;
       int currentPartitionCount = 0;
       for(int currentPartition=firstPartition; currentPartition<=lastPartition; ++currentPartition){
-        currentPartitionCount = prepareJobDefs(currentPartition, lastPartition, eventSplits, i);
+        currentPartitionCount = prepareJobDefs(currentPartition, lastPartition, eventSplits, i, checkForDollarUFP);
         if(currentPartitionCount==-1){
           Debug.debug("Partition count -1, "+currentPartition+"/"+lastPartition, 1);
           return;
@@ -277,14 +302,20 @@ public class JobCreator{
     }
   }
   
-  private void setInputMgrAndDataset() {
+  private void setInputMgrAndDataset() throws IOException {
+    currentDataset = dbPluginMgr.getDataset(currentDatasetID);
+    currentDatasetName = dbPluginMgr.getDatasetName(currentDatasetID);
+    currentRunNumber = dbPluginMgr.getRunNumber(currentDatasetID);
+    currentDatasetOutputLocation = (String) currentDataset.getValue("outputLocation");
     String inputDB = (String) dbPluginMgr.getDataset(
         currentDatasetID).getValue("inputDB");
+    datasetFields = dbPluginMgr.getFieldNames("dataset");
+    jobdefFields = dbPluginMgr.getFieldNames("jobDefinition");
     if(inputDB!=null && !inputDB.equals("")){
       inputMgr = GridPilot.getClassMgr().getDBPluginMgr(inputDB);
-      DBRecord dataset = dbPluginMgr.getDataset(currentDatasetID);
-      inputDatasetName = (String) dataset.getValue("inputDataset");
+      inputDatasetName = (String) currentDataset.getValue("inputDataset");
       inputDatasetID = inputMgr.getDatasetID(inputDatasetName);
+      inputSourceDirUrl = (String) inputMgr.getDataset(inputMgr.getDatasetID(inputDatasetName)).getValue("outputLocation");
     }
     else{
       inputMgr = null;
@@ -292,6 +323,27 @@ public class JobCreator{
       inputDatasetID = null;
     }
     pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
+    evaluateAllWithInput();
+    if(inputDatasetName!=null && !inputDatasetName.equalsIgnoreCase("")){
+      if(inputJobDefIds==null || inputJobDefIds.length==0 || inputMgr==null || !inputMgr.isJobRepository()){
+        fileCatalogInput = true;
+      }
+    }
+    // just a quick check to avoid exceptions
+    if(inputJobDefRecords!=null && (
+        inputJobDefRecords.getValue(0, EVENT_MIN)==null ||
+        inputJobDefRecords.getValue(0, EVENT_MAX)==null ||
+        inputJobDefRecords.getValue(0, EVENT_MIN).equals("") ||
+        inputJobDefRecords.getValue(0, EVENT_MAX).equals("") ||
+        inputJobDefRecords.getValue(0, EVENT_MIN).equals("''") ||
+        inputJobDefRecords.getValue(0, EVENT_MAX).equals("''") ||
+        inputJobDefRecords.getValue(0, EVENT_MIN).equals("no such field") ||
+        inputJobDefRecords.getValue(0, EVENT_MAX).equals("no such field"))){
+      eventsPresent = false;
+      Debug.debug("No event information in dataset "+currentDatasetID+
+          ":"+inputJobDefRecords.getValue(0, EVENT_MIN)+inputJobDefRecords.getValue(0, EVENT_MAX), 2);
+    }
+    inputJobDefsPresent  = inputJobDefIds!=null && inputJobDefIds.length>0;
   }
 
   private int[] getSplitFromInputCatalog() {
@@ -336,7 +388,7 @@ public class JobCreator{
     int lastPartition = -1;
     // try to get number of files from output dataset
     try{
-      String totalOutputFiles = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("totalFiles");
+      String totalOutputFiles = (String) currentDataset.getValue("totalFiles");
       lastPartition = Integer.parseInt(totalOutputFiles);
     }
     catch(Exception ee){
@@ -372,20 +424,20 @@ public class JobCreator{
     return new int [] {firstPartition, lastPartition};
   }
 
-  private int prepareJobDefs(int currentPartition, int lastPartition, int[][] eventSplits, int dsIndex) {
-    statusBar.setLabel("Preparing job definition # " + currentPartition+ " / "+lastPartition);
+  private int prepareJobDefs(int currentPartition, int lastPartition, int[][] eventSplits, int dsIndex,
+     boolean checkForDollarUFP) {
+    statusBar.setLabel("Preparing # " + currentPartition+ " / "+lastPartition);
     int partitionCount = 0;
     boolean skipAll = false;
     boolean skip = false;
     boolean showThis = showResults;
     Debug.debug("evaluating all", 3);
     try{
-      String currentDatasetOutputLocation =
-        (String) dbPluginMgr.getDataset(currentDatasetID).getValue("outputLocation");
       evaluateAll(currentPartition,
                   lastPartition,
                   currentDatasetOutputLocation,
-                  eventSplits);
+                  eventSplits,
+                  checkForDollarUFP);
     }
     catch(Exception ex){
       boolean [] res = confirmContinue(ex, currentPartition);
@@ -414,7 +466,7 @@ public class JobCreator{
       }
     }
     if(!skip && !skipAll){
-      Debug.debug("creating/updating job definition # " + currentPartition +  " in dataset # "+currentDatasetID, 2);
+      Debug.debug("Preparing job definition # " + currentPartition +  " in dataset "+currentDatasetID, 2);
       vPartition.add(new Integer(currentPartition));
       vCstAttr.add(resCstAttr.clone());
       vJobParam.add(resJobParam.clone());
@@ -539,13 +591,13 @@ public class JobCreator{
     }
   }
 
-  private String evaluate(String ss, int var, String datasetName, String runNumber,
+  private String evaluate(String ss, int var,
       Vector<String> inputFileURLs, Vector<String> inputFileNames, String outputDest,
       String inputSource)
      throws ArithmeticException, SyntaxException {
     // expression format : ${<arithmExpr>[:length]}
     // arithmExpr : operator priority : (*,/,%), (+,-), left associative
-    Debug.debug("Evaluating, "+ss+" : "+var+" : "+datasetName+" : "+runNumber+" : "+
+    Debug.debug("Evaluating, "+ss+" : "+var+" : "+currentDatasetName+" : "+currentRunNumber+" : "+
         MyUtil.arrayToString(inputFileURLs.toArray(new String[inputFileURLs.size()]))+" : "+inputFileNames+" : "+outputDest, 3);
     int pos = -1;
     int pos1 = -1;
@@ -562,12 +614,12 @@ public class JobCreator{
       // Fill in datasetName
       pos1 = sss.indexOf("$n");
       if(pos1>=0){
-        sss.replace(pos1, pos1+2, datasetName);
+        sss.replace(pos1, pos1+2, currentDatasetName);
       }
       // Fill in runNumber
       pos2 = sss.indexOf("$r");
       if(pos2>=0){
-        sss.replace(pos2, pos2+2, runNumber);
+        sss.replace(pos2, pos2+2, currentRunNumber);
       }
       // Fill in outputDestination
       pos3 = sss.indexOf("$o");
@@ -659,15 +711,12 @@ public class JobCreator{
       if(pos>-9){
         String rep = "";
         String val = "";
-        String [] fields = new String [] {};
-        fields = dbPluginMgr.getFieldNames("dataset");
-        for(int i=fields.length-1; i>=0; --i){
+        for(int i=datasetFields.length-1; i>=0; --i){
           rep = "$"+i;
           pos = sss.indexOf(rep);
           if(pos>=0){
             try{
-              val = (String) dbPluginMgr.getDataset(dbPluginMgr.getDatasetID(datasetName)
-              ).getValue(fields[i]);
+              val = (String) currentDataset.getValue(datasetFields[i]);
             }
             catch(Exception e){
               // nothing necessary...
@@ -806,12 +855,10 @@ public class JobCreator{
    * So, NOTICE: the (root) output file should always be the FIRST in the
    * field 'outputs' in the executable definition.
    */
-  private void evaluateAll(int currentPartition, int lastPartition, String outputDest, int [][] eventSplits)
+  private void evaluateAll(int currentPartition, int lastPartition, String outputDest, int [][] eventSplits,
+      boolean checkForDollarUFP)
      throws ArithmeticException, SyntaxException,
      IOException{
-    
-    String datasetName = dbPluginMgr.getDatasetName(currentDatasetID);
-    String runNumber = dbPluginMgr.getRunNumber(currentDatasetID);
     
     int evtMin = -1;
     int evtMax = -1;
@@ -821,53 +868,26 @@ public class JobCreator{
     }
     catch(Exception e){
     }
-    String inputDataset = null;
-    String inputSourceDirUrl = null;
-    boolean fileCatalogInput = false;
-    // Construct input file names
-    if(inputMgr!=null){
-      inputDataset = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("inputDataset");
-      inputSourceDirUrl = (String) inputMgr.getDataset(inputMgr.getDatasetID(inputDataset)).getValue("outputLocation");
-    }
-    if(inputDataset!=null && !inputDataset.equalsIgnoreCase("")){
-      fileCatalogInput = evaluateAllWithInput();
-    }
-    boolean eventsPresent = true;
-    // just a quick check to avoid exceptions
-    if(inputJobDefRecords!=null && (
-        inputJobDefRecords.getValue(0, EVENT_MIN)==null ||
-        inputJobDefRecords.getValue(0, EVENT_MAX)==null ||
-        inputJobDefRecords.getValue(0, EVENT_MIN).equals("") ||
-        inputJobDefRecords.getValue(0, EVENT_MAX).equals("") ||
-        inputJobDefRecords.getValue(0, EVENT_MIN).equals("''") ||
-        inputJobDefRecords.getValue(0, EVENT_MAX).equals("''") ||
-        inputJobDefRecords.getValue(0, EVENT_MIN).equals("no such field") ||
-        inputJobDefRecords.getValue(0, EVENT_MAX).equals("no such field"))){
-      eventsPresent = false;
-      Debug.debug("No event information in dataset "+currentDatasetID+
-          ":"+inputJobDefRecords.getValue(0, EVENT_MIN)+inputJobDefRecords.getValue(0, EVENT_MAX), 2);
-    }
     Vector<String> inputFileURLs = new Vector<String>();
     Vector<String> inputFileNames = new Vector<String>();
     try{
-      findInputFiles(inputFileURLs, evtMin, evtMax, currentPartition, lastPartition,
-         fileCatalogInput, eventsPresent, inputJobDefIds!=null && inputJobDefIds.length>0);
+      findInputFiles(inputFileURLs, evtMin, evtMax, currentPartition, lastPartition);
     }
     catch(Exception e){
       e.printStackTrace();
     }
     // If needed, construct the (short) file names for the job script arguments
-    if(checkForDollarUFP()){
+    if(checkForDollarUFP){
       getFileNames(currentPartition, inputFileURLs, inputFileNames);
     }
  
     // jobDefinition fields
-    ArrayList<String> jobattributenames = fillInResCstAttr(eventSplits, currentPartition, datasetName, runNumber,
+    ArrayList<String> jobattributenames = fillInResCstAttr(eventSplits, currentPartition,
         outputDest, inputSourceDirUrl, evtMin, evtMax, inputFileURLs, inputFileNames);
     Debug.debug("Job attributes: "+jobattributenames, 2);
     
     // Job parameters
-    fillInJobParams(currentPartition, eventSplits, evtMin, evtMax, datasetName, runNumber,
+    fillInJobParams(currentPartition, eventSplits, evtMin, evtMax,
         outputDest, inputSourceDirUrl, jobattributenames, inputFileURLs, inputFileNames);
 
     // If the destination is left empty on the creation panel and
@@ -884,22 +904,22 @@ public class JobCreator{
         String [] bn = getBaseAndExtension(inputFileNames.get(0).trim());
         String dest = "$o/$p"+bn[0]+bn[1];
         resOutMap[0][1] = evaluate(dest,
-            currentPartition, datasetName, runNumber, inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
-        resOutMap[0][0] = evaluate(outMap[0][0], currentPartition, datasetName, runNumber,
+            currentPartition, inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
+        resOutMap[0][0] = evaluate(outMap[0][0], currentPartition,
             inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
       }
       else{
         for(int i=0; i<resOutMap.length; ++i){
-          resOutMap[i][0] = evaluate(outMap[i][0], currentPartition, datasetName, runNumber,
+          resOutMap[i][0] = evaluate(outMap[i][0], currentPartition,
               inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
-          resOutMap[i][1] = evaluate(outMap[i][1], currentPartition, datasetName, runNumber,
+          resOutMap[i][1] = evaluate(outMap[i][1], currentPartition,
               inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
           Debug.debug("output mapping #"+i+":"+resOutMap[i][0]+"-->"+resOutMap[i][1], 3);
         }
       }
     }
     for(int i=0; i<resStdOut.length; ++i){
-      resStdOut[i] = evaluate(stdOut[i], currentPartition, datasetName, runNumber,
+      resStdOut[i] = evaluate(stdOut[i], currentPartition,
           inputFileURLs, inputFileNames, outputDest, inputSourceDirUrl);
       Debug.debug("stdout/err #"+i+": "+resStdOut[i], 3);
     }
@@ -1033,8 +1053,7 @@ public class JobCreator{
     return new String [] {base, extension};
   }
 
-  private boolean evaluateAllWithInput() throws IOException{
-    boolean fileCatalogInput = false;
+  private void evaluateAllWithInput() throws IOException{
     String inputDatasetID = "-1";
     inputFileIds = new String [] {};
     if(inputMgr!=null && inputMgr.isFileCatalog()){
@@ -1091,23 +1110,18 @@ public class JobCreator{
         //return;
       }
     }
-    if(inputJobDefIds==null || inputJobDefIds.length==0 || inputMgr==null || !inputMgr.isJobRepository()){
-      fileCatalogInput = true;
-    }
     if((inputFileRecords==null || inputFileRecords.values.length==0) &&
         (inputJobDefRecords==null || inputJobDefRecords.values.length==0)){
       throw new IOException ("Could not get input files, cannot proceed.");
     }
-    return fileCatalogInput;
   }
 
-  private void findInputFiles(Vector<String> inputFileURLs, int evtMin, int evtMax, int currentPartition, int lastPartition,
-      boolean fileCatalogInput, boolean eventsPresent, boolean inputJobDefsPresent) {
+  private void findInputFiles(Vector<String> inputFileURLs, int evtMin, int evtMax, int currentPartition, int lastPartition) {
     Debug.debug("findInputFiles "+evtMin+":"+evtMax+":"+currentPartition+":"+fileCatalogInput+":"+eventsPresent+":"+inputJobDefsPresent, 3);
     Vector<String> inputFiles = new Vector<String>();
     String inputFileName = null;
     int readEvtMin = -1;
-    int readEvtMax = -1;
+    int readEvtMax = -1;    
     if(eventsPresent && inputJobDefsPresent){
       boolean inputFileFound = false;
       for(int j=0; j<inputJobDefIds.length; ++j){
@@ -1266,12 +1280,12 @@ public class JobCreator{
   }
   
   private void fillInJobParams(int currentPartition,
-      int [][] eventSplits, int evtMin, int evtMax, String name, String number,
+      int [][] eventSplits, int evtMin, int evtMax,
       String outputDest, String inputSource, ArrayList<String> jobattributenames,
       Vector<String> inputFileURLs, Vector<String> inputFileNames) throws ArithmeticException, SyntaxException {
     Debug.debug("Filling in job parameters", 3);
     // metadata information from the metadata field of the dataset
-    String metaDataString = (String) dbPluginMgr.getDataset(currentDatasetID).getValue("metaData");
+    String metaDataString = (String) currentDataset.getValue("metaData");
     HashMap<String, String> metaData = MyUtil.parseMetaData(metaDataString);
     for(int i=0; i<resJobParam.length; ++i){
       Debug.debug("param #"+i+" : "+jobParamNames[i]+" -> "+
@@ -1318,23 +1332,22 @@ public class JobCreator{
             "-->"+resJobParam[i], 3);
       }
       else{
-        resJobParam[i] = evaluate(jobParam[i], currentPartition, name, number,
+        resJobParam[i] = evaluate(jobParam[i], currentPartition,
             inputFileURLs, inputFileNames, outputDest, inputSource);
       }
     }
   }
 
-  private ArrayList<String> fillInResCstAttr(int [][] eventSplits, int currentPartition, String datasetName, String runNumber,
+  private ArrayList<String> fillInResCstAttr(int [][] eventSplits, int currentPartition,
      String outputDest, String inputSource, int evtMin, int evtMax, Vector<String> inputFileURLs, Vector<String> inputFileNames)
      throws ArithmeticException, SyntaxException {
     // Add eventMin, eventMax and inputFileURLs if they are
     // present in the fields of jobDefinition, but not in the fixed
     // attributes.
-    String [] jobdeffields = dbPluginMgr.getFieldNames("jobDefinition");
-    for(int i=0; i<jobdeffields.length; ++i){
-      jobdeffields[i] = jobdeffields[i].toLowerCase();
+    for(int i=0; i<jobdefFields.length; ++i){
+      jobdefFields[i] = jobdefFields[i].toLowerCase();
     }
-    ArrayList<String> jobdefinitionfields = new ArrayList<String>(Arrays.asList(jobdeffields));    
+    ArrayList<String> jobdefinitionfields = new ArrayList<String>(Arrays.asList(jobdefFields));    
     ArrayList<String> jobattributenames = new ArrayList<String>(Arrays.asList(cstAttrNames));
     ArrayList<String> jobAttributeNames = new ArrayList<String>(Arrays.asList(cstAttrNames));
     ArrayList<String> jobAttributes = new ArrayList<String>(Arrays.asList(cstAttr));
@@ -1406,17 +1419,20 @@ public class JobCreator{
       else if(cstAttrNames[i].equalsIgnoreCase("depJobs") && inputFileURLs!=null &&
           inputFileURLs.size()>0){
         String[] depJobs = null;
-        try{
-          depJobs = findDepJobs(inputFileURLs);
+        if(jobDependencies){
+          try{
+            depJobs = findDepJobs(inputFileURLs);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+            jobDependencies  = false;
+          }
+          Debug.debug("setting depJobs "+MyUtil.arrayToString(depJobs), 3);
         }
-        catch (Exception e) {
-          e.printStackTrace();
-        }
-        Debug.debug("setting depJobs "+MyUtil.arrayToString(depJobs), 3);
         resCstAttr[i] = (depJobs==null || depJobs.length==0)?"":MyUtil.arrayToString(depJobs);
       }
       else{
-        resCstAttr[i] = evaluate(cstAttr[i], currentPartition, datasetName, runNumber,
+        resCstAttr[i] = evaluate(cstAttr[i], currentPartition,
             inputFileURLs, inputFileNames, outputDest, inputSource);
       }
     }
@@ -1424,7 +1440,7 @@ public class JobCreator{
   }
 
   private String[] findDepJobs(Vector<String> inputFileURLs) throws Exception {
-    if(inputMgr==null){
+    if(inputMgr==null || !inputMgr.isJobRepository()){
       return null;
     }
     Vector<String> depJobDefIDs = new Vector<String>();
