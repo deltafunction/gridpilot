@@ -470,7 +470,10 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private void getOutputs(MyJobInfo job) throws MalformedURLException, Exception{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    String [] outputDestinations = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    String [] outputDestinations = outputFiles==null?null:new String[outputFiles.length];
+    for(int i=0; i<(outputFiles==null?0:outputFiles.length); ++i){
+      outputDestinations[i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFiles[i]);
+    }
     Vector<String> outNamesVec = new Vector<String>();
     Vector<String> outDestsVec = new Vector<String>();
     if(outputFiles!=null && outputFiles.length>0){
