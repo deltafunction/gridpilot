@@ -163,6 +163,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         }
         else if(inputFiles[i].startsWith("lfc://")){
           //inputFileURL = inputFiles[i].replaceFirst("/:", ";cache=no/:");
+          inputFileURL = inputFiles[i];
           inputFileName = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
           ++lfc_input_file_nr;
         }
