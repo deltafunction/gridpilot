@@ -381,7 +381,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
         String rDir = null;
         for(int i=0; i<job.getOutputFileDestinations().length; ++i){
           if(MyUtil.urlIsRemote(job.getOutputFileDestinations()[i])){
-            rDir = job.getOutputFileDestinations()[i].replaceFirst("(^(.*/)[^/]+$", "$1");
+            rDir = job.getOutputFileDestinations()[i].replaceFirst("^(.*/)[^/]+$", "$1");
             mkRemoteDir(rDir);
           }
         }
