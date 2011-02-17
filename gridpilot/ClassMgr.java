@@ -15,6 +15,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.security.GeneralSecurityException;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -50,7 +51,9 @@ public class ClassMgr{
   private HashMap<String, FileTransfer> ft = new HashMap<String, FileTransfer>();
   private HashMap<String, JobMgr> jobMgrs = new HashMap<String, JobMgr>();
   private Vector<MyJobInfo> monitoredJobs = new Vector<MyJobInfo>();
-  private Vector<TransferInfo> submittedTransfers = new Vector<TransferInfo>();
+  private Collection<TransferInfo> submittedTransfers;
+  private Collection<TransferInfo> runningTransfers;
+  private Collection<TransferInfo> toSubmitTransfers;
   private SubmissionControl submissionControl;
   private MyTransferControl transferControl;
   private HashMap<String, Shell> shellMgrs = new HashMap<String, Shell>();
@@ -406,11 +409,37 @@ public class ClassMgr{
     setTransferStatusTable(transferStatusTable);
   }
 
-  public Vector<TransferInfo> getSubmittedTransfers(){
+  public void setSubmittedTransfers(Vector<TransferInfo> _submittedTransfers){
+    submittedTransfers = _submittedTransfers;
+  }
+
+  public void setRunningTransfers(Collection<TransferInfo> _runningTransfers){
+    runningTransfers = _runningTransfers;
+  }
+
+  public void setToSubmitTransfers(Vector<TransferInfo> _toSubmitTransfers){
+    toSubmitTransfers = _toSubmitTransfers;
+  }
+
+  public Collection<TransferInfo> getSubmittedTransfers(){
     if(submittedTransfers==null){
       Debug.debug("submittedTransfers null", 3);
     }
     return submittedTransfers;
+  }
+
+  public Collection<TransferInfo> getRunningTransfers(){
+    if(runningTransfers==null){
+      Debug.debug("runningTransfers null", 3);
+    }
+    return runningTransfers;
+  }
+
+  public Collection<TransferInfo> getToSubmitTransfers(){
+    if(toSubmitTransfers==null){
+      Debug.debug("toSubmitTransfers null", 3);
+    }
+    return toSubmitTransfers;
   }
 
   public GlobalFrame getGlobalFrame(){

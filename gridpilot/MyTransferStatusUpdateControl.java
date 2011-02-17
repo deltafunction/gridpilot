@@ -9,8 +9,9 @@ import gridfactory.common.TransferStatusUpdateControl;
 
 import java.net.URL;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Vector;
-import java.util.Enumeration;
 import java.util.HashMap;
 
 import javax.swing.*;
@@ -239,7 +240,7 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     
     // get transfer vector
     int [] rows = _rows;
-    Vector<TransferInfo> transfers = null;
+    Collection<TransferInfo> transfers = null;
     if(rows==null || rows.length==0){
       // if nothing is selected, we refresh all transfers
       transfers = GridPilot.getClassMgr().getSubmittedTransfers();
@@ -251,9 +252,9 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
    
     // fill toCheckTransfers with running transfers
     synchronized(toCheckTransfers){
-      Enumeration<TransferInfo> e = transfers.elements();
-      while(e.hasMoreElements()){
-        TransferInfo transfer = e.nextElement();
+      TransferInfo transfer;
+      for(Iterator<TransferInfo>it=transfers.iterator(); it.hasNext();){
+        transfer = it.next();
         Debug.debug("Adding transfer to toCheckTransfers: "+transfer.getTransferID()+" "+
             transfer.getNeedsUpdate() +" "+ !toCheckTransfers.contains(transfer) +" "+
             !checkingTransfers.contains(transfer), 3);
@@ -422,13 +423,15 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     int runIndex = 1;
     int doneIndex = 2;
 
-    Vector<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
-
-    for(int i=0; i<submittedTransfers.size(); ++i){
+    Collection<TransferInfo> submittedTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
+    TransferInfo transfer;
+    for(Iterator<TransferInfo>it=submittedTransfers.iterator(); it.hasNext();){
       
-      ++transfersByFTStatus[submittedTransfers.get(i).getInternalStatus()-1];
+      transfer = it.next();
       
-      switch(submittedTransfers.get(i).getInternalStatus()){
+      ++transfersByFTStatus[transfer.getInternalStatus()-1];
+      
+      switch(transfer.getInternalStatus()){
       
         case FileTransfer.STATUS_WAIT:
           ++transfersByStatus[waitIndex];

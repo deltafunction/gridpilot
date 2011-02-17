@@ -468,8 +468,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector<TransferInfo> submittedJobs = GridPilot.getClassMgr().getSubmittedTransfers();
-    Enumeration<TransferInfo> e =  submittedJobs.elements();
+    Vector<TransferInfo> submittedTransfers = new Vector<TransferInfo>(GridPilot.getClassMgr().getSubmittedTransfers());
+    Enumeration<TransferInfo> e =  submittedTransfers.elements();
     while(e.hasMoreElements()){
       TransferInfo transfer = e.nextElement();
       if(MyTransferControl.isRunning(transfer)){
@@ -650,8 +650,8 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
    * @see #getTransfersAtRows(int[])
    */
   public static TransferInfo getTransferAtRow(int row){
-    Vector<TransferInfo> submTransfers = GridPilot.getClassMgr().getSubmittedTransfers();
-    Debug.debug("Got transfers at row "+row+". "+submTransfers.size(), 3);
+    Vector<TransferInfo> submTransfers = new Vector<TransferInfo>(GridPilot.getClassMgr().getSubmittedTransfers());
+    Debug.debug("Got transfers at row "+row+". "+submTransfers, 3);
     return submTransfers.get(row);
   }
 
