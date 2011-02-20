@@ -1366,7 +1366,7 @@ public class BeginningWizard{
             try {
               cvVomses = createVomsesField(tfVomsServer.getText());
               if(cvVomses!=null){
-                jpVos.remove(tfVO);
+                jpVos.remove(0);
                 jpVos.add(cvVomses, 0);
                 jpVos.updateUI();
               }
