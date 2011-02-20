@@ -55,6 +55,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   private EC2Mgr ec2mgr = null;
   private JCheckBox onlyPublicImages;
   private JTextField amiPattern;
+  private String sshUser = null;
   
   protected String [] imageColorMapping = null;  
   protected String [] instanceColorMapping = null;  
@@ -69,6 +70,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     imageColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "AMI color mapping");  
     instanceColorMapping = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Instance color mapping");  
     sshCommand = GridPilot.getClassMgr().getConfigFile().getValues("EC2", "Ssh command");  
+    sshUser = GridPilot.getClassMgr().getConfigFile().getValue("EC2", "Ssh user");  
     imageTable.setTable(IMAGE_FIELDS);
     instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
     pImagesButtons.add(createImageChoicePanel(), 0);
@@ -101,12 +103,12 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   
   protected String [][] getAvailableImages() throws EC2Exception{
     ec2mgr.clearCache();
-    List amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), amiPattern.getText());
+    List<ImageDescription> amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), amiPattern.getText());
     String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;
     // "AMI ID", "Manifest", "State", "Owner"
-    for(Iterator it=amiList.iterator(); it.hasNext();){
+    for(Iterator<ImageDescription> it=amiList.iterator(); it.hasNext();){
       ami = (ImageDescription) it.next();
       amiArray[i][0] = ami.getImageId();
       amiArray[i][1] = ami.getImageLocation();
@@ -118,19 +120,19 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   }
   
   protected String [][] getRunningInstances() throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException{
-    List reservationList = ec2mgr.listReservations();
-    Vector instanceVector = new Vector();
-    List instanceList = null;
+    List<ReservationDescription> reservationList = ec2mgr.listReservations();
+    Vector<String []> instanceVector = new Vector<String []>();
+    List<Instance> instanceList = null;
     String [] row = new String [INSTANCE_FIELDS.length];
     Instance instance = null;
     ReservationDescription reservation = null;
-    for(Iterator it=reservationList.iterator(); it.hasNext();){
-      reservation = (ReservationDescription) it.next();
+    for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+      reservation = it.next();
       instanceList = ec2mgr.listInstances(reservation);
       // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-      for(Iterator itt=instanceList.iterator(); itt.hasNext();){
+      for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
         row = new String [INSTANCE_FIELDS.length];
-        instance = (Instance) itt.next();
+        instance = itt.next();
         row[0] = reservation.getReservationId();
         row[1] = reservation.getOwner();
         row[2] = instance.getInstanceId();
@@ -143,7 +145,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     }
     String [][] instanceArray = new String[instanceVector.size()][INSTANCE_FIELDS.length];
     for(int i=0; i<instanceVector.size(); ++i){
-      row = (String []) instanceVector.get(i);
+      row = instanceVector.get(i);
       for(int j=0; j<INSTANCE_FIELDS.length; ++j){
         instanceArray[i][j] = row[j];
       }
@@ -257,7 +259,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   protected void runShellInternal() throws Exception{
     int row = instanceTable.getSelectedRow();
     String dns = (String) instanceTable.getUnsortedValueAt(row, dnsField);
-    runShellInternal(dns, 22, "root",
+    runShellInternal(dns, 22, sshUser!=null&&!sshUser.equals("")?sshUser:"root",
         null, ec2mgr.getKeyFile().getPath(), null);
   }
 

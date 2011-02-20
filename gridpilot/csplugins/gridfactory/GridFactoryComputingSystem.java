@@ -499,6 +499,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           }
         }
         else{
+          transferControl.download(url, destination);
           fileTransfer.getFile(
               new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
               new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));

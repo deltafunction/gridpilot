@@ -54,8 +54,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String fallbackAmiName = null;  
   // max time to wait for booting a virtual machine when submitting a job
   private static long MAX_BOOT_WAIT = 5*60*1000;
-  // the user to use for running jobs on the virtual machines
-  private static String USER = "root";
   private int maxMachines = 0;
   private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
   private String [] defaultEc2Catalogs;
@@ -64,6 +62,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String accessKey;
   private String secretKey;
   private HashMap<JobInfo, String> jobAmis;
+  private HashMap<String, String> loginUsers;
   
   // These variables will be set in the shells run on EC2 instances
   private static String AWS_ACCESS_KEY_ID_VAR = "AWS_ACCESS_KEY_ID";
@@ -82,6 +81,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     allEC2RTEs = new HashMap<String, ArrayList<DBRecord>>();
     
     jobAmis = new HashMap<JobInfo, String>();
+    loginUsers = new HashMap<String, String>();
     
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
@@ -500,9 +500,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("remoteShellMgrs: "+MyUtil.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
     if(host!=null && !host.equals("") &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
+      String user = "root";
+      if(loginUsers .containsKey(host)){
+        user = loginUsers.get(host);
+      }
       if(!remoteShellMgrs.containsKey(host)){
         // This means the VM has just been booted
-        Shell newShellMgr = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
+        Shell newShellMgr = new MySecureShell(host, user, ec2mgr.getKeyFile(), "");
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
       }
@@ -510,7 +514,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         // This means the VM was running before starting
         // GridPilot and we need to reconnect. RTEs should already be setup.
         // -- well, we do it anyway, just in case
-        Shell newShell = new MySecureShell(host, USER, ec2mgr.getKeyFile(), "");
+        Shell newShell = new MySecureShell(host, user, ec2mgr.getKeyFile(), "");
         Debug.debug("Added ShellMgr on already running host "+newShell.getHostName(), 2);
         remoteShellMgrs.put(host, newShell);
         setupRuntimeEnvironmentsSSH(newShell);
@@ -559,17 +563,20 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return null;
     }
     String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
+    String userField = "user";
     if(!allEC2RTEs.containsKey(dbMgr.getDBName())){
       findAllEC2RTEs(dbMgr);
     }
     DBRecord rte;
     String rteName;
     String amiId = null;
+    String user = null;
     try{
       for(Iterator<DBRecord> it=allEC2RTEs.get(dbMgr.getDBName()).iterator(); it.hasNext();){
         amiId = null;
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
+        user = (String) rte.getValue(userField);
         //Debug.debug("Checking provides of "+rteName, 3);
         if(checkProvides(job, rte, rteName)){
           try{
@@ -581,6 +588,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           if(amiId!=null){
             job.setOpSys(rteName);
             job.setOpSysRTE(rteName);
+            job.setUserInfo(user);
             // This is just to have initLines written to the RTE DB record
             getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
             //
@@ -1101,6 +1109,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
         preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
+        loginUsers.put(hosts[i], job.getUserInfo());
         return hosts[i];
       }
       catch(Exception e){
