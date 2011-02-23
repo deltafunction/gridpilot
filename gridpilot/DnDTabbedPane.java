@@ -59,6 +59,7 @@ public class DnDTabbedPane extends JTabbedPane {
       }
     }
   }
+
   public DnDTabbedPane() {
     super();
     final DragSourceListener dsl = new DragSourceListener() {

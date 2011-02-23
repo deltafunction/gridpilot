@@ -32,7 +32,7 @@ public class MonitoringPanel extends CreateEditPanel {
   }
   
   public String getTitle(){
-    return "Monitor";
+    return "GridPilot monitor";
   }
   
   public JobMonitoringPanel getJobMonitoringPanel() {

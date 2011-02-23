@@ -387,7 +387,7 @@ public class SubmissionControl{
     }
     cancelled = false;
     if(isRand!=null && isRand.equalsIgnoreCase("yes")){
-      jobs = MyUtil.shuffle(jobs);
+      MyUtil.shuffle(jobs);
     }
     MyJobInfo job;
     /*for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){

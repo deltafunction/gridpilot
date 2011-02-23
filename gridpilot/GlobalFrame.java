@@ -124,7 +124,7 @@ public class GlobalFrame extends GFrame{
              monitor.add(monitoringPanel);
             //
             monitor.setVisible(false);
-            monitor.setTitle("Monitor");
+            monitor.setTitle("GridPilot monitor");
             monitor.pack();
           }
           catch(Exception e){
@@ -189,7 +189,7 @@ public class GlobalFrame extends GFrame{
               public void run(){
                 try{
                   BrowserPanel bp = new BrowserPanel(null,
-                      "Browser", "", "", false, true, true, null, null, false);
+                      "GridPilot browser", "", "", false, true, true, null, null, false);
                   bp.okSetEnabled(false);
                 }
                 catch(Exception ex){
@@ -761,7 +761,7 @@ public class GlobalFrame extends GFrame{
           public void run(){
             try{
               BrowserPanel bp = new BrowserPanel(null,
-                  "Browser", "", "", false, true, true, null, null, false);
+                  "GridPilot browser", "", "", false, true, true, null, null, false);
               bp.okSetEnabled(false);
             }
             catch(Exception ex){

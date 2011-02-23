@@ -49,6 +49,7 @@ import java.net.NetworkInterface;
 import java.net.URL;
 
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -607,10 +608,10 @@ private static String fixUrl(String _url){
     try{
       Enumeration<NetworkInterface> e = NetworkInterface.getNetworkInterfaces();
       while(e.hasMoreElements()){ 
-        NetworkInterface netface = (NetworkInterface) e.nextElement(); 
+        NetworkInterface netface = e.nextElement(); 
         Enumeration<InetAddress> e2 = netface.getInetAddresses();
         while (e2.hasMoreElements()){
-          InetAddress ip = (InetAddress) e2.nextElement(); 
+          InetAddress ip = e2.nextElement(); 
           if(!ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":")==-1){ 
             byte[] ipAddr = ip.getAddress();
             localip[0]=(ipAddr[0]&0xFF);
@@ -725,14 +726,14 @@ private static String fixUrl(String _url){
    * @return true if <code>t</code> ended normally, false if <code>t</code> has been interrupted
    * @throws InterruptedException 
    */
-  public static boolean myWaitForThread(ResThread t, String name, int _timeOut,
+  public static boolean myWaitForThread(ResThread t, String name, long _timeOut,
       String function){
     return myWaitForThread(t, name, _timeOut, function, null);
   }
 
-  public static boolean myWaitForThread(ResThread t, String name, int _timeOut,
+  public static boolean myWaitForThread(ResThread t, String name, long _timeOut,
       String function, Boolean _askForInterrupt){
-    int timeOut = GridPilot.WAIT_FOREVER ? 0 : _timeOut;
+    long timeOut = GridPilot.WAIT_FOREVER ? 0L : _timeOut;
     boolean ask = GridPilot.ASK_BEFORE_INTERRUPT;
     if(_askForInterrupt!=null){
       ask = _askForInterrupt.booleanValue();
@@ -790,13 +791,14 @@ private static String fixUrl(String _url){
    * Returns a Vector which contains all elements from <code>v</code>, but in a
    * random order. <p>
    */
-  public static Vector shuffle(Vector v){
-    Vector w = new Vector();
+  public static void shuffle(Collection v){
+    MyLinkedHashSet w = new MyLinkedHashSet();
     Random rand = new Random();
     while(v.size()>0){
       w.add(v.remove(rand.nextInt(v.size())));
     }
-    return w;
+    v.clear();
+    v.addAll(w);
   }
 
   /**
@@ -1091,7 +1093,7 @@ private static String fixUrl(String _url){
       resultArray = new String [resultVector.size()][fields.length];
       for(int i=0; i<resultVector.size(); ++i){
         for(int j=0; j<fields.length; ++j){
-          resultArray[i][j] = ((String []) resultVector.get(i))[j];
+          resultArray[i][j] = resultVector.get(i)[j];
           Debug.debug("Added value "+i+j+" "+resultArray[i][j], 3);
         }
       }
@@ -1379,7 +1381,7 @@ private static String fixUrl(String _url){
     Enumeration<String> en = vec.elements();
     int i = 0;
     while(en.hasMoreElements()){
-      ret[i] = (String) en.nextElement();
+      ret[i] = en.nextElement();
       ++i;
     }
     return ret;
@@ -2192,7 +2194,7 @@ private static String fixUrl(String _url){
                 try{
                   new BrowserPanel(
                         parentWindow,
-                        "Browser",
+                        "GridPilot browser",
                         e.getURL().toString(),
                         null,
                         modal,// modal
@@ -2210,7 +2212,7 @@ private static String fixUrl(String _url){
                 try{
                   new BrowserPanel(
                       parentWindow,
-                      "Browser",
+                      "GridPilot Browser",
                       "file:~/",
                       null,
                       true,

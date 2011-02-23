@@ -25,7 +25,6 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileCacheMgr;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
 import gridfactory.common.TransferControl;
 
@@ -339,13 +338,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
     
     final String id = file.getAbsolutePath() +"::"+ globusFileUrl.getURL();
     
-    (new ResThread(){
-      public void run(){
-        if(statusBar!=null){
-          statusBar.setLabel("Uploading to "+globusFileUrl.getURL());
-        }
-      }
-    }).run();               
+    setLabel("Uploading to "+globusFileUrl.getURL(), statusBar);
     
     GridFTPClient gridFtpClient = null;
     
@@ -365,14 +358,10 @@ public class GSIFTPFileTransfer implements FileTransfer {
       gridFtpClient.put(file, localPath, false);     
       // if we didn't get an exception, the file got written...
       Debug.debug("File or directory "+globusFileUrl.getURL()+" written.", 2);
-      if(statusBar!=null){
-        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" done");
-      }
+      setLabel("Upload of "+globusFileUrl.getURL()+" done", statusBar);
     }
     catch(FTPException e){
-      if(statusBar!=null){
-        statusBar.setLabel("Upload of "+globusFileUrl.getURL()+" failed");
-      }
+      setLabel("Upload of "+globusFileUrl.getURL()+" failed", statusBar);
       //e.printStackTrace();
       Debug.debug("Could not upload to "+localPath, 1);
       throw e;
@@ -685,9 +674,6 @@ public class GSIFTPFileTransfer implements FileTransfer {
       if(filter==null || filter.equals("")){
         filter = "*";
       }
-      if(statusBar!=null){
-        statusBar.setLabel("Filtering...");
-      }
       Debug.debug("Filtering with "+filter, 3);
       Vector<String> textVector = new Vector<String>();
       Integer directories = new Integer(0);
@@ -698,9 +684,7 @@ public class GSIFTPFileTransfer implements FileTransfer {
         parseLine(gridFtpClient, textVector, directories, files,
             line, filter, cDir);
       }
-      if(statusBar!=null){
-        statusBar.setLabel(directories+" directories, "+files+" files");
-      }
+      setLabel(directories+" directories, "+files+" files", statusBar);
       return textVector;
     }
     catch(FTPException e){
@@ -713,6 +697,12 @@ public class GSIFTPFileTransfer implements FileTransfer {
       }
       catch(Exception e){
       }
+    }
+  }
+  
+  private void setLabel(String text, StatusBar statusBar){
+    if(statusBar!=null){
+      statusBar.setLabel("Filtering...");
     }
   }
   

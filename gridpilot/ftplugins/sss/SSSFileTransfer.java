@@ -1011,7 +1011,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     }
     s3Objects = (S3Object[]) objectsWithExistingKeys.toArray(
         new S3Object[objectsWithExistingKeys.size()]);
-    s3ExistingObjectsMap = fc.populateS3ObjectMap("", s3Objects);
+    s3ExistingObjectsMap = fc.populateObjectMap("", s3Objects);
     if(s3Objects.length>0){
       // Retrieve details of potential clashes.
       final S3Object[] clashingObjects = s3Objects;
@@ -1039,7 +1039,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
     filesAlreadyInDownloadDirectoryMap = new HashMap();
     
     // Build map of S3 Objects being downloaded. 
-    s3DownloadObjectsMap = fc.populateS3ObjectMap("", s3Objects);
+    s3DownloadObjectsMap = fc.populateObjectMap("", s3Objects);
 
     // Identify objects that may clash with existing files, or may be directories,
     // and retrieve details for these.
@@ -1298,8 +1298,7 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
       // Automatically inflate gzipped data.
       isZipped = true;
     }
-    if(object.containsMetadata(Constants.METADATA_JETS3T_CRYPTO_ALGORITHM) ||
-        object.containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)){
+    if(object.containsMetadata(Constants.METADATA_JETS3T_CRYPTO_ALGORITHM)){
       Debug.debug("Decrypting encrypted data for object: " + object.getKey(), 2);
       // Prompt user for the password, if necessary.
       if(encryptionPassword==null || encryptionPassword.equalsIgnoreCase("")){
@@ -1307,22 +1306,14 @@ public class SSSFileTransfer implements FileTransfer, CredentialsProvider{
             "One or more objects are encrypted. GridPilot cannot download encrypted "
             + "objects unless the encyption password is set in Preferences");
       }
-      if(object.containsMetadata(Constants.METADATA_JETS3T_ENCRYPTED_OBSOLETE)) {
-        // Item is encrypted with obsolete crypto.
-        logFile.addMessage("WARNING: Object is encrypted with out-dated crypto version, please update it when possible: " 
-            + object.getKey());
-        encryptionUtil = EncryptionUtil.getObsoleteEncryptionUtil(encryptionPassword);                                            
+      String algorithm = (String) object.getMetadata(
+          Constants.METADATA_JETS3T_CRYPTO_ALGORITHM);
+      String version = (String) object.getMetadata(
+          Constants.METADATA_JETS3T_CRYPTO_VERSION);
+      if (version == null) {
+          version = EncryptionUtil.DEFAULT_VERSION;
       }
-      else{
-        String algorithm = (String) object.getMetadata(
-            Constants.METADATA_JETS3T_CRYPTO_ALGORITHM);
-        String version = (String) object.getMetadata(
-            Constants.METADATA_JETS3T_CRYPTO_VERSION);
-        if (version == null) {
-            version = EncryptionUtil.DEFAULT_VERSION;
-        }
-        encryptionUtil = new EncryptionUtil(encryptionPassword, algorithm, version);                                            
-      }                    
+      encryptionUtil = new EncryptionUtil(encryptionPassword, algorithm, version);                                            
     }
     return new DownloadPackage(object, destFile, isZipped, encryptionUtil);
   }

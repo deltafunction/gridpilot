@@ -144,7 +144,18 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     // buttons
     bRefreshImages.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        refresh();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        (new Thread(){
+          public void run(){
+            try{
+              refresh();
+              setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            }
+            catch(Exception e1){
+               e1.printStackTrace();
+            }
+          }
+        }).start();
       }
     });
     bLaunch.addActionListener(new ActionListener(){

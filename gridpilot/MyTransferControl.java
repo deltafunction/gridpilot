@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +37,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JProgressBar;
 import javax.swing.Timer;
 
-import org.globus.ftp.exception.FTPException;
 import org.globus.util.GlobusURL;
 import org.safehaus.uuid.UUIDGenerator;
 
@@ -46,10 +46,6 @@ public class MyTransferControl extends TransferControl {
   private ConfigFile configFile;
   private Timer timer;
   private ImageIcon iconSubmitting;
-  /** All transfers for which the submission is in progress */
-  private MyLinkedHashSet<TransferInfo> submittingTransfers;
-  /** All running transfers */
-  private MyLinkedHashSet<TransferInfo> runningTransfers;
  /** Maximum number of simultaneous threads for submission. <br>
    * It is not the maximum number of running transfers on the storage system */
   private int maxSimultaneousTransfers = 5;
@@ -68,9 +64,7 @@ public class MyTransferControl extends TransferControl {
   final private static String SRM2_PLUGIN_NAME = "srm2";
   
   public MyTransferControl() throws Exception{
-    // We set getFileTransfer() to return the HTTPS FileTransfer.
-    super(GridPilot.getClassMgr().getFTPlugin("https"),
-        GridPilot.getClassMgr().getLogFile(),
+    super(GridPilot.getClassMgr().getLogFile(),
         GridPilot.getClassMgr().getTransferStatusTable(),
         /*GridPilot.getClassMgr().getStatusBar()*/null);
     configFile = GridPilot.getClassMgr().getConfigFile();
@@ -86,6 +80,11 @@ public class MyTransferControl extends TransferControl {
     GridPilot.getClassMgr().setRunningTransfers(getRunningTransfers());
   }
   
+  // Only relevant for calls from GridFactory.*
+  public FileTransfer getFileTransfer(){
+    return GridPilot.getClassMgr().getFTPlugin("https");
+  }
+
   public long getFileBytes(GlobusURL url) throws Exception{
     String pluginName = null;
     try{
@@ -126,9 +125,9 @@ public class MyTransferControl extends TransferControl {
       timer.stop();
       return;
     }
-    synchronized(runningTransfers){
+    /*synchronized(runningTransfers){
       synchronized(toSubmitTransfers){
-        synchronized(submittingTransfers){
+        synchronized(submittingTransfers){*/
 
           GlobusURL firstSrc = (toSubmitTransfers.iterator().next()).getSource();
           GlobusURL firstDest = (toSubmitTransfers.iterator().next()).getDestination();
@@ -186,9 +185,9 @@ public class MyTransferControl extends TransferControl {
               }
             }
           }.start();
-        }
+        /*}
       }
-    }    
+    }  */  
   }
   
   /**
@@ -239,7 +238,7 @@ public class MyTransferControl extends TransferControl {
       }
       if(runningTransfers.size()+submittingTransfers.size()>=maxSimultaneousTransfers){
         Debug.debug("Waiting for transfers or free slots... "+runningTransfers.size()+":"+
-            submittingTransfers.size()+":"+maxSimultaneousTransfers, 3);
+            submittingTransfers.size()+":"+maxSimultaneousTransfers, 2);
       }
       return null;
     }
@@ -298,7 +297,7 @@ public class MyTransferControl extends TransferControl {
       }
       theseTransfers = tmpTransfers;
     }
-    Debug.debug("Prepared "+theseTransfers.length+" transfers.", 3);
+    Debug.debug("Prepared "+theseTransfers.length+" transfers.", 2);
     return theseTransfers;
     
   }
@@ -557,21 +556,19 @@ public class MyTransferControl extends TransferControl {
    * Adds transfers to toSubmitTransfers.
    * @param   transfers     Vector of TransferInfo's.
    */
-  public synchronized void queue(final Vector<TransferInfo> _transfers) throws Exception {
+  public synchronized void queue(final Collection<TransferInfo> _transfers) throws Exception {
 
     Debug.debug("setting progress bar", 2);
     setProgressBar1(0, 0);
 
     ResThread t = new ResThread(){
-      Vector<TransferInfo> transfers;
+      MyLinkedHashSet<TransferInfo> transfers = new MyLinkedHashSet<TransferInfo>();
       public void run(){
         increaseProgressBarMax(pbSubmission, _transfers.size());
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
-          transfers = MyUtil.shuffle(_transfers);
+          MyUtil.shuffle(_transfers);
         }
-        else{
-          transfers = _transfers;
-        }
+        transfers.addAll(_transfers);
         Debug.debug("setting mouse listener on "+pbSubmission, 2);
         setStatusBarMouseListenerCancel(pbSubmission);
         Debug.debug("queueing "+transfers.size()+" transfers", 2);
@@ -1524,8 +1521,7 @@ public class MyTransferControl extends TransferControl {
    * Upload file to URL.
    * @param uploadUrl the destination; can be either a directory or a file name
    * @param file
-   * @throws IOException
-   * @throws FTPException
+   * @throws Exception
    */
   public void upload(File file, final String uploadUrl) throws Exception{
     String uploadUrlDir = null;

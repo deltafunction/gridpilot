@@ -3975,13 +3975,20 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
    */
   private void bProcess_mousePressed(){
     // if dataset is selected, show the menu with computing systems
-    if(getSelectedIdentifiers().length!=0){
-      Debug.debug("Processing "+getSelectedIdentifiers().length+" dataset(s) on one of "+
-          GridPilot.CS_NAMES.length+" CS backends", 2);
-      pmProcessMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
-      pmProcessMenu.show(bProcessDatasets, -pmProcessMenu.getWidth(),
-                        -pmProcessMenu.getHeight() + bProcessDatasets.getHeight());
+    if(getSelectedIdentifiers().length<=0){
+      MyUtil.showError("Please select an application before clicking Run.");
+      return;
     }
+    if(pmProcessMenu.getComponentCount()<=0){
+      MyUtil.showError("No computing systems enabled.\n\n" +
+          "Consider running the configuration wizard again.");
+      return;
+    }
+    Debug.debug("Processing "+getSelectedIdentifiers().length+" dataset(s) on one of "+
+        GridPilot.CS_NAMES.length+" CS backends", 2);
+    pmProcessMenu.show(this, 0, 0); // without this, pmSubmitMenu.getWidth == 0
+    pmProcessMenu.show(bProcessDatasets, -pmProcessMenu.getWidth(),
+                      -pmProcessMenu.getHeight() + bProcessDatasets.getHeight());
   }
 
   /**

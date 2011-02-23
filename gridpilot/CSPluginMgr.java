@@ -32,7 +32,7 @@ import com.jcraft.jsch.JSchException;
  * in the configuration file. If one of them is not defined in this file,
  * "default timeout" is used, and if this one is not defined either,
  * <code>defaultTimeOut</code> is used. <p>
- * If the time out delay is elapsed before the end of a method, the user is asked to
+ * If the timeout delay is elapsed before the end of a method, the user is asked to
  * interrupt the plug-in (if <code>askBeforeInterrupt==true</code>)
  */
 
@@ -42,29 +42,29 @@ public class CSPluginMgr implements MyComputingSystem{
 
   private MyLogFile logFile;
 
-  /** time out in ms for <code>submit</code> method */
-  private int submissionTimeOut;
-  /** time out in ms for <code>updateStatus</code> method */
-  private int updateTimeOut;
-  /** time out in ms for <code>exit</code> method */
-  private int exitTimeOut;
-  /** time out in ms for <code>killJob</code> method */
-  private int killTimeOut;
-  /** time out in ms for <code>getCurrentOutputs</code> method */
-  public int currentOutputTimeOut;
-  /** time out in ms for <code>cleanup</code> method */
-  private int clearTimeOut;
-  /** time out in ms for <code>getFullStatus</code> method */
-  private int fullStatusTimeOut;
-  /** time out in ms for <code>getUserInfoTimeOut</code> method */
-  private int getUserInfoTimeOut;
-  /** time out in ms for <code>copyFileTimeOut</code> method */
-  private int copyFileTimeOut;
-  /** time out in ms for <code>setupRuntimeEnvironments</code> method */
-  private int setupTimeOut;
-  /** time out in ms used if neither the specific time out nor "default timeout" is
+  /** Timeout in ms for <code>submit</code> method */
+  private long submissionTimeOut;
+  /** Timeout in ms for <code>updateStatus</code> method */
+  private long updateTimeOut;
+  /** Timeout in ms for <code>exit</code> method */
+  private long exitTimeOut;
+  /** Timeout in ms for <code>killJob</code> method */
+  private long killTimeOut;
+  /** Timeout in ms for <code>getCurrentOutputs</code> method */
+  public long currentOutputTimeOut;
+  /** Timeout in ms for <code>cleanup</code> method */
+  private long clearTimeOut;
+  /** Timeout in ms for <code>getFullStatus</code> method */
+  private long fullStatusTimeOut;
+  /** Timeout in ms for <code>getUserInfoTimeOut</code> method */
+  private long getUserInfoTimeOut;
+  /** Timeout in ms for <code>copyFileTimeOut</code> method */
+  public long copyFileTimeOut;
+  /** Timeout in ms for <code>setupRuntimeEnvironments</code> method */
+  private long setupTimeOut;
+  /** Timeout in ms used if neither the specific timeout nor "default timeout" is
    * defined in configFile */
-  private int defaultTimeOut = 60*1000;
+  private long defaultTimeOut = 60L;
 
   private String [] csNames;
   private HashMap<String, Object> cs;
@@ -79,7 +79,7 @@ public class CSPluginMgr implements MyComputingSystem{
   }
   /**
    * Constructs a <code>CSPluginMgr</code>. <p>
-   * Looks after plug-in names and class in configFile, load them, and read time out values.
+   * Looks after plug-in names and class in configFile, load them, and read timeout values.
    * @throws Throwable if <ul>
    * <li>There is no ComputingSystem specified in configuration file
    * <li>One of theses computing system hasn't a class name defined
@@ -174,7 +174,7 @@ public class CSPluginMgr implements MyComputingSystem{
   }
 
   /**
-   * Reads time out values in configuration file.
+   * Reads timeout values in configuration file.
    */
   public void loadValues(){
 
@@ -184,8 +184,7 @@ public class CSPluginMgr implements MyComputingSystem{
     tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "default timeout");
     if(tmp!=null){
       try{
-        defaultTimeOut = new Integer(tmp).intValue();
-        defaultTimeOut = 1000*defaultTimeOut;
+        defaultTimeOut = new Long(tmp).intValue();
       }
       catch(NumberFormatException nfa){
         logFile.addMessage("value of default timeout (" + tmp +") is not an integer");
@@ -197,35 +196,35 @@ public class CSPluginMgr implements MyComputingSystem{
      */
     String timeOutNames [] = {"submit", "updateStatus", "exit", "killJob", "getCurrentOutputs",
       "cleanup", "getFullStatus", "getUserInfo", "copyFile"};
-    int values [] = new int[timeOutNames.length];
+    long values [] = new long[timeOutNames.length];
 
     for(int i=0; i<timeOutNames.length; ++i){
 
       tmp = configFile.getValue(GridPilot.TOP_CONFIG_SECTION, timeOutNames[i] + " timeout");
       if(tmp!=null){
         try{
-          values[i] = new Integer(tmp).intValue();
+          values[i] = new Long(tmp).longValue();
         }
         catch(NumberFormatException nfa){
           logFile.addMessage("value of " + timeOutNames[i] + " timeout (" + tmp +") is not an integer");
-          values[i] = defaultTimeOut;
+          values[i] = defaultTimeOut * 1000L;
         }
       }
       else{
-        values[i] = defaultTimeOut;
+        values[i] = defaultTimeOut * 1000L;
         Debug.debug(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, timeOutNames[i] + " timeout"), 3);
       }
     }
 
-    submissionTimeOut = values[0] * 1000;
-    updateTimeOut = values[1] * 1000;
-    exitTimeOut = values[2] * 1000;
-    killTimeOut = values[3] * 1000;
-    currentOutputTimeOut = values[4] * 1000;
-    clearTimeOut  = values[5] * 1000;
-    fullStatusTimeOut = values[6] * 1000;
-    getUserInfoTimeOut = values[7] * 1000;
-    copyFileTimeOut = values[8] * 1000;
+    submissionTimeOut = values[0] * 1000L;
+    updateTimeOut = values[1] * 1000L;
+    exitTimeOut = values[2] * 1000L;
+    killTimeOut = values[3] * 1000L;
+    currentOutputTimeOut = values[4] * 1000L;
+    clearTimeOut  = values[5] * 1000L;
+    fullStatusTimeOut = values[6] * 1000L;
+    getUserInfoTimeOut = values[7] * 1000L;
+    copyFileTimeOut = values[8] * 1000L;
 
   }
 
@@ -766,8 +765,10 @@ public class CSPluginMgr implements MyComputingSystem{
     };
 
     t.start();
+    
+    long outNum = job.getOutputFileNames()==null?0L:job.getOutputFileNames().length;
 
-    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), copyFileTimeOut, "postProcessing")){
+    if(MyUtil.myWaitForThread(t, ((MyJobInfo) job).getCSName(), (outNum+2L)*copyFileTimeOut, "postProcessing")){
       if(t.getBoolRes()){
         // Register the new file if the db is a file catalog
         try{

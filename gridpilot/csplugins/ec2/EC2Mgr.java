@@ -44,12 +44,17 @@ public class EC2Mgr {
   private String owner = null;
   private String runDir = null;
   private MyTransferControl transferControl;
-  private HashMap<String, List<ImageDescription>> patternToIdCache;
+  private HashMap<String[], List<ImageDescription>> patternToIdCache;
 
 
   public final static String GROUP_NAME = "GridPilot";
   public final static String KEY_NAME = "GridPilot_EC2_TMP_KEY";
-  public final static String [] INSTANCE_TYPES = new String[] {"m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"};
+  public final static String [] INSTANCE_TYPES = new String[] {
+     "t1.micro", "m1.small", "m1.large", "m1.xlarge",
+     "c1.medium", "c1.xlarge",
+     "m2.xlarge", "m2.2xlarge", "m2.4xlarge",
+     "cc1.4xlarge", "cg1.4xlarge"
+  };
   public HashMap<String, int[]> instanceTypes = new HashMap<String, int[]>();
   
   private File keyFile = null;
@@ -71,13 +76,25 @@ public class EC2Mgr {
       String accessKey, String secretKey, String _subnet, String _owner,
       String _runDir, MyTransferControl _transferControl) {
     
-    patternToIdCache = new HashMap<String, List<ImageDescription>>();
+    patternToIdCache = new HashMap<String[], List<ImageDescription>>();
     
-    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[0], new int [] {1, 1700, 150000});//1xi386, 1.7 GB, 150 GB /mnt
-    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[1], new int [] {2, 7500, 420000});//2xi386_64, 1.7 GB, 2x420 GB /mnt
-    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[2], new int [] {4, 15000, 420000});//4xi386_64, 1.7 GB, 4x420 GB /mnt
-    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[3], new int [] {2, 1700, 340000});//2xi386, 1.7 GB, 340 GB /mnt, medium I/O
-    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[4], new int [] {8, 7000, 420000});//8xi386_64, 1.7 GB, 4x420 GB /mnt, high I/O
+    /*
+     "t1.micro", "m1.small", "m1.large", "m1.xlarge",
+     "c1.medium", "c1.xlarge",
+     "m2.xlarge", "m2.2xlarge", "m2.4xlarge",
+     "cc1.4xlarge", "cg1.4xlarge"
+    */
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[0], new int [] {1, 613, 0});//1xi386/i386_64, 613 MB, 0 GB /mnt, low I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[1], new int [] {1, 1700, 150000});//1xi386, 1.7 GB, 150 GB /mnt, moderate I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[2], new int [] {2, 7500, 420000});//2xi386_64, 1.7 GB, 2x420 GB /mnt, high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[3], new int [] {4, 15000, 420000});//4xi386_64, 1.7 GB, 4x420 GB /mnt, high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[4], new int [] {2, 1700, 340000});//2xi386, 1.7 GB, 340 GB /mnt, moderate I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[5], new int [] {8, 7000, 420000});//8xi386_64, 1.7 GB, 4x420 GB /mnt, high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[6], new int [] {2, 17100, 420000});//2xi386_64, 17.1 GB, 420 GB /mnt, moderate I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[7], new int [] {4, 34200, 850000});//4xi386_64, 34.2 GB, 826 GB /mnt, high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[8], new int [] {8, 68400, 1690000});//8xi386_64, 68.4 GB, 1690 GB /mnt, high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[9], new int [] {8, 23000, 1690000});//8xi386_64(Xeon Nehalem), 23 GB, 1690 GB /mnt, very high I/O
+    instanceTypes.put(EC2Mgr.INSTANCE_TYPES[10], new int [] {8, 22000, 1690000});//8xi386_64 + 2xNvidia Tesla GPUs, 22 GB, 1690 GB /mnt, very high I/O
 
     if(secure){
       try{
@@ -335,7 +352,10 @@ public class EC2Mgr {
    * 
    * @param amiID ID of the AMI to use
    * @param instances number of instances to launch
-   * @param type instance type - one of: "m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"
+   * @param type instance type - one of: "t1.micro", "m1.small", "m1.large", "m1.xlarge",
+     "c1.medium", "c1.xlarge",
+     "m2.xlarge", "m2.2xlarge", "m2.4xlarge",
+     "cc1.4xlarge", "cg1.4xlarge"
    * @return a List of elements of type ReservationDescription
    * @throws Exception 
    */
@@ -424,14 +444,14 @@ public class EC2Mgr {
    * List available AMIs.
    * 
    * @param onlyPublicAMIs list only AMIs owned by me
-   * @param pattern list only AMIs matching this pattern
+   * @param patterns list only AMIs matching one of these patterns
    * @return a List of elements of type ImageDescription
    * @see #AMI_BUCKET
    * @throws EC2Exception
    */
-  public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, String pattern) throws EC2Exception{
-    if(patternToIdCache.containsKey(pattern)){
-      return patternToIdCache.get(pattern);
+  public List<ImageDescription> listAvailableAMIs(boolean onlyPublicAMIs, String[] patterns) throws EC2Exception{
+    if(patternToIdCache.containsKey(patterns)){
+      return patternToIdCache.get(patterns);
     }
     List<ImageDescription> list = new ArrayList<ImageDescription>();
     List<String> params = new ArrayList<String>();
@@ -443,22 +463,29 @@ public class EC2Mgr {
     ImageDescription img = null;
     for(Iterator<ImageDescription> it=images.iterator(); it.hasNext();){
       img = it.next();
-      if((matchAMI(img, pattern)) &&
+      if((matchAMI(img, patterns)) &&
           (!onlyPublicAMIs || img.isPublic()) &&
           img.getImageState().equals("available")){
         list.add(img);
       }
     }
-    patternToIdCache.put(pattern, list);
+    patternToIdCache.put(patterns, list);
     return list;
   }
   
-  private boolean matchAMI(ImageDescription desc, String pattern) {
-    return (pattern==null || pattern.equals("") ||
-       desc.getImageLocation().matches("(?i).*"+pattern+".*") ||
-       desc.getImageId().matches("(?i).*"+pattern+".*") ||
-       desc.getImageOwnerId().matches("(?i).*"+pattern+".*")) &&
-       desc.getImageType().equalsIgnoreCase("machine");
+  private boolean matchAMI(ImageDescription desc, String[] patterns) {
+    if(patterns==null || patterns.length==0){
+      return desc.getImageType().equalsIgnoreCase("machine");
+    }
+    for(int i=0; i<patterns.length; ++i){
+      if((desc.getImageLocation().matches("(?i).*"+patterns[i]+".*") ||
+          desc.getImageId().matches("(?i).*"+patterns[i]+".*") ||
+          desc.getImageOwnerId().matches("(?i).*"+patterns[i]+".*")) &&
+          desc.getImageType().equalsIgnoreCase("machine")){
+        return true;
+      }
+    }
+    return false;
   }
 
   public ImageDescription getImageDescription(String imageId) throws EC2Exception{

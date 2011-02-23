@@ -49,12 +49,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
   // Whether or not to request virtualization of jobs.
   private boolean virtualize = false;
+  private int runningSeconds = -1;
+  private int ramMB = -1;
   // VOs allowed to run my jobs.
   private String [] allowedVOs = null;
+  private String [] requiredRuntimeEnvs = null;
   // RTEs are refreshed from entries written by pull nodes in remote database
   // every RTE_SYNC_DELAY milliseconds.
   private static int RTE_SYNC_DELAY = 60000;
-  private String [] requiredRuntimeEnvs = null;
 
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   
@@ -80,6 +82,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     }
     rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "Runtime catalog URLs");
     requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
+    String cpuTime = configFile.getValue(csName, "CPU time");
+    if(cpuTime!=null && !cpuTime.trim().equals("")){
+      runningSeconds = 60*Integer.parseInt(cpuTime);
+    }
+    String memory = configFile.getValue(csName, "Memory");
+    if(memory!=null && !memory.trim().equals("")){
+      ramMB = Integer.parseInt(memory);
+    }
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     String virtualizeStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "virtualize");
@@ -402,6 +412,12 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       if(!setRemoteInputFiles((MyJobInfo) job)){
         throw new IOException("Problem with remote input files.");
       }
+      if(ramMB>0){
+        job.setRamMB(ramMB);
+      }
+      if(runningSeconds>0){
+        job.setRunningSeconds(runningSeconds);
+      }
     }
     catch(Exception e){
       e.printStackTrace();
@@ -461,9 +477,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage("ERROR: could not download output files from job "+job.getIdentifier()+" : "+job.getJobId(), e);
       ok = false;
     }
-    if(!super.postProcess(job)){
-      ok = false;
-    }
+    ok = ok && super.postProcess(job);
     return ok;
   }
   
@@ -499,10 +513,13 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           }
         }
         else{
-          transferControl.download(url, destination);
-          fileTransfer.getFile(
-              new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
-              new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
+          //fileTransfer.getFile(
+          //   new GlobusURL(job.getJobId()+"/"+outputFiles[i]),
+          //   new File(MyUtil.clearTildeLocally(MyUtil.clearFile(runDir(job)))));
+          GridPilot.getClassMgr().getTransferStatusUpdateControl().localDownload(
+              job.getJobId()+"/"+outputFiles[i], outputFiles[i],
+              new File(MyUtil.clearFile(runDir(job))),
+              GridPilot.getClassMgr().getCSPluginMgr().copyFileTimeOut);
         }
       }
       if(!outDestsVec.isEmpty()){
@@ -565,7 +582,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       }
       else if(st==JobInfo.STATUS_RUNNING){
         res = getLRMS().getOutput(MyUtil.getHostFromID(job.getJobId()), job.getJobId(),
-            GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut, null);
+            (int) GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut, null);
       }
       else{
         throw new IOException("Job is not in a state that allows getting output - "+JobInfo.getStatusName(st));

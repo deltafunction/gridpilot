@@ -81,7 +81,7 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
     onlyPublicImages = new JCheckBox();
     onlyPublicImages.setSelected(true);
     amiPattern = new JTextField(12);
-    amiPattern.setText(EC2ComputingSystem.AMI_PREFIX);
+    amiPattern.setText(MyUtil.arrayToString(EC2ComputingSystem.AMI_PATTERNS));
     imageChoicePanel.add(new JLabel("Only public AMIs"));
     imageChoicePanel.add(onlyPublicImages);
     imageChoicePanel.add(new JLabel(" Match"));
@@ -103,7 +103,8 @@ public class EC2MonitoringPanel extends VMMonitoringPanel implements ClipboardOw
   
   protected String [][] getAvailableImages() throws EC2Exception{
     ec2mgr.clearCache();
-    List<ImageDescription> amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(), amiPattern.getText());
+    List<ImageDescription> amiList = ec2mgr.listAvailableAMIs(onlyPublicImages.isSelected(),
+        MyUtil.split(amiPattern.getText()));
     String [][] amiArray = new String [amiList.size()][IMAGE_FIELDS.length];
     ImageDescription ami = null;
     int i = 0;

@@ -599,7 +599,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
       bHome.setSize(new java.awt.Dimension(22, 22));
       bHome.addMouseListener(new MouseAdapter(){
         public void mouseClicked(MouseEvent me){
-          ResThread t = (new ResThread(){
+          ResThread t = new ResThread(){
             public void run(){
               try{
                 statusBar.setLabel("Opening URL...");
@@ -614,7 +614,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               }
               doingSearch = false;
             }
-          });     
+          };     
           //SwingUtilities.invokeLater(t);
           t.start();
         }
@@ -626,7 +626,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         public void mouseClicked(MouseEvent me){
           statusBar.setLabel("Opening URL...");
           ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-          ResThread t = (new ResThread(){
+          ResThread t = new ResThread(){
             public void run(){
               try{
                 setDisplay(currentUrlBox.getSelectedItem().toString());
@@ -640,7 +640,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
               }
               doingSearch = false;
             }
-          });     
+          };     
           //SwingUtilities.invokeLater(t);
           t.start();
         }
@@ -710,7 +710,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     
     
     //setDisplay(url);
-    MyResThread dt = new MyResThread(){
+    ResThread dt = new ResThread(){
       public void run(){
         try{
           setDisplay(url);
@@ -838,7 +838,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(dir==null){
       return;
     }
-    MyResThread rt = new MyResThread(){
+    ResThread rt = new ResThread(){
       public void run(){
         if(url.endsWith("/")){
           downloadDir(url, dir);
@@ -975,7 +975,24 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
   
-  private void showError(String str){
+  private void showError(final String str){
+    if(!SwingUtilities.isEventDispatchThread()){
+      ResThread t = new ResThread(){
+        public void run(){
+          doShowError(str);
+        }
+      };
+      SwingUtilities.invokeLater(t);
+      MyUtil.waitForThread(t, "Error", 0, "showError", true, GridPilot.getClassMgr().getLogFile());
+    }
+    else{
+      doShowError(str);
+    }
+  }
+  
+  private void doShowError(String str){
+    if(SwingUtilities.isEventDispatchThread()){
+    }
     ConfirmBox confirmBox = new ConfirmBox(this);
     String title = "Browser error";
     try{
@@ -1051,7 +1068,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(registering){
       return;
     }
-    ResThread t = (new ResThread(){
+    ResThread t = new ResThread(){
       public void run(){
         registering = true;
         try{
@@ -1103,7 +1120,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           ioe.printStackTrace();
         }
       }
-    });     
+    };     
     //SwingUtilities.invokeLater(t);
     t.start();
   }
@@ -2344,7 +2361,18 @@ public class BrowserPanel extends JDialog implements ActionListener{
     return ret;
   }
 
-  public void actionPerformed(ActionEvent e){
+  public void actionPerformed(final ActionEvent e){
+    ResThread t = new ResThread(){
+      public void run(){
+        doActionPerformed(e);
+      }
+    };
+    SwingUtilities.invokeLater(t);
+    MyUtil.waitForThread(t, ((JButton)e.getSource()).getText(), GridPilot.getClassMgr().getCSPluginMgr().copyFileTimeOut,
+        "actionPerformed", true, GridPilot.getClassMgr().getLogFile());
+  }
+  
+  public void doActionPerformed(ActionEvent e){
     try{
       if(e.getSource()==bOk){
         exit();
@@ -2425,7 +2453,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   private void downloadAll(final File dir){
-    ResThread t = (new ResThread(){
+    ResThread t = new ResThread(){
       public void run(){
         String href = null;
         for(Iterator<String> it=listedUrls.iterator(); it.hasNext();){
@@ -2447,7 +2475,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
         MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
             "Download ok", "All file(s) downloaded.");
       }
-    });
+    };
     //SwingUtilities.invokeLater(t);
     t.start();
   }
@@ -2459,7 +2487,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     if(fileOrDir==null){
       return;
     }
-    MyResThread rt = new MyResThread(){
+    ResThread rt = new ResThread(){
       public void run(){
         if(fileOrDir.isDirectory()){
           uploadDir(fileOrDir, url);
@@ -2593,7 +2621,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   }
   
   private void registerAll(final String dbName) {
-    ResThread t = (new ResThread(){
+    ResThread t = new ResThread(){
       public void run(){
         try{
           DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
@@ -2627,7 +2655,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
           ioe.printStackTrace();
         }
       }
-    });
+    };
     //SwingUtilities.invokeLater(t);
     t.start();
   }

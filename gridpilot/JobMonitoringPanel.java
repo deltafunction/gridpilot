@@ -92,7 +92,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    */
   public JobMonitoringPanel() throws Exception{
     statusTable = GridPilot.getClassMgr().getJobStatusTable();
-    String timeout = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "File catalog timeout");
+    String timeout = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Decide timeout");
     if(timeout!=null){
       try{
         decideTimeout = Integer.parseInt(timeout);

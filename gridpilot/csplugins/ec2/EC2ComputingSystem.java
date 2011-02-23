@@ -24,6 +24,7 @@ import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.ReservationDescription;
 import com.xerox.amazonws.ec2.ReservationDescription.Instance;
 
+import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
@@ -34,6 +35,7 @@ import gridfactory.common.Shell;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTEInstaller;
 import gridfactory.common.jobrun.RTEMgr;
+import gridfactory.common.jobrun.RTECatalog.AMIPackage;
 import gridfactory.common.jobrun.RTECatalog.EBSSnapshotPackage;
 import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
@@ -63,18 +65,21 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String secretKey;
   private HashMap<JobInfo, String> jobAmis;
   private HashMap<String, String> loginUsers;
+  private int ramMB = -1;
+  private String instanceType = null;
   
   // These variables will be set in the shells run on EC2 instances
   private static String AWS_ACCESS_KEY_ID_VAR = "AWS_ACCESS_KEY_ID";
   private static String AWS_SECRET_ACCESS_KEY_VAR = "AWS_SECRET_ACCESS_KEY";
 
-  public static String AMI_PREFIX;
+  public static String[] AMI_PATTERNS = null;
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
     
-    requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(
-        csName, "Required runtime environments");
+    ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    
+    requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
 
     ignoreBaseSystemAndVMRTEs = false;
     
@@ -86,77 +91,72 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     basicOSRTES = new String [] {"Linux"/*, "Windows"*/
         /* Windows instances allow only connections via VRDP - and to connect a keypair must be associated. */};
 
-    fallbackAmiID = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "Fallback ami id");
+    fallbackAmiID = configFile.getValue(csName, "Fallback ami id");
     defaultEc2Catalogs = new String [] {"sss://gridpilot/ec2_rtes.xml"};
-    String [] testEc2Catalogs = GridPilot.getClassMgr().getConfigFile().getValues(csName,
-       "Runtime catalog URLs");
+    String [] testEc2Catalogs = configFile.getValues(csName, "Runtime catalog URLs");
     if(testEc2Catalogs!=null && testEc2Catalogs.length>0){
       defaultEc2Catalogs = testEc2Catalogs;
     }
-    String testAmiPrefix = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "AMI prefix");
-    if(testAmiPrefix!=null){
-      AMI_PREFIX = testAmiPrefix;
+    String[] testAmiPatterns = configFile.getValues(csName, "AMI patterns");
+    if(testAmiPatterns!=null){
+      AMI_PATTERNS = testAmiPatterns;
     }
     else{
-      AMI_PREFIX = "";
-      logFile.addInfo("WARNING: AMI prefix not set. All AMIs will be listed as RTEs." +
+      logFile.addInfo("WARNING: AMI pattern not set. All AMIs will be listed as RTEs." +
           " This is very time consuming and may not be what you want.");
     }
     boolean ec2Secure = true;
-    String ec2SecureStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "Secure");
+    String ec2SecureStr = configFile.getValue(csName, "Secure");
     if(ec2SecureStr!=null && !ec2SecureStr.equalsIgnoreCase("yes") && !ec2SecureStr.equalsIgnoreCase("true")){
       ec2Secure = false;
     }
 
-    String ec2Server = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-      "Server address");
+    String ec2Server = configFile.getValue(csName, "Server address");
     if(ec2Server==null || ec2Server.equals("")){
       ec2Server = "ec2.amazonaws.com";
     }
-    String ec2Path = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "Service path");
+    String ec2Path = configFile.getValue(csName, "Service path");
     if(ec2Path==null){
       ec2Path = "";
     }
-    String ec2PortStr = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "Port number");
+    String ec2PortStr = configFile.getValue(csName, "Port number");
     int ec2Port = ec2Secure?443:80;
     if(ec2PortStr!=null){
       ec2Port = Integer.parseInt(ec2PortStr);
     }
    
-    accessKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "AWS access key id");
-    secretKey = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "AWS secret access key");
+    accessKey = configFile.getValue(csName, "AWS access key id");
+    secretKey = configFile.getValue(csName, "AWS secret access key");
     // Set up submit shell variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
     // - these are for use by s3_copy - and any other tools that might need them.
     submitEnvironment = new String [] {AWS_ACCESS_KEY_ID_VAR+"="+accessKey,
                                        AWS_SECRET_ACCESS_KEY_VAR+"="+secretKey};
-    String sshAccessSubnet = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-       "SSH access subnet");
+    String sshAccessSubnet = configFile.getValue(csName, "SSH access subnet");
     if(sshAccessSubnet==null || sshAccessSubnet.equals("")){
       // Default to global access
       sshAccessSubnet = "0.0.0.0/0";
     }
-    workingDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "working directory");
+    workingDir = configFile.getValue(csName, "working directory");
     if(workingDir==null || workingDir.equals("")){
       workingDir = "~";
     }
     String runDir = MyUtil.clearTildeLocally(MyUtil.clearFile(workingDir));
     Debug.debug("Using workingDir "+workingDir, 2);
+    String memory = configFile.getValue(csName, "Memory");
+    if(memory!=null && !memory.trim().equals("")){
+      ramMB = Integer.parseInt(memory);
+    }
+    instanceType = configFile.getValue(csName, "Instance type");
+    userName = getUserInfo(csName);
+    Debug.debug("Starting EC2Mgr with user "+userName, 2);
     ec2mgr = new EC2Mgr(ec2Server, ec2Port, ec2Path, ec2Secure,
-        accessKey, secretKey, sshAccessSubnet, getUserInfo(csName),
+        accessKey, secretKey, sshAccessSubnet, userName,
         runDir, transferControl);
     
     createMonitor();
         
     try{
-      String mms = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Max machines");
+      String mms = configFile.getValue(csName, "Max machines");
       maxMachines = Integer.parseInt(mms);
     }
     catch(Exception e){
@@ -164,8 +164,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     String jobsPerMachine = "1";
     try{
-      jobsPerMachine = GridPilot.getClassMgr().getConfigFile().getValue(csName,
-         "Max running jobs per host");
+      jobsPerMachine = configFile.getValue(csName, "Max running jobs per host");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -205,6 +204,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     job.setRTEs(rtes);
+    if(ramMB>0){
+      job.setRamMB(ramMB);
+    }
     if(!super.preProcess(job) /* This is what boots up a VM. */){
       // There may still be hosts booting or unbooted - just return false - SubmissionControl
       // will check and fail job if necessary.
@@ -452,6 +454,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("Getting shell for job "+job.getIdentifier()+" on host "+job.getHost(), 2);
     Shell shell = null;
     try{
+      if(job.getHost()!=null && !job.getHost().trim().equals("") &&
+         job.getUserInfo()!=null && !job.getUserInfo().trim().equals("")){
+        loginUsers.put(job.getHost().trim(), job.getUserInfo().trim());
+      }
       shell = getShell(job.getHost());
     }
     catch(JSchException e){
@@ -498,14 +504,18 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     Debug.debug("host: "+host+"-->"+remoteShellMgrs.get(host)+"-->"+ec2mgr.getKeyFile(), 2);
     Debug.debug("remoteShellMgrs: "+MyUtil.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
-    if(host!=null && !host.equals("") &&
-        !host.startsWith("localhost") && !host.equals("127.0.0.1")){
+    if(host!=null && !host.equals("") && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       String user = "root";
       if(loginUsers .containsKey(host)){
         user = loginUsers.get(host);
       }
       if(!remoteShellMgrs.containsKey(host)){
-        // This means the VM has just been booted
+        // This means the VM has been terminated
+        if(!MyUtil.arrayContains(hosts, host)){
+          Debug.debug("Host terminated", 1);
+          return null;
+        }
+        // This means the VM has just been booted or has been terminated
         Shell newShellMgr = new MySecureShell(host, user, ec2mgr.getKeyFile(), "");
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
@@ -563,37 +573,35 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return null;
     }
     String nameField = MyUtil.getNameField(dbMgr.getDBName(), "runtimeEnvironment");
-    String userField = "user";
     if(!allEC2RTEs.containsKey(dbMgr.getDBName())){
       findAllEC2RTEs(dbMgr);
     }
     DBRecord rte;
     String rteName;
-    String amiId = null;
-    String user = null;
+    String[] amiIdAndUser = null;
     try{
       for(Iterator<DBRecord> it=allEC2RTEs.get(dbMgr.getDBName()).iterator(); it.hasNext();){
-        amiId = null;
+        amiIdAndUser = null;
         rte = it.next();
         rteName = (String) rte.getValue(nameField);
-        user = (String) rte.getValue(userField);
         //Debug.debug("Checking provides of "+rteName, 3);
         if(checkProvides(job, rte, rteName)){
           try{
-            amiId = getAmiId(rteName, ((MyJobInfo)job).getDBName());
+            amiIdAndUser = getAmiIdAndUser(rteName, ((MyJobInfo)job).getDBName());
           }
           catch(Exception ee){
             ee.printStackTrace();
           }
-          if(amiId!=null){
+          if(amiIdAndUser!=null && amiIdAndUser[0]!=null){
             job.setOpSys(rteName);
             job.setOpSysRTE(rteName);
-            job.setUserInfo(user);
+            job.setUserInfo(amiIdAndUser[1]);
+            Debug.debug("AMI user set to "+job.getUserInfo(), 2);
             // This is just to have initLines written to the RTE DB record
             getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
             //
-            jobAmis.put(job, amiId);
-            return amiId;
+            jobAmis.put(job, amiIdAndUser[0]);
+            return amiIdAndUser[0];
           }
         }
       }
@@ -613,29 +621,42 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return fallbackAmiID;
   }
   
-  private String getAmiId(String rteName, String dbName) throws Exception {
+  private String[] getAmiIdAndUser(String rteName, String dbName) throws Exception {
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(dbName);
     String nameField = MyUtil.getNameField(dbPluginMgr.getDBName(), "runtimeEnvironment");
     DBResult allRtes = dbPluginMgr.getRuntimeEnvironments();
     DBRecord rec;
     String manifest = null;
+    String[] ret = new String[]{"", ""};
     for(Iterator<DBRecord> it=allRtes.iterator(); it.hasNext();){
       rec = it.next();
       if(rec.getValue(nameField).equals(rteName) && rec.getValue("computingSystem").equals(csName)){
         manifest = (String) rec.getValue("url");
-        break;
+        if(manifest!=null){
+          break;
+        }
       }
     }
     if(manifest==null){
       throw new Exception("No RTE matching "+rteName+" found.");
     }
-    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PREFIX);
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PATTERNS);
     ImageDescription desc;
+    AMIPackage pack;
+    RTEMgr ec2RteMgr = getRteMgr();
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
       //Debug.debug("Finding AMI "+manifest+"<->"+desc.getImageLocation(), 3);
       if(desc.getImageLocation().equalsIgnoreCase(manifest)){
-        return desc.getImageId();
+        ret[0] = desc.getImageId();
+        pack = ec2RteMgr.getRTECatalog().getAMIPackage(desc.getImageId());
+        if(pack==null){
+          Debug.debug("WARNING: could not find AMIPackage with ID "+desc.getImageId(), 1);
+        }
+        else{
+          ret[1] = ec2RteMgr.getRTECatalog().getAMIPackage(desc.getImageId()).user;
+        }
+        return ret;
       }
     }
     throw new Exception("No RTE matching "+rteName+" found.");
@@ -720,7 +741,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(instance.getDnsName().equals(host)){
           Debug.debug("Host "+host+" is running AMI "+instance.getImageId(), 2);
           if(instance.getImageId().equals(amiId)){
-            Debug.debug("Host "+host+" provides RTEs requested by job. "+job.getName(), 2);
+            Debug.debug("Host "+host+" provides RTEs requested by job. "+job.getName()+":"+job.getUserInfo(), 2);
+            loginUsers.put(host, job.getUserInfo());
             return true;
           }
         }
@@ -817,7 +839,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         logFile.addMessage("WARNING: EC2 catalog misconfigured", e);
       }
     }
-    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PREFIX);
+    List<ImageDescription> gpAMIs = ec2mgr.listAvailableAMIs(false, AMI_PATTERNS);
     ImageDescription desc;
     for(Iterator<ImageDescription> it=gpAMIs.iterator(); it.hasNext();){
       desc = it.next();
@@ -829,13 +851,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       if(desc.getImageId().equalsIgnoreCase(fallbackAmiID)){
         fallbackAmiName = manifestToRTEName(desc.getImageLocation());
       }
-      if(AMI_PREFIX!=null && !AMI_PREFIX.equals("")){
+      if(AMI_PATTERNS!=null && !AMI_PATTERNS.equals("")){
         try{
           files.add(getTmpCatalogFile(desc.getImageId()));
           continue;
         }
         catch(Exception e){
-          e.printStackTrace();
+          //e.printStackTrace();
           logFile.addInfo("No XML file for AMI "+desc.getImageLocation()+". Using defaults.");
         }
       }
@@ -1031,9 +1053,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return false;
   }
 
-  // Types: "m1.small", "m1.large", "m1.xlarge", "c1.medium", "c1.xlarge"
+  // Types: "t1.micro", "m1.small", "m1.large", "m1.xlarge",
+  // "c1.medium", "c1.xlarge",
+  // "m2.xlarge", "m2.2xlarge", "m2.4xlarge",
+  // "cc1.4xlarge", "cg1.4xlarge"
   // memory is in megabytes
   public  String getInstanceType(int memory) throws Exception{
+    if(instanceType!=null && !instanceType.trim().equals("")){
+      return instanceType;
+    }
     String type;
     int[] desc;
     for(int i=0; i<EC2Mgr.INSTANCE_TYPES.length; ++i){
@@ -1041,7 +1069,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       desc = ec2mgr.instanceTypes.get(type);
       // TODO: add check on disc and CPU requirements. These fields should then be added to JobInfo.
       if(memory<=0 || memory<desc[1]){
-        return type;
+        instanceType = type;
+        return instanceType;
       }
     }
     throw new Exception("No EC2 instance type honors job requirements. "+memory);
@@ -1105,11 +1134,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         mountEBSVolumes(inst, ebsSnapshots);
         String [] tarPackages = getTarPackageRTEs(job);
         Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
+        loginUsers.put(inst.getDnsName(), job.getUserInfo());
         installTarPackages(inst, job.getOpSysRTE(), tarPackages);
         hosts[i] = inst.getDnsName();
         Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
         preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
-        loginUsers.put(hosts[i], job.getUserInfo());
         return hosts[i];
       }
       catch(Exception e){
@@ -1161,8 +1190,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    */
   private String[] getTarPackageRTEs(JobInfo job) throws Exception{
     String opsysRte = job.getOpSysRTE();
-    RTEMgr rteMgr = getRteMgr();
-    RTECatalog catalog = rteMgr.getRTECatalog();
+    RTEMgr ec2RteMgr = getRteMgr();
+    RTECatalog catalog = ec2RteMgr.getRTECatalog();
     Vector<String> deps = new Vector<String>();
     HashMap<String, Vector<String>> depsMap;
     Vector<String> provides = new Vector<String>();
@@ -1171,7 +1200,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       // which is the case if opsysRte is an AMI name with no AMIPackage defined in
       // the catalog. Just ignore it.
       MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
-      depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+      depsMap = ec2RteMgr.getVmRteDepends(opsysRte, null);
       deps.addAll(depsMap.get(null));
       Collections.addAll(provides, opsysMp.provides);
       if(opsysMp.virtualMachine!=null && opsysMp.virtualMachine.os!=null){
@@ -1185,7 +1214,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       if(job.getRTEs()!=null && job.getRTEs().length>0){
         Vector<String> rtesVec = new Vector<String>();
         Collections.addAll(rtesVec, job.getRTEs());
-        depsMap = rteMgr.getRteDepends(rtesVec, job.getOpSys(), null, true);
+        depsMap = ec2RteMgr.getRteDepends(rtesVec, job.getOpSys(), null, true);
         String vmOs = depsMap.keySet().iterator().next();
         Vector<String> depsVec = depsMap.get(vmOs);
         // Just in case the OS is listed as a dependence
@@ -1217,14 +1246,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * @throws Exception 
    */
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
-    RTEMgr rteMgr = getRteMgr();
-    RTECatalog catalog = rteMgr.getRTECatalog();
+    RTEMgr ec2RteMgr = getRteMgr();
+    RTECatalog catalog = ec2RteMgr.getRTECatalog();
     HashMap<String, Vector<String>> depsMap = new HashMap<String, Vector<String>>();
     try{
       // getVmRteDepends() throws an exception if no instance package can be found -
       // which is the case if opsysRte is an AMI name with no AMIPackage defined in
       // the catalog. Just ignore it.
-      depsMap = rteMgr.getVmRteDepends(opsysRte, null);
+      depsMap = ec2RteMgr.getVmRteDepends(opsysRte, null);
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1328,8 +1357,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   
   private void installTarPackages(Instance inst, String os, String[] rtes) throws Exception {
         
-    RTEMgr rteMgr = getRteMgr();
-    RTECatalog catalog = rteMgr.getRTECatalog();    
+    RTEMgr ec2RteMgr = getRteMgr();
+    RTECatalog catalog = ec2RteMgr.getRTECatalog();    
     Shell shell = getShell(inst.getDnsName());
     
     RTEInstaller rteInstaller;
@@ -1344,7 +1373,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
         ip = null;
         try{
-          ip = rteMgr.getInstancePackage(mp, os);
+          ip = ec2RteMgr.getInstancePackage(mp, os);
         }
         catch(Exception ee){
           ee.printStackTrace();
@@ -1353,7 +1382,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           // If no InstancePackage could be found on the give OS, the OS is probably
           // an AMI not registered in the catalog - in this case, we just try the first
           // InstancePackage found...
-          ip = rteMgr.getInstancePackage(mp, null);
+          ip = ec2RteMgr.getInstancePackage(mp, null);
           if(ip!=null){
             logFile.addInfo(rtes[i]+" has no TarPackage instance on "+os+". Defaulting to "+ip.url+
                 " on "+ip.baseSystem);

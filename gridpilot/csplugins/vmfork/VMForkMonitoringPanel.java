@@ -3,6 +3,7 @@ package gridpilot.csplugins.vmfork;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.LocalShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.ResThread;
 import gridfactory.common.jobrun.VMMgr;
 import gridfactory.common.jobrun.VirtualMachine;
@@ -15,9 +16,7 @@ import gridpilot.VMMonitoringPanel;
 
 import java.awt.datatransfer.ClipboardOwner;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 
 import javax.swing.SwingUtilities;
 
@@ -60,9 +59,9 @@ public class VMForkMonitoringPanel extends VMMonitoringPanel implements Clipboar
   
   protected String [][] getAvailableImages() throws Exception{
     RteXmlParser xmlParser = GridPilot.getClassMgr().getRteXmlParser(rteCatalogUrls);
-    Set<MetaPackage> mps = xmlParser.getRteCatalog().getMetaPackages();
+    MyLinkedHashSet<MetaPackage> mps = xmlParser.getRteCatalog().getMetaPackages();
     MetaPackage mp;
-    HashSet<String []> images = new HashSet<String []>();
+    MyLinkedHashSet<String []> images = new MyLinkedHashSet<String []>();
     String[] imRow;
     // "Image name", "OS", "Services", "Privileges", "Requirements"
     for(Iterator<MetaPackage> it=mps.iterator(); it.hasNext();){

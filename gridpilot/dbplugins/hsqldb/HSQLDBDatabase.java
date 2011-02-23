@@ -824,7 +824,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
 
   public synchronized DBResult select(String selectRequest, String idField,
       boolean findAll){
-    Debug.debug("Select request "+selectRequest, 2);
+    Debug.debug("Select request "+selectRequest, 3);
     String req = selectRequest;
     boolean withStar = false;
     int identifierColumn = -1;
@@ -867,7 +867,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         }*/
       }
     }
-    Debug.debug("new search: "+req, 2);
+    Debug.debug("new search: "+req, 3);
     if(fileCatalogType==FILE_CATALOG_TYPE_THREE_TABLES){
       // The "file" table is a pseudo table constructed from the 3 tables
       // t_pfn, t_lfn and t_meta
@@ -884,7 +884,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         req = matcher.replaceFirst("SELECT DISTINCT $1 FROM t_pfn" +
                 " JOIN t_lfn ON t_pfn.guid=t_lfn.guid JOIN t_meta ON t_pfn.guid=t_meta.guid");
       }
-      Debug.debug("search now: "+req, 2);
+      Debug.debug("search now: "+req, 3);
     }
     else if(fileCatalogType==FILE_CATALOG_TYPE_NO_TABLE){
       // The "file" table is a pseudo table constructed from "jobDefinitions".
@@ -932,7 +932,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
         patt = Pattern.compile("SELECT (.+) FROM file\\b(.*)", Pattern.CASE_INSENSITIVE);
         matcher = patt.matcher(req);
         req = matcher.replaceFirst("SELECT $1 FROM jobDefinition $2");
-        Debug.debug("new pseudo search: "+req, 2);
+        Debug.debug("new pseudo search: "+req, 3);
       }
     }
 
@@ -1441,7 +1441,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     req += " FROM jobDefinition where "+idField+" = '"+
     jobDefinitionID + "'";
     Vector<DBRecord> jobdefv = new Vector<DBRecord>();
-    Debug.debug(req, 2);
+    Debug.debug(req, 3);
     Connection conn = null;
     try{
       conn = getDBConnection(dbName);
@@ -2045,7 +2045,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
       }
     }
     sql += ")";
-    Debug.debug(sql, 2);
+    Debug.debug(sql, 3);
     boolean execok = true;
     Connection conn = null;
     try{
@@ -2420,7 +2420,7 @@ public class HSQLDBDatabase extends DBCache implements Database{
     try{
       String sql = "DELETE FROM jobDefinition WHERE "+idField+" = '"+
       jobDefId+"'";
-      Debug.debug(sql, 3);
+      Debug.debug(sql, 2);
       conn = getDBConnection(dbName);
       Statement stmt = conn.createStatement();
       stmt.executeUpdate(sql);
