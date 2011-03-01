@@ -134,13 +134,6 @@ public class JobValidation{
         public void run(){
           Debug.debug("Validating job "+job.getName(), 2);
           int dbStatus = doValidate(job);
-          Integer resubmit = (Integer) GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
-             ).getJobMonitoringPanel().getSAutoResubmit().getValue();
-          // If we are running in automatic resubmission mode, there is no such thing as undecided.
-          // Just set the job to failed.
-          //if(resubmit>0 && (dbStatus==DBPluginMgr.UNDECIDED || dbStatus==DBPluginMgr.UNEXPECTED)){
-          //  dbStatus = DBPluginMgr.FAILED;
-          //}
           try{
             GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
                 + DBPluginMgr.getStatusName(dbStatus) +
@@ -244,6 +237,10 @@ public class JobValidation{
       return DBPluginMgr.VALIDATED;
     }
     
+    Integer resubmitCount = (Integer) GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel(
+       ).getJobMonitoringPanel().getSAutoResubmit().getValue();
+    boolean resubmit = resubmitCount>0;
+    
     int exitValue;
     String [] outs = null;
     long beginTime = new Date().getTime();
@@ -253,7 +250,7 @@ public class JobValidation{
          (job.getErrTmp()==null || job.getErrTmp().length()==0)){
          logFile.addMessage("Validation for job " + job.getName()  +
              ") cannot be run : this job doesn't have any outputs", job);
-         return DBPluginMgr.UNDECIDED;
+         return resubmit?DBPluginMgr.FAILED:DBPluginMgr.UNDECIDED;
       }
       
       try{
@@ -275,7 +272,7 @@ public class JobValidation{
       if(outs==null || outs.length==0 || outs[0]==null){
         logFile.addMessage("Validation for job " + job.getName() + 
          " cannot be run : stdout does not exist", job);
-        return DBPluginMgr.UNDECIDED;
+        return resubmit?DBPluginMgr.FAILED:DBPluginMgr.UNDECIDED;
       }
       
       if(job.getErrTmp()==null){
@@ -354,6 +351,7 @@ public class JobValidation{
     StringTokenizer st = new StringTokenizer(stdOut.toString(), "\n");
     Vector<String> attributes = new Vector<String>();
     Vector<String> values = new Vector<String>();
+    boolean ret = true;
     int lineNr = 0;
     int tagLen = gridfactory.common.jobrun.ForkScriptGenerator.METADATA_TAG.length();
     while(st.hasMoreTokens()){
@@ -372,6 +370,9 @@ public class JobValidation{
                            + job.getName() + " at line " + lineNr + " : \n" +
                            " Outputs : " + stdOut +
                            "    --> DB update not done");
+        if(attr.equalsIgnoreCase("outputFileBytes")){
+          ret = false;
+        }
         continue;
       }
       attributes.add(attr);
@@ -417,9 +418,9 @@ public class JobValidation{
       logFile.addMessage("Unable to update DB for job " + job.getName() + "\n"+
                          "attributes : " + MyUtil.arrayToString(attrArray) + "\n" +
                          "values : " + MyUtil.arrayToString(valuesArray), job);
-      return false;
+      ret = false;
     }
-    return true;
+    return ret;
   }
 
 }
