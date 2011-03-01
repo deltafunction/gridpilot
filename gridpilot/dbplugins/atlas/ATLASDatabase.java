@@ -268,7 +268,7 @@ public class ATLASDatabase extends DBCache implements Database{
     DBResult ret = null;
     try{
       if(useCaching && queryResults.containsKey(selectRequest)){
-        Debug.debug("Returning cached result for "+selectRequest+"-->"+queryResults.get(selectRequest), 2);
+        Debug.debug("Returning cached result for "+selectRequest+"-->"+queryResults.get(selectRequest), 3);
         return queryResults.get(selectRequest);
       }
       

@@ -50,7 +50,7 @@ public class GridPilot extends JApplet{
    * This can be modified by the individual cs plugins. */
   public static long FIRST_JOB_SUBMITTED_WAIT_SECONDS = 240;
   /** Before each submission, FIRST_JOB_SUBMITTED_WAIT_SECONDS is reset to this. */
-  public static long DEFAULT_FIRST_JOB_SUBMITTED_WAIT_SECONDS = 240;
+  public static long DEFAULT_FIRST_JOB_SUBMITTED_WAIT_SECONDS = 300;
   private final static String DEFAULT_APP_STORE_URL = "https://www.gridpilot.dk/apps/";
   /** If set, all runtimeEnvironment records are deleted on startup (and then populated
    * computing systems). */
@@ -1029,13 +1029,14 @@ public class GridPilot extends JApplet{
     }
     getClassMgr().setConfigFile(confFile);
     
-    try{
+    // Hmm, no such a good idea. GridPilot/TiersOfATLASCache.txt get zapped.
+    /*try{
       for(Iterator<String> it=TMP_FILES.keySet().iterator(); it.hasNext();){
         TMP_FILES.get(it.next()).delete();
       }
     }
     catch(Exception e){
-    }
+    }*/
     //getClassMgr().getConfigFile().makeTmpConfigFile();
     loadConfigValues();
     getClassMgr().getJobValidation().loadValues();

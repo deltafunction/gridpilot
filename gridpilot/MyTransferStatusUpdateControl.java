@@ -4,6 +4,7 @@ import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LogFile;
+import gridfactory.common.Shell;
 import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
 
@@ -72,6 +73,8 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
    */
   private Vector<Thread> checkingThreads = new Vector<Thread>();
   private ImageIcon iconChecking;
+
+  private int COPY_INPUTFILE_DELAY = 5*1000;
   
   /**
    * Returns status names for statistics panel.
@@ -114,6 +117,10 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     super(GridPilot.getClassMgr().getTransferControl());
     configFile = GridPilot.getClassMgr().getConfigFile();
     logFile = GridPilot.getClassMgr().getLogFile();
+    
+    maxTransfersByUpdate = new HashMap<String, Integer>();
+    
+    loadValues();
 
     timerChecking = new Timer(0, new ActionListener(){
       public void actionPerformed(ActionEvent ae){
@@ -131,10 +138,8 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
         }
       }
     });
-
-    maxTransfersByUpdate = new HashMap<String, Integer>();
-
-    loadValues();
+    
+    timerChecking.setDelay(timeBetweenCheking);
 
     URL imgURL=null;
     try{
@@ -191,8 +196,6 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     else
       logFile.addMessage(configFile.getMissingMessage(GridPilot.TOP_CONFIG_SECTION, "time between checks") + "\n" +
                          "Default value = " + timeBetweenCheking);
-
-    timerChecking.setDelay(timeBetweenCheking);
 
     /**
      * Load of maxTransfersByUpdate
@@ -265,10 +268,6 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
         }
       }
       Debug.debug("Finished adding transfer to toCheckTransfers", 3);
-    }
-    if(!timerChecking.isRunning()){
-      Debug.debug("WARNING: timer not running, restarting...", 3);
-      timerChecking.restart();
     }
   }
 
@@ -405,8 +404,6 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     
     Debug.debug("Finished trigCheck", 3);
 
-    if(!timerChecking.isRunning())
-      timerChecking.restart();
   }
   
   /**
@@ -454,12 +451,47 @@ public class MyTransferStatusUpdateControl extends TransferStatusUpdateControl {
     GridPilot.getClassMgr().getTransferStatisticsPanel().update();
   }
   
+  public boolean copyInputFile(String src, String dest, Shell shell, boolean overWrite,
+      long waitMillis, String error){
+    int oldDelay = timerChecking.getDelay();
+    boolean wasRunning = timerChecking.isRunning();
+    if(!wasRunning){
+      timerChecking.start();
+    }
+    timerChecking.setDelay(COPY_INPUTFILE_DELAY );
+    boolean ret = false;
+    try{
+      ret = super.copyInputFile(src, dest, shell, overWrite, waitMillis, error);
+    }
+    catch(Exception e){
+    }
+    finally{
+      if(!wasRunning){
+        timerChecking.stop();
+      }
+      timerChecking.setDelay(oldDelay );
+    }
+    return ret;
+  }
+  
   public int [] getTransfersByStatus(){
     return transfersByStatus;
   }
 
   public int [] getTransfersByFTStatus(){
     return transfersByFTStatus;
+  }
+
+  public void restartTimer() {
+    timerChecking.restart();
+  }
+
+  public void stopTimer() {
+    timerChecking.stop();
+  }
+
+  public void setTimerDelay(int i) {
+    timerChecking.setDelay(i);
   }
 
 

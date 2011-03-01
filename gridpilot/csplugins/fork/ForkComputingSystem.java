@@ -51,7 +51,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected Shell shell;
   protected String workingDir;
   protected String defaultUser;
-  protected String userName;
+  private String userName;
   protected String error = "";
   protected String runtimeDirectory = null;
   protected String executableDirectory = null;
@@ -858,7 +858,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       for(int i=0; i<jobInputFiles.length; ++i){
         if(!MyUtil.urlIsRemote(jobInputFiles[i])){
           jobInputFilesVector.add(jobInputFiles[i]);
-        }        
+        }
       }
       jobInputFiles = new String [jobInputFilesVector.size()];
       for(int i=0; i<jobInputFiles.length; ++i){
@@ -1144,5 +1144,8 @@ public class ForkComputingSystem implements MyComputingSystem{
 
   public boolean resumeJobs(Vector<JobInfo> arg0) {
     return false;
+  }
+  
+  public void setCSUserInfo(MyJobInfo job) {
   }
 }

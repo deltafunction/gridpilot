@@ -53,9 +53,14 @@ public interface MyComputingSystem extends ComputingSystem {
   public static String LFC_INPUT_FILE_BASE_NAME = "input_file_";
 
   /**
-   * Returns user information from the credentials used by this plugin
-   * for submitting jobs.
-   * Usually this would be the subject of the grid certificate.
+   * Returns a string identifying the user running this GridPilot.
+   * Usually user information from the credentials used by this plugin
+   * for submitting jobs and sually this is the subject of the
+   * grid certificate.
+   * <br><br>
+   * On shell-based systems like EC2ComputingSystem, getUserInfo()
+   * does not necessarily have anything to do with the user name
+   * used to login via ssh.
    * 
    * @param csName the name of the computing system
    * @return a String which contains some information about 'user'
@@ -84,5 +89,18 @@ public interface MyComputingSystem extends ComputingSystem {
    * @return one of the status codes RUN_OK, RUN_WAIT or RUN_FAILED
    */
   public int run(MyJobInfo job);
+
+  /**
+   * Some computing systems have non-unique and differing user IDs.
+   * E.g. on EC2 one may have to login with user name "ubuntu" on some
+   * VMs and with "root" on others.
+   * <br><br>
+   * getCSUserInfo() is used to put this information in job.getUserInfo().
+   * AFTER this operation, job.getUserInfo() no longer identifies the submitter uniquely,
+   * but instead keeps the login user information.
+   * @param job
+   * @return
+   */
+  public void setCSUserInfo(MyJobInfo job);
 
 }

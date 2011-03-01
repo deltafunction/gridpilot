@@ -204,21 +204,27 @@ public class JobMgr{
         job.setDBStatus(dbStatus);
         Debug.debug("Setting job DB :"+dbName+":", 3);
         job.setDBName(dbName);
-        String jobUser = dbPluginMgr.getJobDefUserInfo(job.getIdentifier());
-        Debug.debug("Setting job user :"+jobUser+":", 3);
-        job.setUserInfo(jobUser);
+        String jobCS = null;
         try{
-          String jobID = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobID");
-          Debug.debug("Setting job ID :"+jobID+":", 3);
-          job.setJobId(jobID);
+          jobCS = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
+          Debug.debug("Setting job CS :"+jobCS+":", 3);
+          job.setCSName(jobCS);
         }
         catch(Exception e){
           Debug.debug(e.getCause().toString(), 2);
         }
         try{
-          String jobCS = dbPluginMgr.getRunInfo(job.getIdentifier(), "computingSystem");
-          Debug.debug("Setting job CS :"+jobCS+":", 3);
-          job.setCSName(jobCS);
+          String [] rtes = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
+          Debug.debug("Setting job RTEs :"+MyUtil.arrayToString(rtes)+":", 3);
+          job.setRTEs(rtes);
+        }
+        catch(Exception e){
+          Debug.debug(e.getCause().toString(), 2);
+        }
+        try{
+          String jobID = dbPluginMgr.getRunInfo(job.getIdentifier(), "jobID");
+          Debug.debug("Setting job ID :"+jobID+":", 3);
+          job.setJobId(jobID);
         }
         catch(Exception e){
           Debug.debug(e.getCause().toString(), 2);
@@ -231,6 +237,7 @@ public class JobMgr{
         catch(Exception e){
           Debug.debug(e.getCause().toString(), 2);
         }
+        GridPilot.getClassMgr().getCSPluginMgr().setCSUserInfo(job);
         job.setTableRow(monitoredjobs.size());
         job.setNeedsUpdate(true);
         String stdOut = null;

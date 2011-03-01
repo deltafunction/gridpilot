@@ -316,7 +316,14 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
 
     miDecide.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        decide();
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        ResThread t = new ResThread(){
+          public void run(){
+            decide();
+            setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+          }
+        };
+        t.start();
       }
     });
 

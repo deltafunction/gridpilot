@@ -662,7 +662,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getScripts")){
+    if(MyUtil.myWaitForThread(t, csName, currentOutputTimeOut, "getShell")){
       return t.getShellRes();
     }
     else{
@@ -733,13 +733,42 @@ public class CSPluginMgr implements MyComputingSystem{
 
     t.start();
 
-    if(MyUtil.myWaitForThread(t, csName, defaultTimeOut, "getError")){
+    if(MyUtil.myWaitForThread(t, csName, defaultTimeOut*1000L, "getError")){
       return t.getStringRes();
     }
     else{
       return "No response";
     }
   }
+  
+  public void setCSUserInfo(final MyJobInfo job) {
+    if(job.getCSName()==null || job.getCSName().equals("")){
+      return;
+    }
+
+    ResThread t = new ResThread(){
+      public void run(){
+        try{
+          ((MyComputingSystem) cs.get(job.getCSName())).setCSUserInfo(job);
+        }
+        catch(Throwable t){
+          logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                             " from plugin " + job.getCSName() +
+                             " for getError", t);
+        }
+      }
+    };
+
+    t.start();
+
+    if(MyUtil.myWaitForThread(t, job.getCSName(), defaultTimeOut*1000L, "setCSUserInfo", false)){
+      return;
+    }
+    else{
+      logFile.addMessage("WARNING: could not set userInfo from computing system "+job.getCSName());
+    }
+  }
+
 
   /**
    * @see MyComputingSystem#postProcess(MyJobInfo)
@@ -905,7 +934,7 @@ public class CSPluginMgr implements MyComputingSystem{
 
     MyUtil.myWaitForThread(t, csName, setupTimeOut, "cleanupRuntimeEnvironments");
   }
-
+  
   public void reconnect(){
     try{
       init();

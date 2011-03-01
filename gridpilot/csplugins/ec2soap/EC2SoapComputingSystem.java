@@ -95,10 +95,7 @@ public class EC2SoapComputingSystem extends ForkPoolComputingSystem implements M
     hosts = new String[maxMachines];
     // Fill maxJobs with a constant number
     maxRunningJobs = new String[maxMachines];
-    Arrays.fill(maxRunningJobs, jobsPerMachine);
-    
-    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
-    
+    Arrays.fill(maxRunningJobs, jobsPerMachine);    
     // Reuse running VMs
     discoverInstances();
 

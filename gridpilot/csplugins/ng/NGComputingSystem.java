@@ -70,7 +70,6 @@ public class NGComputingSystem implements MyComputingSystem{
 
   public static int SUBMIT_RESOURCES_REFRESH_INTERVAL = 5;
 
-  private NGSubmission ngSubmission;
   private Boolean gridProxyInitialized = Boolean.FALSE;
   private String workingDir;
   private String unparsedWorkingDir;
@@ -87,6 +86,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private HashSet<String> finalRuntimes = null;
   private int submissionNumber = 1;
   private MyTransferControl transferControl;
+  private Vector<ARCResource> nonExcludedResources = new Vector<ARCResource>();
   
   private static String csName;
   private static MyLogFile logFile;
@@ -200,7 +200,6 @@ public class NGComputingSystem implements MyComputingSystem{
       GridPilot.splashShow("Finding authorized NG ARC resources...");
       resources = findAuthorizedResourcesFromIS();
       Debug.debug("Found "+resources.length+" authorized ARC resources.", 1);
-      Vector<ARCResource> nonExcludedResources = new Vector<ARCResource>();
       for(int i=0; i<resources.length; ++i){
         if(MyUtil.arrayContainsMatch(excludedClusters, resources[i].getClusterName())){
           continue;
@@ -228,11 +227,6 @@ public class NGComputingSystem implements MyComputingSystem{
         };
         rt.start();
       }
-      ngSubmission = new NGSubmission(csName,
-          nonExcludedResources.toArray(new ARCResource[nonExcludedResources.size()]), fastSubmission);
-    }
-    else{
-      ngSubmission = new NGSubmission(csName, clusters, excludedClusters, fastSubmission);
     }
     
     Debug.debug("Clusters: "+MyUtil.arrayToString(clusters), 2);
@@ -333,6 +327,15 @@ public class NGComputingSystem implements MyComputingSystem{
       refreshResources();
       submissionNumber = 1;
     }
+    NGSubmission ngSubmission;
+    if(useInfoSystem){
+      ngSubmission = new NGSubmission(csName,
+          nonExcludedResources.toArray(new ARCResource[nonExcludedResources.size()]), fastSubmission);
+    }
+    else{
+      ngSubmission = new NGSubmission(csName, clusters, excludedClusters, fastSubmission);
+    }
+
     Debug.debug("submitting..."+gridProxyInitialized, 3);
     String scriptName = runDir(job) + File.separator + job.getName() + ".job";
     String xrslName = runDir(job) + File.separator + job.getName() + ".xrsl";
@@ -959,7 +962,7 @@ public class NGComputingSystem implements MyComputingSystem{
     Collection<Object> foundJobs = null;
     HashSet<ARCJob> foundJobIDs = new HashSet<ARCJob>();
     try{
-      statusBar.setLabel("Finding jobs for "+getUserInfo(csName)+ ", please wait...");
+      //statusBar.setLabel("Finding jobs for "+getUserInfo(csName)+ ", please wait...");
       Debug.debug("Finding jobs for "+getUserInfo(csName)+ ", please wait...", 3);
       foundJobs = arcDiscovery.findUserJobs(getUserInfo(csName), 20, limit);
       HashSet<ARCJob> result = null;
@@ -976,7 +979,7 @@ public class NGComputingSystem implements MyComputingSystem{
         result = (HashSet<ARCJob>) ((TaskResult) itObj).getResult();
         foundJobIDs.addAll(result);
       }
-      statusBar.setLabel("Finding jobs done");
+      //statusBar.setLabel("Finding jobs done");
     }
     catch(InterruptedException e){
       Debug.debug("User interrupt of job checking!", 2);
@@ -1479,5 +1482,7 @@ public class NGComputingSystem implements MyComputingSystem{
   public boolean resumeJobs(Vector<JobInfo> arg0) {
     return false;
   }
-
+  
+  public void setCSUserInfo(MyJobInfo job) {
+  }
 }

@@ -151,8 +151,8 @@ public class MyTransferControl extends TransferControl {
           }
           catch(Exception e){
             toSubmitTransfers.clear();
-            setMonitorStatus("ERROR: queueing transfer(s) failed.");
-            logFile.addMessage("ERROR: queueing transfer(s) failed:\n"+
+            setMonitorStatus("ERROR: submitting transfer(s) failed.");
+            logFile.addMessage("ERROR: submitted : transfer(s) failed:\n"+
                 ((toSubmitTransfers==null||toSubmitTransfers.toArray()==null)?"":
                   MyUtil.arrayToString(toSubmitTransfers.toArray())), e);
             return;
@@ -699,6 +699,13 @@ public class MyTransferControl extends TransferControl {
         throw new IOException("Starting transfer failed for all transfers in this batch.");
       }
 
+      for(int i=0; i<transfers.length; ++i){
+        submittingTransfers.remove(transfers[i]);
+        runningTransfers.add(transfers[i]);
+        // remove iconSubmitting
+        statusTable.setValueAt(null, transfers[i].getTableRow(), MyTransferStatusUpdateControl.FIELD_CONTROL);
+      }
+
       String userInfo = GridPilot.getClassMgr().getFTPlugin(
           ftPlugin).getUserInfo();
       
@@ -739,7 +746,8 @@ public class MyTransferControl extends TransferControl {
     finally{
       for(int i=0; i<transfers.length; ++i){
         submittingTransfers.remove(transfers[i]);
-        runningTransfers.add(transfers[i]);
+        runningTransfers.remove(transfers[i]);
+        //toSubmitTransfers.add(transfers[i]);
         // remove iconSubmitting
         statusTable.setValueAt(null, transfers[i].getTableRow(), MyTransferStatusUpdateControl.FIELD_CONTROL);
       }

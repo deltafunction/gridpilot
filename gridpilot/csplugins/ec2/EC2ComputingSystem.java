@@ -147,14 +147,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       ramMB = Integer.parseInt(memory);
     }
     instanceType = configFile.getValue(csName, "Instance type");
-    userName = getUserInfo(csName);
-    Debug.debug("Starting EC2Mgr with user "+userName, 2);
     ec2mgr = new EC2Mgr(ec2Server, ec2Port, ec2Path, ec2Secure,
-        accessKey, secretKey, sshAccessSubnet, userName,
+        accessKey, secretKey, sshAccessSubnet, getUserInfo(csName),
         runDir, transferControl);
     
     createMonitor();
-        
+
     try{
       String mms = configFile.getValue(csName, "Max machines");
       maxMachines = Integer.parseInt(mms);
@@ -173,10 +171,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     hosts = new String[maxMachines];
     // Fill maxJobs with a constant number
     maxRunningJobs = new String[maxMachines];
-    Arrays.fill(maxRunningJobs, jobsPerMachine);
-    
-    preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
-    
+    Arrays.fill(maxRunningJobs, jobsPerMachine);    
     // Reuse running VMs
     discoverInstances();
 
@@ -503,19 +498,19 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
     }
     Debug.debug("host: "+host+"-->"+remoteShellMgrs.get(host)+"-->"+ec2mgr.getKeyFile(), 2);
-    Debug.debug("remoteShellMgrs: "+MyUtil.arrayToString(remoteShellMgrs.keySet().toArray()), 2);
+    Debug.debug("remoteShellMgrs: "+remoteShellMgrs, 2);
     if(host!=null && !host.equals("") && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       String user = "root";
-      if(loginUsers .containsKey(host)){
+      if(loginUsers.containsKey(host)){
         user = loginUsers.get(host);
       }
-      if(!remoteShellMgrs.containsKey(host)){
+      if(!remoteShellMgrs.containsKey(host) || remoteShellMgrs.get(host)==null){
         // This means the VM has been terminated
         if(!MyUtil.arrayContains(hosts, host)){
           Debug.debug("Host terminated", 1);
           return null;
         }
-        // This means the VM has just been booted or has been terminated
+        // This means the VM has just been booted or has been terminated or GridPilot has just been started
         Shell newShellMgr = new MySecureShell(host, user, ec2mgr.getKeyFile(), "");
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
@@ -546,18 +541,36 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String host = hosts[i];
     int maxP = 1;
     int preprocessing = 0;
-    maxP = 1;
     if(maxPreprocessingJobs!=null && maxPreprocessingJobs.length>i && maxPreprocessingJobs[i]!=null){
       maxP = Integer.parseInt(maxPreprocessingJobs[i]);
     }
     Debug.debug("Checking host "+host+" for preprocessing jobs - max "+maxP, 2);
     preprocessing = preprocessingHostJobs.get(host)!=null?((HashSet<JobInfo>)preprocessingHostJobs.get(host)).size():0;
     Debug.debug("--> Preprocessing: "+preprocessing, 2);
-    if(preprocessing<maxP){
-      Debug.debug("Selecting host "+host+" : "+preprocessing+"<"+maxP, 2);
-      return true;
+    if(preprocessing>=maxP){
+      Debug.debug("Not selecting host "+host+" : "+preprocessing+">="+maxP, 2);
+      return false;
     }
-    return false;
+    /*int maxR = 1;
+    int running = 0;
+    if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
+      maxR = Integer.parseInt(maxRunningJobs[i]);
+    }
+    Shell thisShell = getShell(host);
+    if(thisShell!=null){
+      running = thisShell.getJobsNumber();
+    }
+    Debug.debug("Checking host "+host+" for running jobs - max "+maxR, 2);
+    Debug.debug("--> running: "+running, 2);
+    if(running>=maxR){
+      Debug.debug("Not selecting host "+host+" : "+running+">="+maxR, 2);
+      return false;
+    }*/
+    return true;
+  }
+  
+  public void setCSUserInfo(MyJobInfo job) {
+    findAmiId(job);
   }
   
   private String findAmiId(JobInfo job) {
@@ -597,6 +610,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             job.setOpSysRTE(rteName);
             job.setUserInfo(amiIdAndUser[1]);
             Debug.debug("AMI user set to "+job.getUserInfo(), 2);
+            Debug.debug("OpSysRTE set to "+job.getOpSysRTE(), 2);
             // This is just to have initLines written to the RTE DB record
             getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
             //
@@ -693,7 +707,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         return false;
       }
     }
-    Debug.debug("All requested RTEs "+MyUtil.arrayToString(requestedRtes)+" provided by "+rteName, 3);
+    Debug.debug("All requested RTEs "+MyUtil.arrayToString(requestedRtes)+" provided by "+rteName, 2);
     return true;
   }
 
@@ -858,7 +872,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         }
         catch(Exception e){
           //e.printStackTrace();
-          logFile.addInfo("No XML file for AMI "+desc.getImageLocation()+". Using defaults.");
+          Debug.debug("No XML file for AMI "+desc.getImageLocation()+". Using defaults.", 3);
         }
       }
       // If no custom XML file was found, add standard entry to RTE table
@@ -999,6 +1013,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           continue;
         }
         if(!hostIsRunning(hosts[i])){
+          logFile.addMessage("WARNING: host "+hosts[i]+" is not running.");
           remoteShellMgrs.remove(hosts[i]);
           hosts[i] = null;
           continue;
@@ -1010,8 +1025,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           if(checkHostProvides(hosts[i], job)){
             Debug.debug("Dependencies provided by host", 2);
             if(checkHostForJobs(i)){
+              job.setHost(hosts[i]);
+              saveJobHost(job);
               return hosts[i];
             }
+          }
+          else{
+            logFile.addInfo("Host "+hosts[i]+" does not provide "+MyUtil.arrayToString(job.getRTEs()));
           }
         }
       }
@@ -1023,6 +1043,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
     String bootedHost = bootInstance(job);
     if(bootedHost!=null){
+      job.setHost(bootedHost);
+      saveJobHost(job);
       return bootedHost;
     }
     // then see if we can queue the job on a host
@@ -1077,79 +1099,102 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   private String bootInstance(JobInfo job){
-    String amiID = null;
-    EBSSnapshotPackage [] ebsSnapshots = null;
+    String host = null;
     for(int i=0; i<hosts.length; ++i){
-      ebsSnapshots = null;
-      try{
-        if(hosts[i]!=null){
-          continue;
-        }
-        amiID = findAmiId(job);
-        Debug.debug("Booting "+amiID, 2);
-        String type = getInstanceType(job.getRamMB());
-        ReservationDescription desc = ec2mgr.launchInstances(amiID, 1, type);
-        Instance inst = ((Instance) desc.getInstances().get(0));
-        // Wait for the machine to boot
-        long startMillis = MyUtil.getDateInMilliSeconds(null);
-        long nowMillis = MyUtil.getDateInMilliSeconds(null);
-        List<ReservationDescription> reservationList = null;
-        List<Instance> instanceList = null;
-        Instance instance = null;
-        Thread.sleep(10000);
-        while(!inst.isRunning()){
-          nowMillis = MyUtil.getDateInMilliSeconds(null);
-          if(nowMillis-startMillis>MAX_BOOT_WAIT){
-            logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
-                 "to boot for job "+job.getIdentifier());
-            return null;
-          }
-          reservationList = ec2mgr.listReservations();
-          instanceList = null;
-          instance = null;
-          ReservationDescription reservation = null;
-          Debug.debug("Finding reservations. "+reservationList.size(), 1);
-          for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
-            reservation = it.next();
-            instanceList = ec2mgr.listInstances(reservation);
-            // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
-            for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
-              instance = itt.next();
-              if(reservation.getReservationId().equalsIgnoreCase(desc.getReservationId())){
-                inst = instance;
-                break;
-              }
-            }
-          }
-          if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
-            break;
-          }
-          Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
-          Thread.sleep(10000);
-        }
-        // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
-        // and add initLines to the runtimeEnvironment record and mount the volume.
-        ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
-        Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
-        mountEBSVolumes(inst, ebsSnapshots);
-        String [] tarPackages = getTarPackageRTEs(job);
-        Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
-        loginUsers.put(inst.getDnsName(), job.getUserInfo());
-        installTarPackages(inst, job.getOpSysRTE(), tarPackages);
-        hosts[i] = inst.getDnsName();
-        Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
-        preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
-        return hosts[i];
-      }
-      catch(Exception e){
-        logFile.addMessage("Problem finding host.", e);
-        return null;
+      host = doBootInstance(i, job);
+      if(host!=null){
+        return host;
       }
     }
-    logFile.addMessage("Problem finding host.");
+    Debug.debug("No free slot to boot host.", 2);
     return null;
   }
   
+  private String doBootInstance(int i, JobInfo job) {
+    EBSSnapshotPackage [] ebsSnapshots = null;
+    try{
+      if(hosts[i]!=null){
+        return null;
+      }
+      String amiID = findAmiId(job);
+      Debug.debug("Booting "+amiID, 2);
+      String type = getInstanceType(job.getRamMB());
+      ReservationDescription desc = ec2mgr.launchInstances(amiID, 1, type);
+      Instance inst = ((Instance) desc.getInstances().get(0));
+      // Wait for the machine to boot
+      long startMillis = MyUtil.getDateInMilliSeconds(null);
+      long nowMillis = MyUtil.getDateInMilliSeconds(null);
+      List<ReservationDescription> reservationList = null;
+      List<Instance> instanceList = null;
+      Instance instance = null;
+      Thread.sleep(10000);
+      while(!inst.isRunning()){
+        nowMillis = MyUtil.getDateInMilliSeconds(null);
+        if(nowMillis-startMillis>MAX_BOOT_WAIT){
+          logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
+               "to boot for job "+job.getIdentifier());
+          return null;
+        }
+        reservationList = ec2mgr.listReservations();
+        instanceList = null;
+        instance = null;
+        ReservationDescription reservation = null;
+        Debug.debug("Finding reservations. "+reservationList.size(), 1);
+        for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+          reservation = it.next();
+          instanceList = ec2mgr.listInstances(reservation);
+          // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+          for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+            instance = itt.next();
+            if(reservation.getReservationId().equalsIgnoreCase(desc.getReservationId())){
+              inst = instance;
+              break;
+            }
+          }
+        }
+        if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
+          break;
+        }
+        Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+        Thread.sleep(10000);
+      }
+      // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
+      // and add initLines to the runtimeEnvironment record and mount the volume.
+      ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());
+      Debug.debug("The AMI "+amiID+" will have the following EBS volumes attached: "+MyUtil.arrayToString(ebsSnapshots), 2);
+      mountEBSVolumes(inst, ebsSnapshots);
+      String [] tarPackages = getTarPackageRTEs(job);
+      Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
+      loginUsers.put(inst.getDnsName(), job.getUserInfo());
+      hosts[i] = inst.getDnsName();
+      installTarPackages(inst, job.getOpSysRTE(), tarPackages);
+      Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
+      preprocessingHostJobs.put(hosts[i], new HashSet<JobInfo>());
+      // Make sure we remember the user in future sessions. - NO, don't. Makes it
+      // impossible to know which jobs belong to who (and "Load my active jobs" will not work).
+      //saveJobUser(job);
+      return hosts[i];
+    }
+    catch(Exception e){
+      logFile.addMessage("Problem booting host.", e);
+      return null;
+    }
+  }
+
+  private void saveJobUser(JobInfo job) {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] fields = new String[]{JobInfo.USER_INFO};
+    String [] values = new String[]{job.getUserInfo()};
+    dbPluginMgr.updateJobDefinition(job.getIdentifier(), fields, values);
+  }
+
+  private void saveJobHost(JobInfo job) {
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String [] fields = new String[]{JobInfo.HOST};
+    String [] values = new String[]{job.getHost()};
+    dbPluginMgr.updateJobDefinition(job.getIdentifier(), fields, values);
+  }
+
   /**
    * Convert an integer to any base.
    * The base can be in the range 2-26.

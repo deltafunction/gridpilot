@@ -2,6 +2,7 @@ package gridpilot.dbplugins.atlas;
 
 import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Util;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -27,6 +28,7 @@ public class TiersOfAtlas {
   // Hash of catalog server mappings found in TiersOfAtlas
   private HashMap<String, String> fileCatalogs = new HashMap<String, String>();
   private HashMap<String, String> httpFileCatalogs = new HashMap<String, String>();
+  private MyLinkedHashSet<String> blacklistedParents = new MyLinkedHashSet<String>();
 
   /**
    * Create TiersOfAtlas object.
@@ -70,6 +72,8 @@ public class TiersOfAtlas {
           throw new IOException("ERROR: "+toaURL+" not available and not using cache.");
         }
         toaFile = tmpFile;
+        // have the tmp file deleted on exit
+        GridPilot.addTmpFile(tmpFile.getName(), toaFile);
       }
       else{
         toaFile = new File(Util.clearTildeLocally(Util.clearFile(_localCacheFile)));
@@ -83,8 +87,6 @@ public class TiersOfAtlas {
         }
       }
       Debug.debug("Wrote cache of TiersOfATLAS in "+toaFile.getAbsolutePath(), 2);
-      // have the tmp file deleted on exit
-      GridPilot.addTmpFile(tmpFile.getName(), toaFile);
     }
     catch(Exception e){
       String error = "WARNING: could not load tiers of ATLAS file. File catalog lookups " +
@@ -97,6 +99,7 @@ public class TiersOfAtlas {
   protected void clear(){
     fileCatalogs.clear();
     httpFileCatalogs.clear();
+    blacklistedParents.clear();
   }
   
   /**
@@ -132,9 +135,25 @@ public class TiersOfAtlas {
     StringBuffer parentSite = new StringBuffer();
     int count = 0;
     Debug.debug("Trying to match "+siteAcronym, 3);
-    while(catalogServer.toString().trim().equals("") && httpCatalogServer.toString().trim().equals("") && count<5){
-      ++count;
-      doGetFileCatalogServer(siteAcronym, preferHttp, catalogServer, httpCatalogServer, catalogSite, catalogName, parentSite);
+    // This blacklisting stuff is to make up for some topology weirdness - well, inconsistency
+    // as far as I can see.
+    for(int i=0; i<5; ++i){
+      while(catalogServer.toString().trim().equals("") && httpCatalogServer.toString().trim().equals("") && count<5){
+        ++count;
+        doGetFileCatalogServer(siteAcronym, preferHttp, catalogServer, httpCatalogServer, catalogSite, catalogName, parentSite);
+      }
+      if(catalogServer.toString().trim().equals("") && httpCatalogServer.toString().trim().equals("") &&
+          !parentSite.toString().trim().equals("")){
+        Debug.debug("Catalog server not found, blacklisting parent "+parentSite, 2);
+        blacklistedParents.add(parentSite.toString().trim());
+        count = 0;
+        catalogSite.setLength(0);
+        catalogName.setLength(0);
+        parentSite.setLength(0);
+      }
+      else{
+        break;
+      }
     }
     String cServer = catalogServer.toString().trim();
     String hcServer = httpCatalogServer.toString().trim();
@@ -144,6 +163,9 @@ public class TiersOfAtlas {
     if(!hcServer.equals("")){
       httpFileCatalogs.put(_siteAcronym, httpCatalogServer.toString());
     }
+    if(cServer.equals("") && hcServer.equals("")){
+      fileCatalogs.put(_siteAcronym, null);
+    }
     return cServer;
   }
 
@@ -152,9 +174,9 @@ public class TiersOfAtlas {
       StringBuffer catalogName, StringBuffer parentSite) throws IOException {
     String line = null;
     String inLine = null;
-    String tmp;
     BufferedReader in = new BufferedReader(new InputStreamReader((toaFile.toURI().toURL()).openStream()));
     StringBuffer lb = new StringBuffer();
+    boolean topology = false;
     // Parse TOA file
     while((inLine = in.readLine())!=null){
       inLine = inLine.trim();
@@ -177,36 +199,16 @@ public class TiersOfAtlas {
       else{
         line = inLine;
       }
-      // Say, we have a name 'CSCS'; first look for lines like
-      // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
-      // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
-      if(!parentSite.toString().trim().equals("") &&
-         line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+parentSite+"'\\W+.*") ||
-         
-         parentSite.toString().trim().equals("") &&
-         line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+siteAcronym+"'\\W+.*")){
-        
-        catalogSite.setLength(0);
-        catalogSite.append(line.replaceFirst("^\\W*'(\\w*)':.*", "$1"));
-        Debug.debug("catalogSite --> "+catalogSite, 3);
-        
+      if(line.matches(".*topology\\s*=\\s*\\{.*")){
+        topology = true;
       }
-      if(/*line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && */
-          line.indexOf("'ALL': [")<0  && line.indexOf("'alternateName' : [")<0 && 
-          line.indexOf("LRC")<0 && line.indexOf("LFC")<0 &&
-          line.indexOf("'alternateName' : [")<0 && (
-              !parentSite.toString().trim().equals("") &&
-              !parentSite.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
-              !siteAcronym.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+siteAcronym+"\\W+.*") ||
-              !catalogSite.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+catalogSite+"\\W+.*")
-            )
-          ){
-        tmp = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*", "$1");
-        if(!tmp.equals(catalogSite.toString())){
-          parentSite.setLength(0);
-          parentSite.append(tmp);
-          Debug.debug("parentSite of "+catalogSite+" --> "+parentSite, 3);
-        }
+      if(line.contains("}")){
+        topology = false;
+      }
+      if(topology){
+        parseTopology(siteAcronym, preferHttp,
+            catalogServer, httpCatalogServer, catalogSite,
+            catalogName, parentSite, line);
       }
       // Now look for
       // FZKLFC: [ 'FZKSITES' ]
@@ -214,36 +216,36 @@ public class TiersOfAtlas {
           line.matches("^\\s*\\S+LFC\\s*:.*'"+catalogSite+"'.*")){
         catalogName.setLength(0);
         catalogName.append(line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+catalogSite+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       else if(!catalogSite.toString().trim().equals("") &&
           line.matches("^\\s*\\S+LRC\\s*:.*'"+catalogSite+"'.*")){
         catalogName.setLength(0);
         catalogName.append(line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+catalogSite+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       else if(!catalogSite.toString().trim().equals("") &&
           line.matches("^\\s*\\S+LFC\\s*:.*'"+siteAcronym+"'.*")){
         catalogName.setLength(0);
         catalogName.append(line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+siteAcronym+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       else if(!catalogSite.toString().trim().equals("") &&
           line.matches("^\\s*\\S+LRC\\s*:.*'"+siteAcronym+"'.*")){
         catalogName.setLength(0);
         catalogName.append(line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+siteAcronym+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       else if(!catalogSite.toString().trim().equals("") &&
           line.matches("^\\s*\\S+LFC\\s*:.*'"+parentSite+"'.*")){
         catalogName.append(line.replaceFirst("^\\s*(\\S+LFC)\\s*:.*'"+parentSite+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       else if(!catalogSite.toString().trim().equals("") &&
           line.matches("^\\s*\\S+LRC\\s*:.*'"+parentSite+"'.*")){
         catalogName.setLength(0);
         catalogName.append(line.replaceFirst("^\\s*(\\S+LRC)\\s*:.*'"+parentSite+"'.*", "$1"));
-        Debug.debug("Catalog name --> "+catalogName, 3);
+        Debug.debug("Catalog name --> "+catalogName, 2);
       }
       // Now look for
       // FZKLFC = 'lfc://lfc-fzk.gridka.de:/grid/atlas/'
@@ -252,7 +254,7 @@ public class TiersOfAtlas {
         catalogServer.setLength(0);
         catalogServer.append(line.replaceFirst("^\\s*"+catalogName+
             "\\s*=\\s*'(.+)'.*", "$1"));
-        Debug.debug("Catalog server --> "+siteAcronym+" --> "+catalogServer, 3);
+        Debug.debug("Catalog server --> "+siteAcronym+" --> "+catalogServer, 2);
         //fileCatalogs.put(siteAcronym, catalogServer);
       }
       else if(preferHttp && !catalogName.toString().trim().equals("") &&
@@ -260,13 +262,49 @@ public class TiersOfAtlas {
         httpCatalogServer.setLength(0);
         httpCatalogServer.append(line.replaceFirst("^\\s*"+catalogName+
             "HTTP\\s*=\\s*'(.+)'.*", "$1"));
-        Debug.debug("Catalog server --> "+siteAcronym+" --> "+httpCatalogServer, 3);
+        Debug.debug("Catalog server --> "+siteAcronym+" --> "+httpCatalogServer, 2);
         //httpFileCatalogs.put(siteAcronym, httpCatalogServer);
       }
     }
     in.close();
   }
   
+  private void parseTopology(StringBuffer siteAcronym, boolean preferHttp,
+      StringBuffer catalogServer, StringBuffer httpCatalogServer, StringBuffer catalogSite,
+      StringBuffer catalogName, StringBuffer parentSite, String line) {
+    String tmp;
+    // Say, we have a name 'CSCS'; first look for lines like
+    // 'FZKSITES': [ 'FZK', 'FZU', 'CSCS', 'CYF', 'DESY-HH', 'DESY-ZN', 'UNI-FREIBURG', 'WUP' ],
+    // 'FZK': [ 'FZKDISK', 'FZKTAPE' ],
+    if(!parentSite.toString().trim().equals("") &&
+       line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+parentSite+"'\\W+.*") ||
+       
+       parentSite.toString().trim().equals("") &&
+       line.matches("^\\W*'(\\w*)':\\s*\\[.*\\W+'"+siteAcronym+"'\\W+.*")){
+      
+      catalogSite.setLength(0);
+      catalogSite.append(line.replaceFirst("^\\W*'(\\w*)':.*", "$1"));
+      Debug.debug("catalogSite --> "+catalogSite, 2);
+      
+    }
+    if(/*line.indexOf("SITES")<0 && line.indexOf("'TIER1S': [")<0 && */
+        line.indexOf("'ALL': [")<0  && line.indexOf("'alternateName' : [")<0 && 
+        line.indexOf("LRC")<0 && line.indexOf("LFC")<0 &&
+        line.indexOf("'alternateName' : [")<0 && (
+            //!parentSite.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+parentSite+"\\W+.*") ||
+            !siteAcronym.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+siteAcronym+"\\W+.*") ||
+            !catalogSite.toString().trim().equals("") && line.matches("^\\W*(\\w*)\\W*\\s*:\\s*\\[.*\\W+"+catalogSite+"\\W+.*")
+          )
+        ){
+      tmp = line.replaceFirst("^\\W*(\\w*)\\W*\\s*:.*", "$1");
+      if(!tmp.equals(catalogSite.toString()) && !blacklistedParents.contains(tmp)){
+        parentSite.setLength(0);
+        parentSite.append(tmp);
+        Debug.debug("parentSite of "+catalogSite+" --> "+parentSite, 2);
+      }
+    }
+  }
+
   private Vector<String> findAllSiteAcronyms() throws IOException {
     Vector<String> ret = new Vector<String>();
     BufferedReader in = null;

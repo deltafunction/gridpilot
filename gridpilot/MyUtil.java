@@ -980,7 +980,7 @@ private static String fixUrl(String _url){
 
     Object selectedValue = op.getValue();
     
-    Debug.debug("selectedValue "+selectedValue, 2);
+    Debug.debug("selectedValue "+selectedValue, 3);
 
     if(selectedValue==null){
       return JOptionPane.CLOSED_OPTION;

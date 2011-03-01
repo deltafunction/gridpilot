@@ -61,18 +61,12 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   private MyTransferControl transferControl;
   private MyTransferStatusUpdateControl statusUpdateControl = null;
   
-  private Timer timerRefresh = new Timer(0, new ActionListener (){
-    public void actionPerformed(ActionEvent e){
-      Debug.debug("Refreshing download status", 3);
-      statusUpdateControl.updateRows(null);
-    }
-  });
-
   /**
    * Constructor
    * @throws Exception 
    */
   public TransferMonitoringPanel() throws Exception {
+    statusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
     statusTable = GridPilot.getClassMgr().getTransferStatusTable();
     statusTable.addListSelectionListener(new ListSelectionListener(){
       public void valueChanged(ListSelectionEvent e){
@@ -83,7 +77,6 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
   
   public void activate() {
     transferControl = GridPilot.getClassMgr().getTransferControl();
-    statusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
   }
   
   public String getTitle(){
@@ -305,10 +298,24 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     if(refresh){
       Debug.debug("restarting auto refresh timer", 3);
       delayChanged();
-      timerRefresh.restart();
+      statusUpdateControl.restartTimer();
     }
     else{
-      timerRefresh.stop();
+      statusUpdateControl.stopTimer();
+    }
+  }
+
+  /**
+   * Called when either the spinner valuer is changed or combo box "sec/min" is changed
+   */
+  private void delayChanged(){
+    int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
+      Debug.debug("Changing refresh interval to "+delay, 3);
+    if(cbRefreshUnits.getSelectedIndex()==MIN){
+      statusUpdateControl.setTimerDelay(delay * 1000 * 60);
+    }
+    else{
+      statusUpdateControl.setTimerDelay(delay * 1000);
     }
   }
 
@@ -319,21 +326,7 @@ public class TransferMonitoringPanel extends CreateEditPanel implements ListPane
     cbAutoRefresh_clicked();
   }
 
-  /**
-   * Called when either the spinner valuer is changed or combo box "sec/min" is changed
-   */
-  private void delayChanged(){
-    int delay = ((Integer) (sAutoRefresh.getValue())).intValue();
-      Debug.debug("Changing refresh interval to "+delay, 3);
-    if(cbRefreshUnits.getSelectedIndex()==MIN){
-      timerRefresh.setDelay(delay * 1000 * 60);
-    }
-    else{
-      timerRefresh.setDelay(delay * 1000);
-    }
-  }
-
-  /**
+ /**
    * Called when button or menu item "Kill" is selected
    */
   private void kill(){

@@ -138,13 +138,14 @@ public class JobValidation{
              ).getJobMonitoringPanel().getSAutoResubmit().getValue();
           // If we are running in automatic resubmission mode, there is no such thing as undecided.
           // Just set the job to failed.
-          if(resubmit>0 && (dbStatus==DBPluginMgr.UNDECIDED || dbStatus==DBPluginMgr.UNEXPECTED)){
-            dbStatus = DBPluginMgr.FAILED;
-          }
+          //if(resubmit>0 && (dbStatus==DBPluginMgr.UNDECIDED || dbStatus==DBPluginMgr.UNEXPECTED)){
+          //  dbStatus = DBPluginMgr.FAILED;
+          //}
           try{
             GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().setLabel("Validation of " + job.getName() + " done : "
                 + DBPluginMgr.getStatusName(dbStatus) +
-                " (" + (toValidateJobs.size() + waitingJobs.size())+ " jobs in the queue )");
+                " (" + (toValidateJobs.size() + waitingJobs.size())+ " job" +
+                		(waitingJobs.size()==1?"":"s")+" in the queue )");
           }
           catch(Exception e){
             e.printStackTrace();

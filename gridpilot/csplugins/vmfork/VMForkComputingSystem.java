@@ -7,13 +7,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.Vector;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
@@ -489,7 +489,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private int getSubmitting(MyJobInfo _job){
     int ret = 0;
     MyJobInfo job;
-    Vector<MyJobInfo> jobs = GridPilot.getClassMgr().getSubmissionControl().getSubmittingJobs();
+    MyLinkedHashSet<MyJobInfo> jobs = GridPilot.getClassMgr().getSubmissionControl().getSubmittingJobs();
     for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
       job = it.next();
       if(!job.getIdentifier().equals(_job.getIdentifier()) && _job.getHost().equals(job.getHost())){
@@ -547,6 +547,9 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       return;
     }
     vmMgr.terminateAllInstances();
+  }
+  
+  public void setCSUserInfo(MyJobInfo job) {
   }
 
 }

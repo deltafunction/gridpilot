@@ -1642,4 +1642,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     return false;
   }
 
+  public void setCSUserInfo(MyJobInfo job) {
+  }
+
 }
