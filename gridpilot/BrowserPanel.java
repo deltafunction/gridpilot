@@ -157,10 +157,30 @@ public class BrowserPanel extends JDialog implements ActionListener{
     setIconImage(icon.getImage());
     
     if(!localFS){
-      gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
-      httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
-      sssFileTransfer = (SSSFileTransfer) GridPilot.getClassMgr().getFTPlugin("sss");
-      srmFileTransfer = (SRMFileTransfer) GridPilot.getClassMgr().getFTPlugin("srm");
+      try{
+        gsiftpFileTransfer = (GSIFTPFileTransfer) GridPilot.getClassMgr().getFTPlugin("gsiftp");
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      try{
+        httpsFileTransfer = (HTTPSFileTransfer) GridPilot.getClassMgr().getFTPlugin("https");
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      try{
+        sssFileTransfer = (SSSFileTransfer) GridPilot.getClassMgr().getFTPlugin("sss");
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
+      try{
+        srmFileTransfer = (SRMFileTransfer) GridPilot.getClassMgr().getFTPlugin("srm");
+      }
+      catch(Exception ee){
+        ee.printStackTrace();
+      }
     }
     
     readBrowserHistory();
