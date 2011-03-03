@@ -43,16 +43,16 @@ public class NGSubmission{
   private MyLogFile logFile;
   private String csName;
   private String [] clusters = null;
-  private String [] excludedClusters = null;
+  private static String [] excludedClusters = null;
   private int clusterIndex = 0;
   private ARCResource [] resources = null;
   private NGScriptGenerator scriptGenerator;
   private List<String> files;
   private List<String> fileNames;
   private boolean fastSubmission = false;
-  private String[] lastSelectedClusters;
-  private ARCResource[] lastSelectedResources;
-  private boolean rememberClusters = false;
+  private static String[] lastSelectedClusters;
+  private static ARCResource[] lastSelectedResources;
+  private static boolean rememberClusters = false;
   private int maxSubmitRetries = 3;
 
   public NGSubmission(String _csName, String [] _clusters, String [] _excludedClusters, boolean _fastSubmission){
@@ -346,7 +346,7 @@ public class NGSubmission{
     return new String[]{submissionHost, queue};
   }
 
-  private synchronized String[] selectClusters(String[] _clusters) {
+  private static synchronized String[] selectClusters(String[] _clusters) {
     
     if(rememberClusters && lastSelectedClusters!=null && lastSelectedClusters.length>0){
       return lastSelectedClusters;
@@ -395,7 +395,7 @@ public class NGSubmission{
     return null;
   }
 
-  private String[] discardExcludedClusters(String[] _clusters) {
+  private static String[] discardExcludedClusters(String[] _clusters) {
     Vector<String> okClustersVec = new Vector<String>();
     for(int i=0; i<_clusters.length; ++i){
       if(excludedClusters!=null &&
