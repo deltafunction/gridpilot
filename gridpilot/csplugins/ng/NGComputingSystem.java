@@ -175,8 +175,8 @@ public class NGComputingSystem implements MyComputingSystem{
         // find all lower-level ones. Try to submit using lowest one.
         // If no free slots, try higher up, etc.
         // Use default set of GIISes
-        arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
-        //arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        //arcDiscovery.addGIIS("ldap://index4.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
+        arcDiscovery.addGIIS("ldap://index1.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
         //arcDiscovery.addGIIS("ldap://index2.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
         //arcDiscovery.addGIIS("ldap://index3.nordugrid.org:2135/Mds-Vo-Name=NorduGrid,O=Grid");
       }
@@ -596,10 +596,6 @@ public class NGComputingSystem implements MyComputingSystem{
       LocalStaticShell.moveFile(dirName, dirName+"."+dateString);
     }
     catch(Exception ioe){
-      error = "Exception during job " + job.getName() + " get output :\n" +
-      "\tException\t: " + ioe.getMessage();
-      logFile.addMessage(error, ioe);
-      return false;
     }
     
     // Get the outputs

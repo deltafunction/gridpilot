@@ -4,12 +4,15 @@ import gridfactory.common.Debug;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.Shell;
 
+import javax.swing.JFrame;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.io.File;
@@ -518,7 +521,8 @@ public class ShowOutputsJobsDialog extends JOptionPane{
       outputs.add(panel, tabName);
     }
     // Make the JOptionPane resizable using the HierarchyListener
-    mainPanel.addHierarchyListener(new HierarchyListener() {
+    // Doesn't work with recent version of Java (1.6.0.24)
+    /*mainPanel.addHierarchyListener(new HierarchyListener() {
         public void hierarchyChanged(HierarchyEvent e) {
             Window window = SwingUtilities.getWindowAncestor(mainPanel);
             if (window instanceof Dialog) {
@@ -528,8 +532,20 @@ public class ShowOutputsJobsDialog extends JOptionPane{
                 }
             }
         }
+    });*/
+    //JOptionPane.showMessageDialog(parent, mainPanel, header, INFORMATION_MESSAGE);
+    final JFrame frame = new JFrame(header);
+    JButton bClose = MyUtil.mkButton("ok.png", "OK", "Close this window");
+    bClose.addActionListener(new java.awt.event.ActionListener(){
+      public void actionPerformed(ActionEvent e){
+        frame.dispose();
+      }
     });
-    
-    JOptionPane.showMessageDialog(parent, mainPanel, header, INFORMATION_MESSAGE);
+    JPanel buttonPanel = new JPanel();
+    buttonPanel.add(bClose);
+    mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+    frame.setContentPane(mainPanel);
+    frame.pack();
+    frame.setVisible(true);
   }
 }
