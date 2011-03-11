@@ -128,7 +128,7 @@ public class ForkComputingSystem implements MyComputingSystem{
     
     runtimeDirectory = GridPilot.RUNTIME_DIR;
     
-    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(csName, "runtime catalog URLs");
 
     publicCertificate = configFile.getValue(csName, "public certificate");
     runtimeDBs = configFile.getValues(csName, "runtime databases");
@@ -152,7 +152,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     //  executableDirectory = System.getProperty("user.home")+executableDirectory.substring(1);
     //}
     MyUtil.checkAndActivateSSL(GridPilot.getClassMgr().getGlobalFrame(), rteCatalogUrls, false);
-    rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
   }
   
   protected String getCommandSuffix(MyJobInfo job){
@@ -179,6 +178,7 @@ public class ForkComputingSystem implements MyComputingSystem{
    * scripts in the directory specified in the config file (runtime directory).
    */
   public void setupRuntimeEnvironments(String thisCs){
+    rteMgr = GridPilot.getClassMgr().getRTEMgr(runtimeDirectory, rteCatalogUrls);
     for(int i=0; i<runtimeDBs.length; ++i){
       DBPluginMgr localDBMgr = null;
       try{

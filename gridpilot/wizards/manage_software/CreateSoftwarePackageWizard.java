@@ -4,6 +4,7 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.GFrame;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTECatalog.BaseSystem;
 import gridfactory.common.jobrun.RTECatalog.MetaPackage;
@@ -95,6 +96,8 @@ public class CreateSoftwarePackageWizard extends GFrame{
   private JTextField jtfInstall =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRuntime =  new JTextField(TEXTFIELDWIDTH);
   private JTextField jtfRemove =  new JTextField(TEXTFIELDWIDTH);
+
+  private String[] rteCatalogUrls;
   
   // milliseconds after which a lock on the catalog is considered a lost lock
   private static long LOCK_TIMEOUT = 3*60*60*1000;
@@ -109,6 +112,8 @@ public class CreateSoftwarePackageWizard extends GFrame{
    *                                                - ask for upload URL + publish catalog
    */
   public CreateSoftwarePackageWizard(){
+    
+    rteCatalogUrls = getAllCatalogUrls();
     
     cancelButton = MyUtil.mkButton("cancel.png", "Cancel", "Cancel");
     
@@ -781,25 +786,9 @@ public class CreateSoftwarePackageWizard extends GFrame{
     JPanel tUrl = new JPanel();
     tUrl.add(jtfUrl);
     final JTextField jtfCatalog =  new JTextField(TEXTFIELDWIDTH);
-    String catalogUrlsString = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Runtime catalog URLs");
-    if(catalogUrlsString!=null && !catalogUrlsString.equals("")){
-      String[] catalogUrls;
-      catalogUrls = null;
-      try{
-        catalogUrls = MyUtil.splitUrls(catalogUrlsString);
-      }
-      catch (Exception e1){
-        e1.printStackTrace();
-        try{
-          catalogUrls = MyUtil.split(catalogUrlsString);
-        }
-        catch (Exception e2){
-          e2.printStackTrace();
-          catalogUrls = new String [] {catalogUrlsString};
-        }
-      }
+    if(rteCatalogUrls!=null && rteCatalogUrls.length>0){
       // Fill in the first of the configured runtime catalog URLs
-      jtfCatalog.setText(catalogUrls[0]);
+      jtfCatalog.setText(rteCatalogUrls[0]);
     }
     JPanel tCatalog = new JPanel();
     tCatalog.add(jtfCatalog);
@@ -971,10 +960,39 @@ public class CreateSoftwarePackageWizard extends GFrame{
     return panel;
   }
   
+  private String[] getAllCatalogUrls() {
+    MyLinkedHashSet<String> catalogUrlsList = new MyLinkedHashSet<String>();
+    String catalogUrlsString;
+    String[] catalogUrls;
+    for(int i=0; i<GridPilot.CS_NAMES.length; ++i){
+      if(!MyUtil.checkCSEnabled(GridPilot.CS_NAMES[i])){
+        continue;
+      }
+      catalogUrlsString = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.CS_NAMES[i], "Runtime catalog URLs");
+      if(catalogUrlsString==null || catalogUrlsString.trim().equals("")){
+        continue;
+      }
+      catalogUrls = null;
+      try{
+        catalogUrls = MyUtil.splitUrls(catalogUrlsString);
+      }
+      catch (Exception e1){
+        e1.printStackTrace();
+        try{
+          catalogUrls = MyUtil.split(catalogUrlsString);
+        }
+        catch (Exception e2){
+          e2.printStackTrace();
+          catalogUrls = new String [] {catalogUrlsString};
+        }
+      }
+      Collections.addAll(catalogUrlsList, catalogUrls);
+    }
+    return catalogUrlsList.toArray(new String[catalogUrlsList.size()]);
+  }
+
   private void parseCatalogs(){
     int i = 0;
-    String [] rteCatalogUrls =
-      GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
     HashSet<String> catalogUrlsSet = new HashSet<String>();
     if(rteCatalogUrls!=null){
       Collections.addAll(catalogUrlsSet, rteCatalogUrls);

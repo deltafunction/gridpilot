@@ -22,14 +22,15 @@ public class MyPullMgr extends PullMgr {
   protected static long WAIT_DOWNLOAD_START_SECONDS = 60L;
 
   public MyPullMgr() {
+    String csName = "VMFork";
     logFile = GridPilot.getClassMgr().getLogFile();
     String localRteDir = GridPilot.RUNTIME_DIR;
     logFile = GridPilot.getClassMgr().getLogFile();
-    String [] rteCatalogUrls = GridPilot.getClassMgr().getConfigFile().getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
+    String [] rteCatalogUrls = GridPilot.getClassMgr().getConfigFile().getValues(csName, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
     transferStatusUpdateControl = GridPilot.getClassMgr().getTransferStatusUpdateControl();
     rteMgr = GridPilot.getClassMgr().getRTEMgr(localRteDir, rteCatalogUrls);
-    jobCacheDir = GridPilot.getClassMgr().getConfigFile().getValue("VMFork", "File cache directory");
+    jobCacheDir = GridPilot.getClassMgr().getConfigFile().getValue(csName, "File cache directory");
     if(jobCacheDir==null){
       logFile.addMessage("WARNING: 'File cache directory not' set in configuration file. " +
           "You will not be able to run jobs requiring input files from file servers.");

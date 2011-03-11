@@ -68,7 +68,18 @@ public class BeginningWizard{
   private static String DOC_ROOT_URL = "http://www.gridfactory.org/";
   private static String MYSQL_HOWTO_URL = DOC_ROOT_URL+"documentation/#Using_MySQL_as_a_secure_file_catalog";
   private static String HTTPS_HOWTO_URL = DOC_ROOT_URL+"documentation/#Using_Apache_httpd_as_a_secure_file_server";
- 
+  private static String GF_SUBMIT_DIR = "gridfactory/jobs/";
+  private static String[] GF_SUBMIT_URLS =
+    new String [] {"https://www.gridfactory.org/"+GF_SUBMIT_DIR,
+                   "https://gridfactory.nbi.dk/"+GF_SUBMIT_DIR,
+                   "https://gridfactory.dyndns.org/"+GF_SUBMIT_DIR};
+  private static String[] GF_RTE_CATALOG_URLS =
+    new String [] {"http://www.gridfactory.org/rtes.xml",
+                   "https://gridfactory.nbi.dk/rtes/rtes.xml",
+                   "https://gridfactory.dyndns.org/rtes/rtes.xml"};
+  private String gfRteCatalogUrl = GF_RTE_CATALOG_URLS[0];
+  private JExtendedComboBox gfSubmitUrlsBox = new JExtendedComboBox();
+  
   public BeginningWizard(boolean firstRun){
     
     Debug.DEBUG_LEVEL = 3;
@@ -1193,18 +1204,15 @@ public class BeginningWizard{
   }
 
   private JComponent createGridFactorySitesField() {
-    String[] sites;
     try{
-      sites = new String [] {"https://www.gridfactory.org/gridfactory/jobs/", "https://gridfactory.nbi.dk/gridfactory/jobs/"};
-      JExtendedComboBox sitesBox = new JExtendedComboBox();
-      sitesBox.setAutoscrolls(true);
-      ((JExtendedComboBox) sitesBox).addItem("");
-      for(int i=0; i<sites.length; ++i){
-        ((JExtendedComboBox) sitesBox).addItem(sites[i]);
+      gfSubmitUrlsBox.setAutoscrolls(true);
+      ((JExtendedComboBox) gfSubmitUrlsBox).addItem("");
+      for(int i=0; i<GF_SUBMIT_URLS.length; ++i){
+        ((JExtendedComboBox) gfSubmitUrlsBox).addItem(GF_SUBMIT_URLS[i]);
       }
-      ((JExtendedComboBox) sitesBox).setEditable(true);
-      sitesBox.updateUI();
-      return sitesBox;
+      ((JExtendedComboBox) gfSubmitUrlsBox).setEditable(true);
+      gfSubmitUrlsBox.updateUI();
+      return gfSubmitUrlsBox;
     }
     catch(Exception e){
       e.printStackTrace();
@@ -1658,10 +1666,15 @@ public class BeginningWizard{
     if(jcbs[4].isSelected()){
       if(MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
           !MyUtil.getJTextOrEmptyString(tfGfUrl).trim().equals("")){
+        String gfSubmitUrl = MyUtil.getJTextOrEmptyString(tfGfUrl).trim();
+        int selectedIndex = gfSubmitUrlsBox.getSelectedIndex();
+        if(selectedIndex>=0){
+          gfRteCatalogUrl = GF_RTE_CATALOG_URLS[selectedIndex];
+        }
         configFile.setAttributes(
-            new String [] {"GridFactory", "GridFactory"},
-            new String [] {"Enabled", "Submission URLs"},
-            new String [] {"yes", MyUtil.getJTextOrEmptyString(tfGfUrl).trim()}
+            new String [] {"GridFactory", "GridFactory", "GridFactory"},
+            new String [] {"Enabled", "Submission URLs", "Runtime catalog URLs"},
+            new String [] {"yes", gfSubmitUrl, gfRteCatalogUrl}
             );
       }
       else{

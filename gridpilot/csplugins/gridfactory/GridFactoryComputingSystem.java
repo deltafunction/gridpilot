@@ -90,7 +90,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     for(int i=0; i<submitURLs.length; ++i){
       submitHosts[i] = (new GlobusURL(submitURLs[i])).getHost();
     }
-    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "Runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(csName, "Runtime catalog URLs");
     requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
     String cpuTime = configFile.getValue(csName, "CPU time");
     if(cpuTime!=null && !cpuTime.trim().equals("")){

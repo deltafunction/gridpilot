@@ -94,7 +94,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     // dir that is not writable on the guest machine.
     remoteWorkingDir = "~/GridPilot/jobs";
     logFile = GridPilot.getClassMgr().getLogFile();
-    rteCatalogUrls = configFile.getValues(GridPilot.TOP_CONFIG_SECTION, "runtime catalog URLs");
+    rteCatalogUrls = configFile.getValues(csName, "runtime catalog URLs");
     transferControl = GridPilot.getClassMgr().getTransferControl();
     rteMgr = GridPilot.getClassMgr().getRTEMgr(localRteDir, rteCatalogUrls);
     rteMgr.fixLocalCatalog(GridPilot.class);
