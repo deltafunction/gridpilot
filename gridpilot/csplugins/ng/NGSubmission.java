@@ -45,11 +45,11 @@ public class NGSubmission{
   private String [] clusters = null;
   private static String [] excludedClusters = null;
   private int clusterIndex = 0;
-  private ARCResource [] resources = null;
+  private static ARCResource [] resources = null;
   private NGScriptGenerator scriptGenerator;
   private List<String> files;
   private List<String> fileNames;
-  private boolean fastSubmission = false;
+  private static boolean fastSubmission = false;
   private static String[] lastSelectedClusters;
   private static ARCResource[] lastSelectedResources;
   private static boolean rememberClusters = false;
@@ -235,7 +235,7 @@ public class NGSubmission{
    * @throws IOException
    * @throws GeneralSecurityException
    */
-  private String [] findQueueWithInfoSys(String xrsl) throws ARCDiscoveryException, IOException, GeneralSecurityException {
+  private static synchronized String [] findQueueWithInfoSys(String xrsl) throws ARCDiscoveryException, IOException, GeneralSecurityException {
     // Use information system
     Matcher matcher = new SimpleMatcher();
     
@@ -296,19 +296,20 @@ public class NGSubmission{
         try{
           if(matcher.isResourceSuitable(xrsl, selectedResources[i]) &&
               (resource==null ||
+                  selectedResources[i].getFreejobs()>resource.getFreejobs() ||
                   selectedResources[i].getTotalQueueCPUs()-selectedResources[i].getQueued()>
-                  resource.getTotalQueueCPUs()-resource.getQueued() ||
-                  selectedResources[i].getFreejobs()>resource.getFreejobs())){
+                  resource.getTotalQueueCPUs()-resource.getQueued())){
               resource = selectedResources[i];
               Debug.debug("New submission target: "+
                   selectedResources[i].getClusterName()+"/"+resource.getQueueName()+"-->"+
+                  selectedResources[i].getFreejobs()+"/"+resource.getFreejobs()+"-->"+
                   selectedResources[i].getTotalQueueCPUs()+"/"+resource.getQueued(), 2);          
               if(fastSubmission){
                 break;
               }
            }
            else{
-             logFile.addInfo("Resource rejected: \n"+
+             GridPilot.getClassMgr().getLogFile().addInfo("Resource rejected: \n"+
                  "Max jobs:"+selectedResources[i].getMaxjobs()+
                  "\nTotal CPUs:"+selectedResources[i].getTotalQueueCPUs());
            }
@@ -407,7 +408,7 @@ public class NGSubmission{
     return okClustersVec.toArray(new String[okClustersVec.size()]);
   }
 
-  private ARCResource[] selectResources(ARCResource[] _resources) {
+  private static synchronized ARCResource[] selectResources(ARCResource[] _resources) {
     String[] resNames = new String[_resources.length];
     for(int i=0; i<resNames.length; ++i){
       resNames[i] = _resources[i].getClusterName()+"/"+_resources[i].getQueueName()+
