@@ -60,6 +60,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
 
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   
+  private static HashMap<String, String> remoteCopyCommands = null;
+  
   private Timer timerSyncRTEs = new Timer(0, new ActionListener(){
     public void actionPerformed(ActionEvent e){
       Debug.debug("Syncing RTEs", 2);
@@ -72,6 +74,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
 
   public GridFactoryComputingSystem(String _csName) throws Exception{
     super(_csName);
+    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Remote copy commands");
+    if(rtCpCmds!=null && rtCpCmds.length>1){
+      remoteCopyCommands = new HashMap<String, String>();
+      for(int i=0; i<rtCpCmds.length/2; ++i){
+        remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
+      }
+    }
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     csName = _csName;
     logFile = GridPilot.getClassMgr().getLogFile();
@@ -443,7 +453,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     try{
       for(int i=0; i<inputFiles.length; ++i){
         protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
-        if(remoteCopyCommands==null || inputFiles[i].equals(protocol) || 
+        if(remoteCopyCommands==null || remoteCopyCommands.isEmpty() || inputFiles[i].equals(protocol) || 
            !remoteCopyCommands.containsKey(protocol)){
           continue;
         }
@@ -453,6 +463,8 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           remoteFilesVec.add(inputFiles[i]);
         }
       }
+      Debug.debug("Setting download files "+MyUtil.arrayToString(job.getDownloadFiles())+
+          " to "+remoteFilesVec, 2);
       job.setDownloadFiles(remoteFilesVec.toArray(new String[remoteFilesVec.size()]));
     }
     catch(Exception e){
