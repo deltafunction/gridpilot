@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Vector;
 
@@ -31,6 +32,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Shell;
 import gridfactory.common.jobrun.RTECatalog;
 import gridfactory.common.jobrun.RTEInstaller;
@@ -55,7 +57,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private String fallbackAmiID = null;
   private String fallbackAmiName = null;  
   // max time to wait for booting a virtual machine when submitting a job
-  private static long MAX_BOOT_WAIT = 5*60*1000;
+  private static int MAX_BOOT_WAIT_MILLIS = 5*60*1000;
+  // max time to wait for booting a virtual machine and installing required RTEs
+  private static int MAX_BOOT_INSTALL_WAIT_SECONDS = 10*60;
   private int maxMachines = 0;
   private HashMap<String, ArrayList<DBRecord>> allEC2RTEs;
   private String [] defaultEc2Catalogs;
@@ -76,6 +80,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
 
   public EC2ComputingSystem(String _csName) throws Exception {
     super(_csName);
+    
+    if(MAX_BOOT_INSTALL_WAIT_SECONDS>GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS){
+      GridPilot.FIRST_JOB_SUBMITTED_WAIT_SECONDS = MAX_BOOT_INSTALL_WAIT_SECONDS;
+    }
     
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
     
@@ -1130,7 +1138,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       Thread.sleep(10000);
       while(!inst.isRunning()){
         nowMillis = MyUtil.getDateInMilliSeconds(null);
-        if(nowMillis-startMillis>MAX_BOOT_WAIT){
+        if(nowMillis-startMillis>MAX_BOOT_WAIT_MILLIS){
           logFile.addMessage("ERROR: timeout waiting for image "+inst.getImageId()+
                "to boot for job "+job.getIdentifier());
           return null;
@@ -1238,14 +1246,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     RTEMgr ec2RteMgr = getRteMgr();
     RTECatalog catalog = ec2RteMgr.getRTECatalog();
     Vector<String> deps = new Vector<String>();
-    HashMap<String, Vector<String>> depsMap;
-    Vector<String> provides = new Vector<String>();
+    LinkedHashSet<String> provides = new LinkedHashSet<String>();
     try{
       // getVmRteDepends() throws an exception if no instance package can be found -
       // which is the case if opsysRte is an AMI name with no AMIPackage defined in
       // the catalog. Just ignore it.
       MetaPackage opsysMp = catalog.getMetaPackage(opsysRte);
-      depsMap = ec2RteMgr.getVmRteDepends(opsysRte, null);
+      HashMap<String, LinkedHashSet<String>> depsMap = ec2RteMgr.getVmRteDepends(opsysRte, null);
       deps.addAll(depsMap.get(null));
       Collections.addAll(provides, opsysMp.provides);
       if(opsysMp.virtualMachine!=null && opsysMp.virtualMachine.os!=null){
@@ -1257,11 +1264,12 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Collections.addAll(deps, requiredRuntimeEnvs);
     try{
       if(job.getRTEs()!=null && job.getRTEs().length>0){
-        Vector<String> rtesVec = new Vector<String>();
+        LinkedHashSet<String> rtesVec = new LinkedHashSet<String>();
         Collections.addAll(rtesVec, job.getRTEs());
-        depsMap = ec2RteMgr.getRteDepends(rtesVec, job.getOpSys(), null, true);
+        HashMap<String, MyLinkedHashSet<String>> depsMap =
+          ec2RteMgr.getRteDepends(job.getVirtualize(), rtesVec, job.getOpSys(), null, true);
         String vmOs = depsMap.keySet().iterator().next();
-        Vector<String> depsVec = depsMap.get(vmOs);
+        MyLinkedHashSet<String> depsVec = depsMap.get(vmOs);
         // Just in case the OS is listed as a dependence
         depsVec.remove(job.getOpSys());
         depsVec.remove(vmOs);
@@ -1271,7 +1279,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     catch(Exception e){
       e.printStackTrace();
     }
-    Debug.debug("Found TarPackage dependencies "+deps+" on "+opsysRte+" providing "+provides, 2);
+    Debug.debug("Found TarPackage dependences "+deps+" on "+opsysRte+" providing "+provides, 2);
     return MyUtil.removeBaseSystemAndVM(deps.toArray(new String[deps.size()]), provides.toArray(new String[provides.size()]));
   }
 
@@ -1293,7 +1301,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private EBSSnapshotPackage[] getEBSSnapshots(String opsysRte, String dbName) throws Exception{
     RTEMgr ec2RteMgr = getRteMgr();
     RTECatalog catalog = ec2RteMgr.getRTECatalog();
-    HashMap<String, Vector<String>> depsMap = new HashMap<String, Vector<String>>();
+    HashMap<String, LinkedHashSet<String>> depsMap = new HashMap<String, LinkedHashSet<String>>();
     try{
       // getVmRteDepends() throws an exception if no instance package can be found -
       // which is the case if opsysRte is an AMI name with no AMIPackage defined in
@@ -1305,7 +1313,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return new EBSSnapshotPackage[] {};
     }
     //Vector<String> deps = depsMap.get(opsysRte);
-    Vector<String> deps = depsMap.get(null);
+    LinkedHashSet<String> deps = depsMap.get(null);
     Debug.debug("Found possible EBSSnapshot dependencies "+MyUtil.arrayToString(deps.toArray()), 2);
     String dep = null;
     MetaPackage mp;

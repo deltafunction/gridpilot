@@ -67,7 +67,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   protected boolean ignoreBaseSystemAndVMRTEs = true;
   protected String [] submitEnvironment = null;
   
-  protected static HashMap<String, String> remoteCopyCommands = null;
+  private static HashMap<String, String> remoteCopyCommands = null;
 
 
   public ForkComputingSystem(String _csName) throws Exception{

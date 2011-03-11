@@ -1844,10 +1844,10 @@ private static String fixUrl(String _url){
       }
       rtes.add(rteNames[i]);
     }
-    HashMap<String, Vector<String>> depsMap = rteMgr.getRteDepends(
+    HashMap<String, MyLinkedHashSet<String>> depsMap = rteMgr.getRteDepends(job.getVirtualize(),
        rtes, job.getOpSys(), shell==null?null:shell.getOSName(), ignoreCatalogInconsistencies);
     String vmOs = depsMap.keySet().iterator().next();
-    Vector<String> deps = depsMap.get(vmOs);
+    MyLinkedHashSet<String> deps = depsMap.get(vmOs);
     deps.remove(vmOs);
     InstancePackage ip = null;
     String name = null;

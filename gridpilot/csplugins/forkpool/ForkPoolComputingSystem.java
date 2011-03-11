@@ -284,6 +284,16 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
                                     "\tJob#\t: " + job.getName() +"\n" +
                                     "\tException\t: " + e.getMessage(), e);
       }
+      try{
+        HashSet<JobInfo> jobs = preprocessingHostJobs.get(job.getHost());
+        if(jobs!=null && jobs.contains(job)){
+          jobs.remove(job);
+          preprocessingHostJobs.put(job.getHost(), jobs);
+        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
     }
     if(errors.size()!=0){
       error = MyUtil.arrayToString(errors.toArray());
@@ -429,7 +439,10 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     }
     catch(Exception e){
       logFile.addMessage("ERROR: could not prepare job.", e);
-      (preprocessingHostJobs.get(job.getHost())).remove(job);
+      //(preprocessingHostJobs.get(job.getHost())).remove(job);
+      HashSet<JobInfo> jobs = preprocessingHostJobs.get(job.getHost());
+      jobs.remove(job);
+      preprocessingHostJobs.put(job.getHost(), jobs);
       retE = e;
     }
     if(retE!=null){

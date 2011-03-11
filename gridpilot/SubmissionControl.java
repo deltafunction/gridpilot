@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Vector;
@@ -15,6 +16,7 @@ import java.util.Vector;
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
+import gridfactory.common.JobInfo;
 import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
@@ -1269,6 +1271,13 @@ public class SubmissionControl{
     toCancelJobs.addAll(preprocessingJobs);
     if(toCancelJobs.isEmpty()){
       return;
+    }
+    // This is just to have the jobs cleared from any internal queues of the CS plugin.
+    try{
+      GridPilot.getClassMgr().getCSPluginMgr().killJobs(new HashSet<JobInfo>(toCancelJobs));
+    }
+    catch(Exception e){
+      e.printStackTrace();
     }
     MyJobInfo job = null;
     JobMgr jobMgr = null;
