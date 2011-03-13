@@ -509,7 +509,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("remoteShellMgrs: "+remoteShellMgrs, 2);
     if(host!=null && !host.equals("") && !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       String user = "root";
-      if(loginUsers.containsKey(host)){
+      if(loginUsers.containsKey(host) && loginUsers.get(host)!=null && !loginUsers.get(host).trim().equals("")){
         user = loginUsers.get(host);
       }
       if(!remoteShellMgrs.containsKey(host) || remoteShellMgrs.get(host)==null){
@@ -764,7 +764,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           Debug.debug("Host "+host+" is running AMI "+instance.getImageId(), 2);
           if(instance.getImageId().equals(amiId)){
             Debug.debug("Host "+host+" provides RTEs requested by job. "+job.getName()+":"+job.getUserInfo(), 2);
-            loginUsers.put(host, job.getUserInfo());
+            if(job.getUserInfo()!=null && !job.getUserInfo().trim().equals("")){
+              loginUsers.put(host, job.getUserInfo());
+            }
             return true;
           }
         }
@@ -1173,7 +1175,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       mountEBSVolumes(inst, ebsSnapshots);
       String [] tarPackages = getTarPackageRTEs(job);
       Debug.debug("Installing "+(tarPackages==null?"":MyUtil.arrayToString(tarPackages)), 3);
-      loginUsers.put(inst.getDnsName(), job.getUserInfo());
+      if(job.getUserInfo()!=null && !job.getUserInfo().trim().equals("")){
+        loginUsers.put(inst.getDnsName(), job.getUserInfo());
+      }
       hosts[i] = inst.getDnsName();
       installTarPackages(inst, job.getOpSysRTE(), tarPackages);
       Debug.debug("Returning host "+hosts[i]+" "+inst.getState(), 1);
