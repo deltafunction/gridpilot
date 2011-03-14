@@ -49,8 +49,6 @@ public class MyTransferControl extends TransferControl {
  /** Maximum number of simultaneous threads for submission. <br>
    * It is not the maximum number of running transfers on the storage system */
   private int maxSimultaneousTransfers = 5;
-  /** Delay between the begin of two submission threads */
-  private int timeBetweenTransfers = 10000;
   private HashMap<String, String> serverPluginMap;
   private String isRand = null;
 
@@ -80,6 +78,10 @@ public class MyTransferControl extends TransferControl {
     GridPilot.getClassMgr().setRunningTransfers(getRunningTransfers());
   }
   
+  public int getTimerMillis(){
+    return timeBetweenTransfers;
+  }
+
   // Only relevant for calls from GridFactory.*
   public FileTransfer getFileTransfer(){
     return GridPilot.getClassMgr().getFTPlugin("https");
@@ -119,7 +121,12 @@ public class MyTransferControl extends TransferControl {
    * Checks if there are not too many active Threads (for submission), and there are
    * waiting jobs. If there are any, creates new submission threads
    */
-  private synchronized void trigSubmission(){
+  protected /*synchronized*/ void trigSubmission(){
+    Debug.debug("trigSubmission kicking on "+toSubmitTransfers, 3);
+    if(submitting){
+      Debug.debug("Already submitting", 2);
+      return;
+    }
     // If there are no requests, stop the timer
     if(toSubmitTransfers.isEmpty()){
       timer.stop();
@@ -129,6 +136,7 @@ public class MyTransferControl extends TransferControl {
       synchronized(toSubmitTransfers){
         synchronized(submittingTransfers){*/
 
+          submitting = true;
           GlobusURL firstSrc = (toSubmitTransfers.iterator().next()).getSource();
           GlobusURL firstDest = (toSubmitTransfers.iterator().next()).getDestination();
           
@@ -155,11 +163,13 @@ public class MyTransferControl extends TransferControl {
             logFile.addMessage("ERROR: submitted : transfer(s) failed:\n"+
                 ((toSubmitTransfers==null||toSubmitTransfers.toArray()==null)?"":
                   MyUtil.arrayToString(toSubmitTransfers.toArray())), e);
+            submitting = false;
             return;
           }
           
           if(theseTransfers==null){
-            Debug.debug("No transfers to submit.", 3);
+            Debug.debug("No transfers to submit.", 2);
+            submitting = false;
             return;
           }
           
@@ -185,6 +195,7 @@ public class MyTransferControl extends TransferControl {
               }
             }
           }.start();
+          submitting = false;
         /*}
       }
     }  */  

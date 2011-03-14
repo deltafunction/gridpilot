@@ -48,7 +48,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
   // This is to be able to clean up RTEs from catalogs on exit.
   private HashMap<String, String> toDeleteRtes = new HashMap<String, String>();
   // Whether or not to request virtualization of jobs.
-  private boolean virtualize = false;
+  private int virtualize = -1;
   private int runningSeconds = -1;
   private int ramMB = -1;
   // VOs allowed to run my jobs.
@@ -103,7 +103,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     timerSyncRTEs.setDelay(RTE_SYNC_DELAY);
     String virtualizeStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "virtualize");
-    virtualize = virtualizeStr!=null && (virtualizeStr.equalsIgnoreCase("yes") || virtualizeStr.equalsIgnoreCase("true"));
+    if(virtualizeStr!=null && !virtualizeStr.trim().equals("")){
+      virtualize = virtualizeStr.equalsIgnoreCase("yes") || virtualizeStr.equalsIgnoreCase("true")?1:0;
+    }
     allowedVOs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Allowed subjects");
     String onWindowsStr = GridPilot.getClassMgr().getConfigFile().getValue(
         csName, "On windows");
@@ -273,7 +275,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           MyUtil.arrayToString(job.getExecutables()),
           Integer.toString(job.getRunningSeconds()),
           Integer.toString(job.getRamMB()),
-          virtualize?"1":"-1",
+          Integer.toString(virtualize),
           constructOutputFilesString(job),
           MyUtil.arrayToString(job.getRTEs()),
           job.getOpSys(),
