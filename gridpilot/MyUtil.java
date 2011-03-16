@@ -15,6 +15,7 @@ import gridfactory.common.TransferInfo;
 import gridfactory.common.TransferStatusUpdateControl;
 import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
+import gridfactory.common.jobrun.ScriptGenerator;
 import gridfactory.common.jobrun.RTECatalog.InstancePackage;
 
 import java.awt.BorderLayout;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.NetworkInterface;
 import java.net.URL;
 
@@ -2266,6 +2268,178 @@ private static String fixUrl(String _url){
       else{
        child.setEnabled(enabled);
       }
+    }
+  }
+
+  /**
+   * Checks which input files are remote and can be downloaded with
+   * command(s) from remoteCopyCommands and tags these
+   * with job.setDownloadFiles. They will then be taken care of by the
+   * job script itself.
+   * @param job description of the computing job
+   * @param remoteCopyCommands map of protocol -> command
+   * @return True if the operation completes, false otherwise
+   */
+  public static boolean setRemoteInputFiles(MyJobInfo job, HashMap<String, String> remoteCopyCommands){
+    if(remoteCopyCommands==null || remoteCopyCommands.isEmpty()){
+      return true;
+    }
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] inputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
+    Vector<String> remoteFilesVec = new Vector<String>();
+    boolean ok = true;
+    String protocol;
+    try{
+      for(int i=0; i<inputFiles.length; ++i){
+        protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
+        if(remoteCopyCommands==null || remoteCopyCommands.isEmpty() || inputFiles[i].equals(protocol) || 
+           !remoteCopyCommands.containsKey(protocol)){
+          continue;
+        }
+        // These are considered remote
+        if(inputFiles[i]!=null && !inputFiles[i].equals("") && !inputFiles[i].startsWith("file:") &&
+            !inputFiles[i].startsWith("/") && !inputFiles[i].matches("\\w:.*")){
+          remoteFilesVec.add(inputFiles[i]);
+        }
+      }
+      Debug.debug("Setting download files "+MyUtil.arrayToString(job.getDownloadFiles())+
+          " to "+remoteFilesVec, 2);
+      job.setDownloadFiles(remoteFilesVec.toArray(new String[remoteFilesVec.size()]));
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      ok = false;
+    }
+    return ok;
+  }
+
+  /**
+   * Checks which output files are remote and can be uploaded with
+   * command(s) from remoteCopyCommands and tags these
+   * with job.setUploadFiles. They will then be taken care of by the
+   * job script itself.
+   * @param job description of the computing job
+   * @param remoteCopyCommands map of protocol -> command
+   * @return True if the operation completes, false otherwise
+   */
+  public static boolean setRemoteOutputFiles(MyJobInfo job,
+      HashMap<String, String> remoteCopyCommands){
+    if(remoteCopyCommands==null || remoteCopyCommands.isEmpty()){
+      return true;
+    }
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
+    String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
+    Vector<String> remoteNamesVector = new Vector<String>();
+    String remoteName = null;
+    MyLinkedHashSet<String> outNames = new MyLinkedHashSet<String>();
+    MyLinkedHashSet<String> outDestinations = new MyLinkedHashSet<String>();
+    boolean ok = true;
+    try{
+      for(int i=0; i<outputFiles.length; ++i){
+        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFiles[i]);
+        String protocol = remoteName.replaceFirst("^(\\w+):.*$", "$1");
+        if(remoteCopyCommands==null || remoteName.equals(protocol) || 
+           !remoteCopyCommands.containsKey(protocol)){
+          outNames.add(outputFiles[i]);
+          outDestinations.add(remoteName);
+        }
+        // These are considered remote
+        else if(remoteName!=null && !remoteName.trim().equals("") && !remoteName.startsWith("file:") &&
+            !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
+          remoteNamesVector.add(outputFiles[i]);
+        }
+      }
+      if(job.getUploadFiles()==null){
+        String [][] uploadFiles = new String [2][remoteNamesVector.size()];
+        for(int i=0; i<remoteNamesVector.size(); ++i){
+          uploadFiles[0][i] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
+              remoteNamesVector.get(i));
+          uploadFiles[1][i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
+              remoteNamesVector.get(i));
+          Debug.debug("Setting upload file "+uploadFiles[0][i]+" --> "+uploadFiles[1][i], 2);
+        }
+        job.setUploadFiles(uploadFiles);
+      }
+      // job.getOutputFile* are used only by GridFactoryComputingSystem and copyToFinalDest
+      job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
+      job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
+      Debug.debug("Output files: "+MyUtil.arrayToString(job.getOutputFileNames())+"-->"+
+          MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
+      //
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      ok = false;
+    }
+    return ok;
+  }
+
+  /**
+   * Write input files section in job script.
+   * @param job
+   * @param buf
+   * @param commentStart
+   * @param remoteCopyCommands map of protocol -> command
+   * @throws IOException
+   */
+  public static  void writeInputFilesSection(JobInfo job, StringBuffer buf,
+      String commentStart, HashMap<String, String> remoteCopyCommands) throws IOException {
+    String [] downloadFiles = job.getDownloadFiles();
+    if(downloadFiles!=null && downloadFiles.length>0){
+      String name = null;
+      String protocol = null;
+      int lfc_input_file_nr = 0;
+      for(int i=0; i<downloadFiles.length; ++i){
+        try{
+          name = new File((new GlobusURL(downloadFiles[i])).getPath()).getName();
+          protocol = downloadFiles[i].replaceFirst("^(\\w+):.*$", "$1");
+          if(protocol.equalsIgnoreCase("http") || protocol.equalsIgnoreCase("https")){
+            name = MyUtil.urlDecode(name);
+          }
+          // Deal with LFC files
+          if(name.matches(":\\w+=.*")){
+            name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
+            ++lfc_input_file_nr;
+          }
+        }
+        catch(MalformedURLException e){
+          e.printStackTrace();
+          GridPilot.getClassMgr().getLogFile().addMessage("ERROR: could not get input file "+downloadFiles[i], e);
+          continue;
+        }
+        ScriptGenerator.writeLine(buf, remoteCopyCommands.get(protocol)+" "+downloadFiles[i]+" file:///`pwd`/"+
+            MyUtil.removeQuotes(name));
+      }
+      ScriptGenerator.writeLine(buf, "");
+    }
+  }
+
+  /**
+   * Write output files section in job script.
+   * @param job
+   * @param buf
+   * @param commentStart
+   * @param remoteCopyCommands
+   * @throws IOException
+   */
+  public static void writeOutputFilesSection(MyJobInfo job, StringBuffer buf,
+      String commentStart, HashMap<String, String> remoteCopyCommands) throws IOException {
+    String [][] uploadFiles = job.getUploadFiles();
+    if(uploadFiles!=null && uploadFiles.length>0 && uploadFiles[0].length>0){
+      String protocol = null;
+      String name;
+      int lfc_input_file_nr = 0;
+      for(int i=0; i<uploadFiles[0].length; ++i){
+        name = uploadFiles[1][i];
+        // Deal with LFC files
+        if(name.matches(":\\w+=.*")){
+          name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
+          ++lfc_input_file_nr;
+        }
+        protocol = uploadFiles[1][i].replaceFirst("^(\\w+):.*$", "$1");
+        ScriptGenerator.writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+name);
+      }
+      ScriptGenerator.writeLine(buf, "");
     }
   }
 

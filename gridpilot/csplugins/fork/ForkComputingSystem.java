@@ -20,7 +20,6 @@ import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LogFile;
-import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
 import gridfactory.common.jobrun.RTEMgr;
@@ -737,7 +736,7 @@ public class ForkComputingSystem implements MyComputingSystem{
           " failed. Could not set up runtime environment(s).");
       return false;
     }
-    if(!setRemoteOutputFiles((MyJobInfo) job)){
+    if(!MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands)){
       logFile.addMessage("Preparation of job " + job.getIdentifier() +
           " failed. Could not set up remote output file(s).");
       return false;
@@ -748,62 +747,6 @@ public class ForkComputingSystem implements MyComputingSystem{
       return false;
     }
     return true;
-  }
-  
-  /**
-   * Checks which output files are remote and can be uploaded with
-   * command(s) from remoteCopyCommands and tags these
-   * with job.setUploadFiles. They will then be taken care of by the
-   * job script itself.
-   * @param job description of the computing job
-   * @return True if the operation completes, false otherwise
-   */
-  public static boolean setRemoteOutputFiles(MyJobInfo job){
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] outputFiles = dbPluginMgr.getOutputFiles(job.getIdentifier());
-    Vector<String> remoteNamesVector = new Vector<String>();
-    String remoteName = null;
-    MyLinkedHashSet<String> outNames = new MyLinkedHashSet<String>();
-    MyLinkedHashSet<String> outDestinations = new MyLinkedHashSet<String>();
-    boolean ok = true;
-    try{
-      for(int i=0; i<outputFiles.length; ++i){
-        remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFiles[i]);
-        String protocol = remoteName.replaceFirst("^(\\w+):.*$", "$1");
-        if(remoteCopyCommands==null || remoteName.equals(protocol) || 
-           !remoteCopyCommands.containsKey(protocol)){
-          outNames.add(outputFiles[i]);
-          outDestinations.add(remoteName);
-        }
-        // These are considered remote
-        else if(remoteName!=null && !remoteName.trim().equals("") && !remoteName.startsWith("file:") &&
-            !remoteName.startsWith("/") && !remoteName.matches("\\w:.*")){
-          remoteNamesVector.add(outputFiles[i]);
-        }
-      }
-      if(job.getUploadFiles()==null){
-        String [][] uploadFiles = new String [2][remoteNamesVector.size()];
-        for(int i=0; i<remoteNamesVector.size(); ++i){
-          uploadFiles[0][i] = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(),
-              remoteNamesVector.get(i));
-          uploadFiles[1][i] = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(),
-              remoteNamesVector.get(i));
-          Debug.debug("Setting upload file "+uploadFiles[0][i]+" --> "+uploadFiles[1][i], 2);
-        }
-        job.setUploadFiles(uploadFiles);
-      }
-      // job.getOutputFile* are used only by GridFactoryComputingSystem and copyToFinalDest
-      job.setOutputFileNames(outNames.toArray(new String[outNames.size()]));
-      job.setOutputFileDestinations(outDestinations.toArray(new String[outDestinations.size()]));
-      Debug.debug("Output files: "+MyUtil.arrayToString(job.getOutputFileNames())+"-->"+
-          MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
-      //
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      ok = false;
-    }
-    return ok;
   }
   
   /**
@@ -1048,9 +991,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     String [] outputNames = dbPluginMgr.getOutputFiles(jobDefID);
     String localName = null;
     String remoteName = null;
-    // This is to identify files that have already ceen copied by the
+    // This is to identify files that have already been copied by the
     // job script itself.
-    setRemoteOutputFiles((MyJobInfo) job);
+    MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
     String [] alreadyCopiedNames;
     boolean ok = true;
     // Horrible clutch because Globus gass copy fails on empty files...

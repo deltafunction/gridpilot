@@ -52,7 +52,6 @@ import gridpilot.csplugins.forkpool.ForkPoolComputingSystem;
 
 public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyComputingSystem {
 
-  private String [] requiredRuntimeEnvs = null;
   private EC2Mgr ec2mgr = null;
   private String fallbackAmiID = null;
   private String fallbackAmiName = null;  
@@ -86,8 +85,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
-    
-    requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
 
     ignoreBaseSystemAndVMRTEs = false;
     
@@ -1249,7 +1246,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     String opsysRte = job.getOpSysRTE();
     RTEMgr ec2RteMgr = getRteMgr();
     RTECatalog catalog = ec2RteMgr.getRTECatalog();
-    Vector<String> deps = new Vector<String>();
+    LinkedHashSet<String> deps = new LinkedHashSet<String>();
     LinkedHashSet<String> provides = new LinkedHashSet<String>();
     try{
       // getVmRteDepends() throws an exception if no instance package can be found -
@@ -1265,7 +1262,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     catch(Exception e){
     }
-    Collections.addAll(deps, requiredRuntimeEnvs);
+    // This should no longer be necessary - it's taken care of by ForkPoolComputingSystem.preProcess().
+    //Collections.addAll(deps, requiredRuntimeEnvs);
     try{
       if(job.getRTEs()!=null && job.getRTEs().length>0){
         LinkedHashSet<String> rtesVec = new LinkedHashSet<String>();

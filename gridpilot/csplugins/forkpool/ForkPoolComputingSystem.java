@@ -1,9 +1,11 @@
 package gridpilot.csplugins.forkpool;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.Vector;
 
@@ -34,6 +36,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   protected HashMap<String, HashSet<JobInfo>> preprocessingHostJobs = new HashMap<String, HashSet<JobInfo>>();
   protected String [] users = null;
   protected String [] passwords = null;
+  protected String [] requiredRuntimeEnvs = null;
+  private static HashMap<String, String> remoteCopyCommands = null;
   
   public ForkPoolComputingSystem(String _csName) throws Exception{
     super(_csName);
@@ -44,6 +48,15 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     GridPilot.splashShow("Setting up runtime environments for "+csName);
     setupRuntimeEnvironmentsSSH();
     Debug.debug("Using workingDir "+workingDir, 2);
+    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Remote copy commands");
+    if(rtCpCmds!=null && rtCpCmds.length>1){
+      remoteCopyCommands = new HashMap<String, String>();
+      for(int i=0; i<rtCpCmds.length/2; ++i){
+        remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
+      }
+    }
+    requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Required runtime environments");
   }
   
   /**
@@ -417,8 +430,12 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       if(!getShell(job).existsFile(runDir(job))){
         getShell(job).mkdirs(runDir(job));
       }
+      LinkedHashSet<String> deps = new LinkedHashSet<String>();
+      Collections.addAll(deps, requiredRuntimeEnvs);
+      Collections.addAll(deps, job.getRTEs());
+      job.setRTEs(deps.toArray(new String[deps.size()]));
       boolean rtesOK = setupJobRTEs((MyJobInfo) job, getShell(job));
-      boolean outputFilesOK = setRemoteOutputFiles((MyJobInfo) job);
+      boolean outputFilesOK = MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
       boolean inputFilesOK = getInputFiles((MyJobInfo) job, getShell(job));
       ret = rtesOK && outputFilesOK && inputFilesOK;
       if(!rtesOK){

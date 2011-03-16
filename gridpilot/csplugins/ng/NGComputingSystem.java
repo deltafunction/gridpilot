@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -87,6 +88,7 @@ public class NGComputingSystem implements MyComputingSystem{
   private int submissionNumber = 1;
   private MyTransferControl transferControl;
   private Vector<ARCResource> nonExcludedResources = new Vector<ARCResource>();
+  private static HashMap<String, String> remoteCopyCommands = null;
   
   private static String csName;
   private static MyLogFile logFile;
@@ -132,6 +134,14 @@ public class NGComputingSystem implements MyComputingSystem{
     giises = configFile.getValues(csName, "giises");
     String fastSub = configFile.getValue(csName, "Fast submission");
     fastSubmission = fastSub!=null && (fastSub.equalsIgnoreCase("true") || useInfoSys.equalsIgnoreCase("yes"));
+    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Remote copy commands");
+    if(rtCpCmds!=null && rtCpCmds.length>1){
+      remoteCopyCommands = new HashMap<String, String>();
+      for(int i=0; i<rtCpCmds.length/2; ++i){
+        remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
+      }
+    }
        
     arcDiscovery = new ARCDiscovery();
 
@@ -1255,6 +1265,14 @@ public class NGComputingSystem implements MyComputingSystem{
     final String stderrFile = unparsedWorkingDir+"/"+job.getName() + "/" + job.getName() + ".stderr";
     ((MyJobInfo) job).setOutputs(stdoutFile, stderrFile);
     // input files are uploaded as part of the submission process
+    if(!MyUtil.setRemoteInputFiles((MyJobInfo) job, remoteCopyCommands)){
+      logFile.addInfo("WARNING: Problem setting remote input files.");
+      return false;
+    }
+    if(!MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands)){
+      logFile.addInfo("WARNING: Problem setting remote output files.");
+      return false;
+    }
     return true;
   }
   

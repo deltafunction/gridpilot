@@ -1,14 +1,10 @@
 package gridpilot.csplugins.fork;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Vector;
-
-import org.globus.util.GlobusURL;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
@@ -17,7 +13,6 @@ import gridfactory.common.jobrun.ScriptGenerator;
 import gridfactory.common.Shell;
 
 import gridpilot.DBPluginMgr;
-import gridpilot.MyComputingSystem;
 import gridpilot.MyJobInfo;
 import gridpilot.GridPilot;
 import gridpilot.MyUtil;
@@ -152,7 +147,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
     
     // Input files section
     try{
-      writeInputFilesSection(job, buf, commentStart);
+      writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+      MyUtil.writeInputFilesSection(job, buf, commentStart, remoteCopyCommands);
     }
     catch(IOException e){
       logFile.addMessage("Problem with input files. Cannot proceed with "+job, e);
@@ -174,7 +170,8 @@ public class ForkScriptGenerator extends ScriptGenerator{
 
     // Output files section
     try{
-      writeOutputFilesSection(job, buf, commentStart);
+      writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+      MyUtil.writeOutputFilesSection(job, buf, commentStart, remoteCopyCommands);
     }
     catch(IOException e){
       logFile.addMessage("Problem with output files. Cannot proceed with "+job, e);
@@ -290,61 +287,6 @@ public class ForkScriptGenerator extends ScriptGenerator{
       line = scriptName+ " " + MyUtil.arrayToString(actualParam);
     }
     writeLine(buf, line);
-  }
-
-  private void writeOutputFilesSection(MyJobInfo job, StringBuffer buf,
-      String commentStart) throws IOException {
-    String [][] uploadFiles = job.getUploadFiles();
-    if(uploadFiles!=null && uploadFiles.length>0 && uploadFiles[0].length>0){
-      writeBlock(buf, "Output files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-      String protocol = null;
-      String name;
-      int lfc_input_file_nr = 0;
-      for(int i=0; i<uploadFiles[0].length; ++i){
-        name = uploadFiles[1][i];
-        // Deal with LFC files
-        if(name.matches(":\\w+=.*")){
-          name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
-          ++lfc_input_file_nr;
-        }
-        protocol = uploadFiles[1][i].replaceFirst("^(\\w+):.*$", "$1");
-        writeLine(buf, remoteCopyCommands.get(protocol)+" file:///`pwd`/"+uploadFiles[0][i]+" "+name);
-      }
-      writeLine(buf, "");
-    }
-  }
-
-  private void writeInputFilesSection(JobInfo job, StringBuffer buf,
-      String commentStart) throws IOException {
-    String [] downloadFiles = job.getDownloadFiles();
-    if(downloadFiles!=null && downloadFiles.length>0){
-      writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-      String name = null;
-      String protocol = null;
-      int lfc_input_file_nr = 0;
-      for(int i=0; i<downloadFiles.length; ++i){
-        try{
-          name = new File((new GlobusURL(downloadFiles[i])).getPath()).getName();
-          protocol = downloadFiles[i].replaceFirst("^(\\w+):.*$", "$1");
-          if(protocol.equalsIgnoreCase("http") || protocol.equalsIgnoreCase("https")){
-            name = MyUtil.urlDecode(name);
-          }
-          // Deal with LFC files
-          if(name.matches(":\\w+=.*")){
-            name = MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr;
-            ++lfc_input_file_nr;
-          }
-        }
-        catch(MalformedURLException e){
-          e.printStackTrace();
-          logFile.addMessage("ERROR: could not get input file "+downloadFiles[i], e);
-          continue;
-        }
-        writeLine(buf, remoteCopyCommands.get(protocol)+" "+downloadFiles[i]+" file:///`pwd`/"+
-            MyUtil.removeQuotes(name));
-      }
-      writeLine(buf, "");
-    }
   }
 
   private void writeRuntimeSection(String commentStart, StringBuffer buf, DBPluginMgr dbPluginMgr,

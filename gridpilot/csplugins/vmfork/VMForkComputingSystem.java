@@ -3,9 +3,11 @@ package gridpilot.csplugins.vmfork;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import gridfactory.common.ConfigFile;
@@ -50,6 +52,8 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private long submitTimeoutSeconds;
   private int mbPerVM = 512;
   private HashSet<JobInfo> downloadedJobs;
+  private static HashMap<String, String> remoteCopyCommands = null;
+  private String [] requiredRuntimeEnvs = null;
 
   public VMForkComputingSystem(String _csName) throws Exception {
     csName = _csName;
@@ -69,6 +73,15 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     }
     shells = new HashMap<String, Shell>();
     workingDirs = new HashMap<String, String>();
+    String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
+        csName, "Remote copy commands");
+    if(rtCpCmds!=null && rtCpCmds.length>1){
+      remoteCopyCommands = new HashMap<String, String>();
+      for(int i=0; i<rtCpCmds.length/2; ++i){
+        remoteCopyCommands.put(rtCpCmds[2*i], rtCpCmds[2*i+1]);
+      }
+    }
+    requiredRuntimeEnvs = GridPilot.getClassMgr().getConfigFile().getValues(csName, "Required runtime environments");
     /*
      * We set the max number of jobs allowed by super.reuseHost() to be the allowed
      * number of running jobs of the config file. The number of preprocessing and running jobs
@@ -171,6 +184,10 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   // MetaPackages with no instances - assuming that they are provided by the VM.
   // In contrast super.setupJobRTEs() checks this explicitly.
   protected void setupJobRTEs(JobInfo job, Shell shell) throws Exception{
+    LinkedHashSet<String> deps = new LinkedHashSet<String>();
+    Collections.addAll(deps, requiredRuntimeEnvs);
+    Collections.addAll(deps, job.getRTEs());
+    job.setRTEs(deps.toArray(new String[deps.size()]));
     MyUtil.setupJobRTEs(job, shell, rteMgr, transferStatusUpdateControl, remoteRteDir, localRteDir, false);
   }
   
@@ -263,7 +280,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
       downloadedJobs.add(job);
     }
 
-    ok = ok && gridpilot.csplugins.fork.ForkComputingSystem.setRemoteOutputFiles((MyJobInfo) job);
+    ok = ok && MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
    
     if(!super.preProcess(job) /* This is what boots up a VM. Notice that super refers to
                                          gridfactory.common.jobrun.ForkComputingSystem. */){

@@ -5,6 +5,7 @@ import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.GeneralSecurityException;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
@@ -88,7 +89,8 @@ public class NGSubmission{
        (finalStdOut==null || finalStdOut.equals(""));
     Debug.debug("stdout/err: "+finalStdOut+":"+finalStdErr, 3);
 
-    files = scriptGenerator.createXRSL((MyJobInfo) job, scriptName, xrslFileName, !withStdErr);
+    Collection<String> filesColl = scriptGenerator.createXRSLandJobScript((MyJobInfo) job, scriptName, xrslFileName, !withStdErr);
+    files = new Vector<String>(filesColl);
     // Now the short file names
     fileNames = new Vector<String>();
     String file;

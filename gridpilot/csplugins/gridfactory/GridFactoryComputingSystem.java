@@ -418,10 +418,10 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       setInputFiles(job);
       setOutputFiles(job);
       setRTEs(job);
-      if(!setRemoteOutputFiles((MyJobInfo) job)){
+      if(!MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands)){
         throw new IOException("Problem with remote output files.");
       }
-      if(!setRemoteInputFiles((MyJobInfo) job)){
+      if(!MyUtil.setRemoteInputFiles((MyJobInfo) job, remoteCopyCommands)){
         throw new IOException("Problem with remote input files.");
       }
       if(ramMB>0){
@@ -436,44 +436,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       return false;
     }
     return true;
-  }
-
-  /**
-   * Checks which input files are remote and can be downloaded with
-   * command(s) from remoteCopyCommands and tags these
-   * with job.setDownloadFiles. They will then be taken care of by the
-   * job script itself.
-   * @param job description of the computing job
-   * @return True if the operation completes, false otherwise
-   */
-  public static boolean setRemoteInputFiles(MyJobInfo job){
-    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(job.getDBName());
-    String [] inputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
-    Vector<String> remoteFilesVec = new Vector<String>();
-    boolean ok = true;
-    String protocol;
-    try{
-      for(int i=0; i<inputFiles.length; ++i){
-        protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
-        if(remoteCopyCommands==null || remoteCopyCommands.isEmpty() || inputFiles[i].equals(protocol) || 
-           !remoteCopyCommands.containsKey(protocol)){
-          continue;
-        }
-        // These are considered remote
-        if(inputFiles[i]!=null && !inputFiles[i].equals("") && !inputFiles[i].startsWith("file:") &&
-            !inputFiles[i].startsWith("/") && !inputFiles[i].matches("\\w:.*")){
-          remoteFilesVec.add(inputFiles[i]);
-        }
-      }
-      Debug.debug("Setting download files "+MyUtil.arrayToString(job.getDownloadFiles())+
-          " to "+remoteFilesVec, 2);
-      job.setDownloadFiles(remoteFilesVec.toArray(new String[remoteFilesVec.size()]));
-    }
-    catch(Exception e){
-      e.printStackTrace();
-      ok = false;
-    }
-    return ok;
   }
 
   public boolean postProcess(JobInfo job){
