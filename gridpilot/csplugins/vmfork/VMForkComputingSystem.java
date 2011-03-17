@@ -59,8 +59,6 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     csName = _csName;
     virtEnforce = true;
     // Just some reasonable number
-    kernelMB = 256;
-    // Just some reasonable number
     defaultJobMB = 256;
     GridPilot.splashShow("Setting up VMFork");
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
