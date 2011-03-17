@@ -994,15 +994,19 @@ public class ForkComputingSystem implements MyComputingSystem{
     // This is to identify files that have already been copied by the
     // job script itself.
     MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
+    String[][] uploadFiles;
     String [] alreadyCopiedNames;
     boolean ok = true;
     // Horrible clutch because Globus gass copy fails on empty files...
     boolean emptyFile = false;
     for(int i=0; i<outputNames.length; ++i){
       try{
-        alreadyCopiedNames = ((MyJobInfo) job).getUploadFiles()[0];
-        if(MyUtil.arrayContains(alreadyCopiedNames, outputNames[i])){
-          continue;
+        uploadFiles = ((MyJobInfo) job).getUploadFiles();
+        if(uploadFiles!=null){
+          alreadyCopiedNames = uploadFiles[0];
+          if(MyUtil.arrayContains(alreadyCopiedNames, outputNames[i])){
+            continue;
+          }
         }
         localName = runDir(job) +"/"+dbPluginMgr.getJobDefOutLocalName(jobDefID,
             outputNames[i]);
