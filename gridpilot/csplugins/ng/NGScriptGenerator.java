@@ -186,15 +186,15 @@ public class NGScriptGenerator extends ScriptGenerator{
         inputFileName = inputFiles[i];
       }
       inputFileURL = null;
-      if( inputFiles[i].startsWith("srm://") ||
-          inputFiles[i].startsWith("http://") ||
-          inputFiles[i].startsWith("https://") ||
-          inputFiles[i].startsWith("gsiftp://") ||
-          inputFiles[i].startsWith("ftp://")||
-          inputFiles[i].startsWith("rls://") ||
-          inputFiles[i].startsWith("se://") ||
-          inputFiles[i].startsWith("httpg://")){
-        inputFileURL = inputFiles[i];
+      if(inputFiles[i].startsWith("srm://") ||
+         inputFiles[i].startsWith("http://") ||
+         inputFiles[i].startsWith("https://") ||
+         inputFiles[i].startsWith("gsiftp://") ||
+         inputFiles[i].startsWith("ftp://") ||
+         inputFiles[i].startsWith("rls://") ||
+         inputFiles[i].startsWith("se://") ||
+         inputFiles[i].startsWith("httpg://")){
+         inputFileURL = inputFiles[i];
       }
       else if(inputFiles[i].startsWith("lfc://")){
         //inputFileURL = inputFiles[i].replaceFirst("/:", ";cache=no/:");
@@ -209,7 +209,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       Debug.debug("Input file physical name: "+inputFileURL, 3);
      
       String protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
-      if(remoteCopyCommands!=null && !remoteCopyCommands.containsKey(protocol)){
+      if(remoteCopyCommands==null || !remoteCopyCommands.containsKey(protocol)){
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
