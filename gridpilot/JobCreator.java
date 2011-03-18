@@ -200,13 +200,6 @@ public class JobCreator{
 
       currentDatasetID = datasetIdentifiers[i];
       
-      try{
-        String totEv = (String) currentDataset.getValue(TOTAL_EVENTS);
-        totalEventsOut = Integer.parseInt(totEv);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
 
       try{
         setInputMgrAndDataset();
@@ -217,6 +210,14 @@ public class JobCreator{
         return;
       }
       
+      try{
+        String totEv = (String) currentDataset.getValue(TOTAL_EVENTS);
+        totalEventsOut = Integer.parseInt(totEv);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+
       Debug.debug("Creating job definitions for dataset "+currentDatasetID, 2);
       // NOTICE: here we assume that the fields totalFiles and totalEvents are
       // present in dataset. If they are not, automatic splitting will not be done,
@@ -408,7 +409,7 @@ public class JobCreator{
         if(!datasetIdFiles.containsKey(inputDatasetID)){
           datasetIdFiles.put(inputDatasetID, inputFileRecords);
         }
-        inputFileIds = new String[inputFileRecords.values.length];
+        //inputFileIds = new String[inputFileRecords.values.length];
         Debug.debug("Splitting over input files "+inputFileIds.length, 2);
         if(calculatedLastPartition<inputFileIds.length){
           int remainder1 = inputFileIds.length % calculatedLastPartition;

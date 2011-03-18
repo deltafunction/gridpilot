@@ -2705,31 +2705,40 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   }
   
   private void doViewJobDefinitions(final String id){
-    //SwingUtilities.invokeLater(
-      //new Runnable(){
-        //public void run(){
-          try{
-            // Create new panel with jobDefinitions.         
-            DBPanel dbPanel = new DBPanel(id);
-            dbPanel.initDB(dbName, "jobDefinition");
-            dbPanel.initGUI();
-            String [] jobDefDatasetReference =
-               MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
-            dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
-                dbPluginMgr.getDataset(id).getValue(
-                    jobDefDatasetReference[0]).toString(),
-                0);
-            dbPanel.searchRequest(true, false);
-            GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);    
-          }
-          catch(Exception e){
-            Debug.debug("Couldn't create panel for dataset " + "\n" +
-                               "\tException\t : " + e.getMessage(), 2);
-            e.printStackTrace();
-          }
-        //}
-      //}
-    //);
+    Thread t = new Thread(){
+      public void run(){
+        try{
+          // Create new panel with jobDefinitions.         
+          DBPanel dbPanel = new DBPanel(id);
+          dbPanel.initDB(dbName, "jobDefinition");
+          dbPanel.initGUI();
+          String [] jobDefDatasetReference =
+             MyUtil.getJobDefDatasetReference(dbPluginMgr.getDBName());
+          dbPanel.selectPanel.setConstraint(jobDefDatasetReference[1],
+              dbPluginMgr.getDataset(id).getValue(
+                  jobDefDatasetReference[0]).toString(),
+              0);
+          dbPanel.searchRequest(true, false);
+          GridPilot.getClassMgr().getGlobalFrame().addPanel(dbPanel);    
+        }
+        catch(Exception e){
+          Debug.debug("Couldn't create panel for dataset " + "\n" +
+                             "\tException\t : " + e.getMessage(), 2);
+          e.printStackTrace();
+        }
+      }
+    };
+    if(SwingUtilities.isEventDispatchThread()){
+      t.run();
+    }
+    else{
+      try {
+        SwingUtilities.invokeAndWait(t);
+      }
+      catch(Exception e) {
+        e.printStackTrace();
+      }
+    }
   }
  
   private void processDatasets(final ActionEvent e){

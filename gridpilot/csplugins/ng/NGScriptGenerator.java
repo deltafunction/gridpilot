@@ -209,7 +209,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       Debug.debug("Input file physical name: "+inputFileURL, 3);
      
       String protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
-      if(!remoteCopyCommands.containsKey(protocol)){
+      if(remoteCopyCommands!=null && !remoteCopyCommands.containsKey(protocol)){
         // Add local files to the return value.
         // Files starting with / are assumed to already be on the server.
         if(inputFiles[i].startsWith("file:")){
@@ -263,7 +263,7 @@ public class NGScriptGenerator extends ScriptGenerator{
       localName = dbPluginMgr.getJobDefOutLocalName(job.getIdentifier(), outputFileNames[i]);
       remoteName = dbPluginMgr.getJobDefOutRemoteName(job.getIdentifier(), outputFileNames[i]);
       protocol = remoteName.replaceFirst("^(\\w+):.*$", "$1");
-      if(remoteCopyCommands.containsKey(protocol)){
+      if(remoteCopyCommands!=null && remoteCopyCommands.containsKey(protocol)){
         continue;
       }
       if(remoteName.startsWith("/") || remoteName.matches("^\\w:.*")){
