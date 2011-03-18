@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import java.security.GeneralSecurityException;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -294,56 +295,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
     
     GridPilot.splashShow("Discovering gLite runtime environments...");
 
+    HashSet<String> allHosts = new HashSet<String>();
+    HashSet<String> foundHosts = new HashSet<String>();
     try{
-      mds.connect();
-      Hashtable clusterTable =
-        mds.search(BDII_BASE_DN, "(GlueSubClusterName=*)",
-            new String [] {"GlueSubClusterName"}, MDS.SUBTREE_SCOPE);
-      Debug.debug("Checking glite rtes. All hosts: "+clusterTable.values(), 2);
-      Enumeration<MDSResult> en = clusterTable.elements();
-      Enumeration<MDSResult> enn = null;
-      Hashtable<String, MDSResult> rteTable = null;
-      MDSResult hostRes = null;
-      MDSResult rteRes = null;
-      String host = null;
-      String rte = null;
-      Debug.debug("rteClusters: "+MyUtil.arrayToString(rteClusters, ":"), 2);
-      while(en.hasMoreElements()){
-        hostRes = en.nextElement();
-        host = hostRes.getFirstValue("GlueSubClusterName").toString();
-        // If runtime hosts are defined, ignore non-matching hosts
-        Debug.debug("host -> "+host, 3);
-        if(rteClusters!=null && !MyUtil.arrayContainsMatch(rteClusters, host)){
-          continue;
-        }
-        Debug.debug("continuing with host -> "+host, 2);
-        rteTable = mds.search(BDII_BASE_DN, "(GlueSubClusterName="+host+")",
-            new String [] {"GlueHostApplicationSoftwareRunTimeEnvironment"},
-            MDS.SUBTREE_SCOPE);
-        enn = rteTable.elements();
-        while(enn.hasMoreElements()){
-          rteRes = (MDSResult) enn.nextElement();
-          for(int i=0; i<rteRes.size("GlueHostApplicationSoftwareRunTimeEnvironment"); ++i){
-            rte = (String) rteRes.getValueAt("GlueHostApplicationSoftwareRunTimeEnvironment", i);
-            // Ignore RTEs that don't belong to one of the defined VOs
-            if(rteVos!=null){
-              for(int j=0; j<rteVos.length; ++j){
-                Debug.debug("checking "+rte.toLowerCase()+" <-> "+"vo-"+rteVos[j].toLowerCase(), 3);
-                if(!rte.toLowerCase().startsWith("vo-") || rteVos[j]!=null &&
-                    rte.toLowerCase().startsWith("vo-"+rteVos[j].toLowerCase())){
-                  runtimes.add(rte);
-                  continue;
-                }
-              }
-            }
-            else{
-              runtimes.add(rte);
-            }
-            Debug.debug("RTE ---> "+rte, 2);
-          }
-        }
-      }
-      mds.disconnect();
+      findRTEs(allHosts, foundHosts, runtimes, rteClusters);
     }
     catch(MDSException e){
       error = "WARNING: could not list runtime environments.";
@@ -351,65 +306,137 @@ public class GLiteComputingSystem implements MyComputingSystem{
       e.printStackTrace();
     }
     
+    if(foundHosts.isEmpty()){
+      String randomHost = allHosts.iterator().next();
+      Vector<String> sortedHosts = new Vector<String>(allHosts);
+      Collections.sort(sortedHosts);
+      MyUtil.showError("None of "+MyUtil.arrayToString(rteClusters)+"\n"+
+          " could be queried for GLite runtime environments.\n" +
+          "A random host ("+randomHost+") will now be queried.\n" +
+          "You should set \"runtime clusters \" to some specific hosts from \n" +
+          sortedHosts);
+      try{
+        findRTEs(allHosts, foundHosts, runtimes, new String [] {randomHost});
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+
     // At least for now, we only have Linux resources on EGEE
     runtimes.add(OS);
     
-    if(runtimes!=null && runtimes.size()>0){
-      String name = null;
-      DBPluginMgr dbPluginMgr = null;      
+    if(runtimes.size()<2){
+      Debug.debug("WARNING: no runtime environments found", 1);
+      return;
+    }
+
+    String name = null;
+    DBPluginMgr dbPluginMgr = null;      
+    try{
+      dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDB);
+    }
+    catch(Exception e){
+      Debug.debug("WARNING: could not load runtime DB "+runtimeDB, 1);
+      return;
+    }
+    String [] runtimeEnvironmentFields =
+      dbPluginMgr.getFieldNames("runtimeEnvironment");
+    String [] rtVals = new String [runtimeEnvironmentFields.length];
+    for(Iterator<String> it=runtimes.iterator(); it.hasNext();){
+      name = null;
       try{
-        dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(runtimeDB);
+        name = it.next().toString();       
       }
       catch(Exception e){
-        Debug.debug("WARNING: could not load runtime DB "+runtimeDB, 1);
-        return;
+        e.printStackTrace();
       }
-      String [] runtimeEnvironmentFields =
-        dbPluginMgr.getFieldNames("runtimeEnvironment");
-      String [] rtVals = new String [runtimeEnvironmentFields.length];
-      for(Iterator<String> it=runtimes.iterator(); it.hasNext();){
-        name = null;
+      if(name!=null && name.length()>0){
+        // Write the entry in the local DB
+        for(int i=0; i<runtimeEnvironmentFields.length; ++i){
+          if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
+            rtVals[i] = gliteToArcRteName(name);
+          }
+          else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
+            rtVals[i] = csName;
+          }
+          else if(runtimeEnvironmentFields[i].equalsIgnoreCase("initLines")){             
+            rtVals[i] = mapRteNameToScriptPaths(name);
+          }
+          else if(runtimeEnvironmentFields[i].equalsIgnoreCase("provides")){             
+            rtVals[i] = name;
+          }
+          else{
+            rtVals[i] = "";
+          }
+        }
         try{
-          name = it.next().toString();       
+          if(dbPluginMgr.createRuntimeEnvironment(rtVals)){
+            finalRuntimes.add(name);
+          }
         }
         catch(Exception e){
           e.printStackTrace();
         }
-        if(name!=null && name.length()>0){
-          // Write the entry in the local DB
-          for(int i=0; i<runtimeEnvironmentFields.length; ++i){
-            if(runtimeEnvironmentFields[i].equalsIgnoreCase("name")){
-              rtVals[i] = gliteToArcRteName(name);
-            }
-            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("computingSystem")){
-              rtVals[i] = csName;
-            }
-            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("initLines")){             
-              rtVals[i] = mapRteNameToScriptPaths(name);
-            }
-            else if(runtimeEnvironmentFields[i].equalsIgnoreCase("provides")){             
-              rtVals[i] = name;
-            }
-            else{
-              rtVals[i] = "";
-            }
-          }
-          try{
-            if(dbPluginMgr.createRuntimeEnvironment(rtVals)){
-              finalRuntimes.add(name);
-            }
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-        }
       }
-    }
-    else{
-      Debug.debug("WARNING: no runtime environments found", 1);
     }
   }
   
+  private void findRTEs(HashSet<String> allHosts, HashSet<String> foundHosts,
+      HashSet<String> runtimes, String [] clusters) throws MDSException {
+    mds.connect();
+    Hashtable clusterTable =
+      mds.search(BDII_BASE_DN, "(GlueSubClusterName=*)",
+          new String [] {"GlueSubClusterName"}, MDS.SUBTREE_SCOPE);
+    Debug.debug("Checking glite rtes. All hosts: "+clusterTable.values(), 2);
+    Enumeration<MDSResult> en = clusterTable.elements();
+    Debug.debug("clusters: "+MyUtil.arrayToString(clusters, ":"), 2);
+    Enumeration<MDSResult> enn = null;
+    Hashtable<String, MDSResult> rteTable = null;
+    MDSResult hostRes = null;
+    MDSResult rteRes = null;
+    String host = null;
+    String rte = null;
+    while(en.hasMoreElements()){
+      hostRes = en.nextElement();
+      host = hostRes.getFirstValue("GlueSubClusterName").toString();
+      allHosts.add(host);
+      // If runtime hosts are defined, ignore non-matching hosts
+      Debug.debug("host -> "+host, 3);
+      if(clusters!=null && !MyUtil.arrayContainsMatch(clusters, host)){
+        continue;
+      }
+      foundHosts.add(host);
+      Debug.debug("continuing with host -> "+host, 2);
+      rteTable = mds.search(BDII_BASE_DN, "(GlueSubClusterName="+host+")",
+          new String [] {"GlueHostApplicationSoftwareRunTimeEnvironment"},
+          MDS.SUBTREE_SCOPE);
+      enn = rteTable.elements();
+      while(enn.hasMoreElements()){
+        rteRes = (MDSResult) enn.nextElement();
+        for(int i=0; i<rteRes.size("GlueHostApplicationSoftwareRunTimeEnvironment"); ++i){
+          rte = (String) rteRes.getValueAt("GlueHostApplicationSoftwareRunTimeEnvironment", i);
+          // Ignore RTEs that don't belong to one of the defined VOs
+          if(rteVos!=null){
+            for(int j=0; j<rteVos.length; ++j){
+              Debug.debug("checking "+rte.toLowerCase()+" <-> "+"vo-"+rteVos[j].toLowerCase(), 3);
+              if(!rte.toLowerCase().startsWith("vo-") || rteVos[j]!=null &&
+                  rte.toLowerCase().startsWith("vo-"+rteVos[j].toLowerCase())){
+                runtimes.add(rte);
+                continue;
+              }
+            }
+          }
+          else{
+            runtimes.add(rte);
+          }
+          Debug.debug("RTE ---> "+rte, 2);
+        }
+      }
+    }
+    mds.disconnect();
+  }
+
   private String gliteToArcRteName(String name) {
     if(rteTranslationMappings==null){
       rteTranslationMappings = new HashSet<String[]>();
