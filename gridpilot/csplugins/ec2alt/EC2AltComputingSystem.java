@@ -1,5 +1,6 @@
 package gridpilot.csplugins.ec2alt;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -294,8 +295,9 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
    * @param job
    * @return a Shell
    * @throws JSchException 
+   * @throws IOException 
    */
-  protected Shell getShell(String host) throws JSchException{
+  protected Shell getShell(String host) throws JSchException, IOException{
     Shell mgr = null;
     /*
      * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
@@ -342,9 +344,6 @@ public class EC2AltComputingSystem extends ForkPoolComputingSystem implements My
         setupRuntimeEnvironmentsSSH(newShellMgr);
       }
       MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
-      if(!sMgr.isConnected()){
-        sMgr.reconnect();
-      }
       mgr = sMgr;
     }
     else if(host!=null && !host.equals("") &&

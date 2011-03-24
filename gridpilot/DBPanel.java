@@ -4654,20 +4654,23 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
          "executable");
       String targetRuntimeEnvironmentName = MyUtil.getNameField(dbPluginMgr.getDBName(),
           "runtimeEnvironment");
-      String runtimeEnvironment = sourceMgr.getExecutableRuntimeEnvironment(
+      String runtimeEnvironmentStr = sourceMgr.getExecutableRuntimeEnvironment(
           executable.getValue(sourceExecutableIdentifier).toString());
+      String[] runtimeEnvironments = MyUtil.split(runtimeEnvironmentStr);
       DBResult targetRuntimes = dbPluginMgr.getRuntimeEnvironments();
       Vector<String> runtimeNames = new Vector<String>();
       for(int i=0; i<targetRuntimes.values.length; ++i){
         runtimeNames.add(targetRuntimes.getValue(i, targetRuntimeEnvironmentName).toString());
       }
-      if(runtimeEnvironment==null || runtimeNames==null || !runtimeNames.contains(runtimeEnvironment)){
-        String msg = "WARNING: runtime environment "+runtimeEnvironment+", of executable "+
-           executable.getValue(sourceExecutableName)+" does not exist.";
-        MyUtil.showError(window,
-            msg+" You will not be able to use this executable until you've loaded\n" +
-        		"a computing system that provides the needed runtime environment.");
-        GridPilot.getClassMgr().getLogFile().addInfo(msg);
+      for(int i=0; i<runtimeEnvironments.length; ++i){
+        if(runtimeEnvironments[i]!=null && runtimeNames!=null && !runtimeNames.contains(runtimeEnvironments[i])){
+          String msg = "WARNING: runtime environment "+runtimeEnvironments[i]+", of executable "+
+             executable.getValue(sourceExecutableName)+" does not exist.";
+          MyUtil.showError(window,
+              msg+" You will not be able to use this executable until you've loaded\n" +
+              "a computing system that provides the needed runtime environment.");
+          GridPilot.getClassMgr().getLogFile().addInfo(msg);
+        }
       }
       dbPluginMgr.createExecutable(executable.fields, executable.values);
     }

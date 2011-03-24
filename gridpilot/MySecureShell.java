@@ -19,41 +19,41 @@ public class MySecureShell extends SecureShell{
   // Try 3 times - getChannel tries MAX_GET_CHANNEL_TRIES times, so MAX_GET_CHANNEL_TRIES x 3 times in all...
   private static final int MAX_SSH_LOGIN_ATTEMPTS = 3;
 
-  public MySecureShell(String _host, String _user, File _keyFile, String _keyPassphrase) throws JSchException{
+  public MySecureShell(String _host, String _user, File _keyFile, String _keyPassphrase) throws JSchException, IOException{
     super(_host, _user, _keyFile, _keyPassphrase, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
     MAX_GET_CHANNEL_TRIES = 1;
   }
   
-  public MySecureShell(String _host, String _user, String _password) throws JSchException{
+  public MySecureShell(String _host, String _user, String _password) throws JSchException, IOException{
     super(_host, _user, _password, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
     MAX_GET_CHANNEL_TRIES = 1;
   }
 
   public MySecureShell(String _host, String _user, String _password,
-      File _keyFile, String _keyPassphrase) throws JSchException{
+      File _keyFile, String _keyPassphrase) throws JSchException, IOException{
     super(_host, _user, _password, _keyFile, _keyPassphrase, GridPilot.getClassMgr().getLogFile());
     prefix = "/tmp/GridPilot-job-";
     MAX_GET_CHANNEL_TRIES = 1;
   }
   
-  protected void connect(){
+  protected Session connect(Session session){
     while(connecting){
       try{
         Thread.sleep(3000);
       }
       catch(InterruptedException e){
-        return;
+        return session;
       }
     }
     if(session!=null && session.isConnected()){
-      return;
+      return session;
     }
     connecting = true;
     configFile = GridPilot.getClassMgr().getConfigFile();
     try{
-      doConnect();
+      doConnect(session);
     }
     catch(Exception e){
       Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
@@ -63,9 +63,10 @@ public class MySecureShell extends SecureShell{
     finally{
       connecting = false;
     }
+    return session;
   }
 
-  private void doConnect() throws InterruptedException, IOException {
+  private void doConnect(Session session) throws InterruptedException, IOException {
     boolean showDialog = true;
     // if global frame is set, this is a reload
     if(GridPilot.getClassMgr().getGlobalFrame()!=null){
@@ -73,7 +74,7 @@ public class MySecureShell extends SecureShell{
     }
     for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){
       try{
-        singleConnect(showDialog, rep);
+        singleConnect(showDialog, rep, session);
       }
       catch(LoginException e){
         e.printStackTrace();
@@ -92,10 +93,9 @@ public class MySecureShell extends SecureShell{
       Debug.debug("WARNING: could not construct number of channels. "+
           e.getMessage(), 1);
     }      
-    sshs = new Channel[maxChannels];
   }
 
-  private void singleConnect(boolean showDialog, int rep) throws LoginException, InterruptedException, IOException {
+  private void singleConnect(boolean showDialog, int rep, Session session) throws LoginException, InterruptedException, IOException {
     String [] up = null;
 
     if(showDialog ||
@@ -116,7 +116,7 @@ public class MySecureShell extends SecureShell{
           keyPassphrase = up[1];
           host = up[2].trim();
           try{
-            jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+            getJsch().addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
           }
           catch(Exception e){
             logFile.addMessage("Could not load SSH private key.", e);
@@ -152,20 +152,20 @@ public class MySecureShell extends SecureShell{
     try{
       if(keyFile!=null){
         try{
-          jsch.addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
+          getJsch().addIdentity(keyFile.getAbsolutePath(), (keyPassphrase==null?keyPassphrase:""));
         }
         catch(Exception e){
           logFile.addMessage("Could not load SSH private key.", e);
           up = null;
         }
       }
-      session = jsch.getSession(user, host, port);
+      session = getJsch().getSession(user, host, port);
       session.setHost(host);
       if(password!=null && !password.equals("")){
         session.setPassword(password);
       }
-      setSessionUI();
-      java.util.Hashtable config = new java.util.Hashtable();
+      setSessionUI(session);
+      java.util.Hashtable<String, String> config = new java.util.Hashtable<String, String>();
       config.put("StrictHostKeyChecking", "no");
       session.setConfig(config);
       if(GridPilot.SPLASH!=null){
@@ -192,7 +192,7 @@ public class MySecureShell extends SecureShell{
     }
   }
 
-  private void setSessionUI() {
+  private void setSessionUI(final Session session) {
     if(SwingUtilities.isEventDispatchThread()){
       UserInfo ui = new MyUserInfo();
       session.setUserInfo(ui);

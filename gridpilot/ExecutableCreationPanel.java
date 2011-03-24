@@ -369,7 +369,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     descriptions.put(datasetExecutableReference[0], "Name of this executable");
     descriptions.put(datasetExecutableVersionReference[0], "Version of this executable");
     descriptions.put(executableRuntimeReference[1], "Runtime environment used by this executable");
-    descriptions.put("arguments", "Name(s) of argument(s) that must be given to the executable file");
+    descriptions.put("arguments", "Name(s) of argument(s) that must be given to the executable file;" +
+    		" use argument:default to specify default values");
     descriptions.put("outputFiles", "Names of output files produced by this executable");
     descriptions.put("executableFile", "Name of the file (script or binary) that will actually be run");
     descriptions.put("comment", "Optional: comment describing the executable");

@@ -19,8 +19,6 @@ import java.util.concurrent.TimeoutException;
 
 import org.safehaus.uuid.UUIDGenerator;
 
-import com.jcraft.jsch.JSchException;
-
 /**
  * The purpose of this class is to protect GridPilot from plugin errors, exceptions, abnormal behaviour. <p>
  *
@@ -954,13 +952,7 @@ public class CSPluginMgr implements MyComputingSystem{
         continue;
       }
       if(shellMgr!=null && shellMgr instanceof MySecureShell){
-        try {
-          ((MySecureShell) shellMgr).reconnect();
-        }
-        catch(JSchException e){
-          e.printStackTrace();
-          logFile.addMessage("WARNING: Could not reconnect.", e);
-        }
+        ((MySecureShell) shellMgr).reconnectAll();
       }
     }
   }

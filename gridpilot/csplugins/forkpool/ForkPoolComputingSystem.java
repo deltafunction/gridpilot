@@ -9,9 +9,6 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.Vector;
 
-import com.jcraft.jsch.JSchException;
-
-
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalShell;
@@ -86,7 +83,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
                      sshKeyFile==null?null:new File(MyUtil.clearTildeLocally(MyUtil.clearFile(sshKeyFile))),
                      sshKeyPassword));
         }
-        catch(JSchException e){
+        catch(Exception e){
           logFile.addMessage("WARNING: could not open shell on host "+hosts[i], e);
           e.printStackTrace();
         }
@@ -127,16 +124,13 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
    * 
    * @param job
    * @return a Shell
-   * @throws JSchException 
+   * @throws Exception 
    */
-  protected Shell getShell(String host) throws JSchException{
+  protected Shell getShell(String host) throws Exception{
     Shell mgr = null;
     if(host!=null &&
         !host.startsWith("localhost") && !host.equals("127.0.0.1")){
       MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
-      if(!sMgr.isConnected()){
-        sMgr.reconnect();
-      }
       mgr = sMgr;
     }
     else if(host!=null &&
@@ -343,13 +337,21 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
 
   public String getFullStatus(JobInfo job){
     Debug.debug("Checking job "+job.getHost()+":"+job.getJobId(), 2);
-    Shell shell = getShell(job);
-    if(shell!=null && shell.isRunning(job.getJobId())){
-      return "Job #"+job.getJobId()+" is running.";
+    Shell shell = getShell(job);    
+    String runningString = "Job "+job.getJobId()+" is running.";
+    boolean isRunning = false;
+    try{
+      isRunning = shell.isRunning(job.getJobId());
+      if(!isRunning){
+        runningString = "Job "+job.getJobId()+" is not running.";
+      }
     }
-    else{
-      return "Job #"+job.getJobId()+" is not running.";
+    catch(Exception e){
+      e.printStackTrace();
+      runningString = "Could not get status of job "+job.getIdentifier();
     }
+    return runningString;
+
   }
 
   public String[] getCurrentOutput(JobInfo job) {

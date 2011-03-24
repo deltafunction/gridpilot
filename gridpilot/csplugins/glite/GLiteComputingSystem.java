@@ -310,10 +310,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
       String randomHost = allHosts.iterator().next();
       Vector<String> sortedHosts = new Vector<String>(allHosts);
       Collections.sort(sortedHosts);
-      MyUtil.showError("None of "+MyUtil.arrayToString(rteClusters)+"\n"+
+      logFile.addMessage("None of "+MyUtil.arrayToString(rteClusters)+
           " could be queried for GLite runtime environments.\n" +
           "A random host ("+randomHost+") will now be queried.\n" +
-          "You should set \"runtime clusters \" to some specific hosts from \n" +
+          "You should set \"runtime clusters \" to some specific hosts from:\n" +
           sortedHosts);
       try{
         findRTEs(allHosts, foundHosts, runtimes, new String [] {randomHost});
@@ -388,7 +388,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     Hashtable clusterTable =
       mds.search(BDII_BASE_DN, "(GlueSubClusterName=*)",
           new String [] {"GlueSubClusterName"}, MDS.SUBTREE_SCOPE);
-    Debug.debug("Checking glite rtes. All hosts: "+clusterTable.values(), 2);
+    Debug.debug("Checking glite rtes. All hosts: "+clusterTable.values(), 3);
     Enumeration<MDSResult> en = clusterTable.elements();
     Debug.debug("clusters: "+MyUtil.arrayToString(clusters, ":"), 2);
     Enumeration<MDSResult> enn = null;
@@ -402,8 +402,8 @@ public class GLiteComputingSystem implements MyComputingSystem{
       host = hostRes.getFirstValue("GlueSubClusterName").toString();
       allHosts.add(host);
       // If runtime hosts are defined, ignore non-matching hosts
-      Debug.debug("host -> "+host, 3);
-      if(clusters!=null && !MyUtil.arrayContainsMatch(clusters, host)){
+      Debug.debug("host -> "+host, 2);
+      if(clusters==null || !MyUtil.arrayContainsMatch(clusters, host)){
         continue;
       }
       foundHosts.add(host);

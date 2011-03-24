@@ -206,8 +206,9 @@ public class ForkComputingSystem implements MyComputingSystem{
    * register the found RTEs in local database with computing system cs;
    * @param dbMgr Local DBPluginMgr
    * @param cs Computing system name
+   * @throws Exception 
    */
-  protected void scanRTEDir(DBPluginMgr dbMgr, String cs, Shell mgr){
+  protected void scanRTEDir(DBPluginMgr dbMgr, String cs, Shell mgr) throws Exception{
     String name = null;   
     HashSet<String> runtimes = mgr.listFilesRecursively(runtimeDirectory);
     String [] expandedRuntimeDirs = mgr.listFiles(MyUtil.clearFile(runtimeDirectory));
@@ -460,7 +461,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       updateStatus((MyJobInfo) jobs.get(i), shell);
   }
   
-  protected void updateStatus(MyJobInfo job, Shell shellMgr){
+  protected void updateStatus(MyJobInfo job, Shell shellMgr) throws Exception{
     DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
     
     if(shellMgr==null){
@@ -632,15 +633,22 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   public String getFullStatus(JobInfo job){
-    if(shell.isRunning(job.getJobId())){
-      return "Job #"+job.getJobId()+" is running.";
+    String runningString = "Job "+job.getJobId()+" is running.";
+    boolean isRunning = false;
+    try{
+      isRunning = shell.isRunning(job.getJobId());
+      if(!isRunning){
+        runningString = "Job "+job.getJobId()+" is not running.";
+      }
     }
-    else{
-      return "Job #"+job.getJobId()+" is not running.";
+    catch(Exception e){
+      e.printStackTrace();
+      runningString = "Could not get status of job "+job.getIdentifier();
     }
+    return runningString;
   }
 
-  public String[] getCurrentOutput(JobInfo job) {
+  public String[] getCurrentOutput(JobInfo job) throws Exception {
     try{
       String stdOutText = shell.readFile(job.getOutTmp());
       String stdErrText = "";

@@ -122,12 +122,13 @@ public class GLiteScriptGenerator extends ScriptGenerator {
     String guid;
     String name;
     int lfc_input_file_nr = 0;
+    boolean lfcStuffWritten = false;
     for(int i=0; i<lfcInputFilesList.size(); ++i){
       url = lfcInputFilesList.get(i);
       guid = url.toString().replaceFirst(".*guid=(.+)", "$1");
       //name = url.toString().replaceFirst("^.*/([^/]+)", "$1");
       name = url.toString().replaceFirst(".*lfn=(.+)", "$1");
-      if(!url.equals(guid)){
+      if(!lfcStuffWritten && !url.equals(guid)){
         writeLine(bufScript, "echo \"uname -a\"; uname -a");
         writeLine(bufScript, "echo \"getconf LONG_BIT\"; getconf LONG_BIT");
         writeLine(bufScript, "export LCG_CATALOG_TYPE=lfc");
@@ -142,6 +143,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
         		"export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${GLITE_EXTERNAL_ROOT}/usr/lib64; fi");
         writeLine(bufScript, "lcg-cp guid:"+guid+" file://`pwd`/"+MyComputingSystem.LFC_INPUT_FILE_BASE_NAME+lfc_input_file_nr);
         ++lfc_input_file_nr;
+        lfcStuffWritten = true;
       }
       else if(!url.equals(name)){
         writeLine(bufScript, "lcg-cp lfn:"+name+" file://`pwd`/"+name);

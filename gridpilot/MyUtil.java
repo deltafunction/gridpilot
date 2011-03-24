@@ -1557,7 +1557,7 @@ private static String fixUrl(String _url){
     }
     // else
     try{
-      SwingUtilities.invokeAndWait(
+      SwingUtilities.invokeLater(
         new Runnable(){
           public void run(){
             showMessage0(parent, title, text);

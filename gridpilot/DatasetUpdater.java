@@ -7,7 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * Creates the dataset with data given by DatasetCreationPanel.
+ * Updates the dataset with data given by DatasetCreationPanel.
  */
 public class DatasetUpdater{
 

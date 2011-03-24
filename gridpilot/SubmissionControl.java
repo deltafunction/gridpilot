@@ -581,7 +581,7 @@ public class SubmissionControl{
                 shell.writeFile(stdOut.getPath(),
                    shell.readFile(job.getOutTmp()), false);
                }
-               catch(java.io.IOException ioe){
+               catch(Exception ioe){
                  logFile.addMessage("Cannot rename " + job.getOutTmp() +
                                     " in " + stdOut.getPath(), ioe);
                }
@@ -601,7 +601,7 @@ public class SubmissionControl{
                  shell.writeFile(stdErr.getPath(),
                     shell.readFile(job.getErrTmp()), false);
                }
-               catch(java.io.IOException ioe){
+               catch(Exception ioe){
                  logFile.addMessage("Cannot rename " + job.getErrTmp() +
                                     " in " + stdErr.getPath(), ioe);
                }

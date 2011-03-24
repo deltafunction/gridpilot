@@ -30,6 +30,7 @@ public class JobCreationPanel extends CreateEditPanel{
   private JScrollPane spAttributes = new JScrollPane();
   private String [] cstAttributesNames;
   private String [] jobParamNames;
+  private String [] jobParamDefaults;
   private String [] outputMapNames;
   private JTextComponent [] tcCstAttributes;
   private JTextComponent [] tcJobParam;
@@ -64,8 +65,7 @@ public class JobCreationPanel extends CreateEditPanel{
     
     String jobDefinitionIdentifier = MyUtil.getIdentifierField(
         dbPluginMgr.getDBName(), "jobDefinition");
-    String [] datasetFieldArray = dbPluginMgr.getFieldnames("dataset");
-    
+    String [] datasetFieldArray = dbPluginMgr.getFieldnames("dataset");  
     for(int i=0; i<datasetFieldArray.length; ++i){
       datasetFieldArray[i] = datasetFieldArray[i].toLowerCase();
     }
@@ -141,7 +141,7 @@ public class JobCreationPanel extends CreateEditPanel{
     
     initJobCreationPanel();
   }
-
+  
   /**
    * Initialises text fields with attributes for job definition
    */
@@ -149,23 +149,7 @@ public class JobCreationPanel extends CreateEditPanel{
    
     pDataset.setLayout(new GridBagLayout());
     pDataset.removeAll();
-    String instructionLabelString = "dataset name: $n";
-    if(datasetFields.contains("runnumber")){
-      instructionLabelString += ", run number: $r";
-    }
-    if(datasetFields.contains("beamenergy")){
-      instructionLabelString += ", energy: $e";
-    }
-    if(datasetFields.contains("outputlocation")){
-      instructionLabelString += ", output destination: $o";
-    }
-    if(datasetFields.contains("inputdataset")){
-      instructionLabelString += ", input file name(s): $f";
-      instructionLabelString += ", input file URL(s): $u";
-      instructionLabelString += ", input path: $p";
-    }
-    instructionLabelString += ", iterator: $i";
-    detailFields.add(new JLabel(instructionLabelString));
+    detailFields.add(new JLabel(createDatasetInstructionsLabelString()));
     pDataset.add((JLabel) detailFields.get(detailFields.size()-1),
         new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
             GridBagConstraints.CENTER,
@@ -192,7 +176,23 @@ public class JobCreationPanel extends CreateEditPanel{
     String executableID = dbPluginMgr.getExecutableID(
         dbPluginMgr.getDatasetExecutableName(datasetIDs[0]),
         dbPluginMgr.getDatasetExecutableVersion(datasetIDs[0]));
-    jobParamNames = dbPluginMgr.getExecutableJobParameters(executableID);
+    String[] jobParams = dbPluginMgr.getExecutableJobParameters(executableID);
+    if(jobParams!=null){
+      jobParamNames = new String [jobParams.length];
+      jobParamDefaults = new String [jobParams.length];
+      String[] nameAndDefault;
+      for(int i=0; i<jobParams.length; ++i){
+        if(jobParams[i].indexOf(":")>0){
+          nameAndDefault = MyUtil.split(jobParams[i], ":");
+          jobParamNames[i] = nameAndDefault[0];
+          jobParamDefaults[i] = nameAndDefault[1];
+        }
+        else{
+          jobParamNames[i] = jobParams[i];
+          jobParamDefaults[i] = null;
+        }
+      }
+    }
     outputMapNames = dbPluginMgr.getExecutableOutputs(executableID);
 
     Debug.debug("Fixed job attributes: "+MyUtil.arrayToString(cstAttributesNames), 3);
@@ -324,6 +324,10 @@ public class JobCreationPanel extends CreateEditPanel{
       if(!reuseTextFields || tcJobParam[i]==null){
         tcJobParam[i] = MyUtil.createTextArea();
       }
+      // If an executable parameter value default is set, always display it.
+      if(jobParamDefaults!=null && jobParamDefaults[i]!=null && !jobParamDefaults[i].trim().equals("")){
+        tcJobParam[i].setText(jobParamDefaults[i]);
+      }
       // The following fields will be set by JobCreator.
       // They are rather specific to HEP, but if they are
       // not in the jobDefinition schema, it is no problem;
@@ -334,7 +338,7 @@ public class JobCreationPanel extends CreateEditPanel{
       // Other fields that match dataset fields will be set to
       // $0, $1, ... according to their place in the schema
       // and these variables will be parsed accordingly by JobCreator.
-      if(jobParamNames[i].equalsIgnoreCase(JobCreator.N_EVENTS) ||
+      else if(jobParamNames[i].equalsIgnoreCase(JobCreator.N_EVENTS) ||
           jobParamNames[i].equalsIgnoreCase(JobCreator.EVENT_MIN) ||
           jobParamNames[i].equalsIgnoreCase(JobCreator.EVENT_MAX) ||
           jobParamNames[i].equalsIgnoreCase(JobCreator.INPUT_FILE_NAMES) ||
@@ -819,4 +823,24 @@ public class JobCreationPanel extends CreateEditPanel{
     dbPluginMgr.updateDataset(datasetIDs[0], null, new String [] {"metaData"}, new String [] {newMetadata});
   }
   
+  public String createDatasetInstructionsLabelString(){
+    String instructionLabelString = "dataset name: $n";
+    if(datasetFields.contains("runnumber")){
+      instructionLabelString += ", run number: $r";
+    }
+    if(datasetFields.contains("beamenergy")){
+      instructionLabelString += ", energy: $e";
+    }
+    if(datasetFields.contains("outputlocation")){
+      instructionLabelString += ", output destination: $o";
+    }
+    if(datasetFields.contains("inputdataset")){
+      instructionLabelString += ", input file name(s): $f";
+      instructionLabelString += ", input file URL(s): $u";
+      instructionLabelString += ", input path: $p";
+    }
+    instructionLabelString += ", iterator: $i";
+    return instructionLabelString;
+  }
+
 }

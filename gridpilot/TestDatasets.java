@@ -62,13 +62,13 @@ public class TestDatasets {
       }
       Debug.debug("createAll --> "+shellMgr+" : "+executableDirectory, 3);
       // Make sure executable directory exists
-      if(!shellMgr.existsFile(executableDirectory)){
-        try{
+      try{
+        if(!shellMgr.existsFile(executableDirectory)){
           shellMgr.mkdirs(executableDirectory);
         }
-        catch(Exception e){
-          e.printStackTrace();
-        }
+      }
+      catch(Exception e){
+        e.printStackTrace();
       }
       // Make sure scripts exist
       createMyExecutableScript(shellMgr);
@@ -111,25 +111,16 @@ public class TestDatasets {
 
   /**
    * If the executable script does not exist, create it.
+   * @throws Exception 
    */
-  protected void createTestExecutableScript(Shell shellMgr){
+  protected void createTestExecutableScript(Shell shellMgr) throws Exception{
     String testScriptName = testExecutableName+".sh";
     // Create two dummy input files
     if(!shellMgr.existsFile(executableDirectory+"data1.txt")){
-      try{
-        shellMgr.writeFile(executableDirectory+"data1.txt", "test data", false);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
+      shellMgr.writeFile(executableDirectory+"data1.txt", "test data", false);
     }
     if(!shellMgr.existsFile(executableDirectory+"data2.txt")){
-      try{
-        shellMgr.writeFile(executableDirectory+"data2.txt", "test data", false);
-      }
-      catch(Exception e){
-        e.printStackTrace();
-      }
+      shellMgr.writeFile(executableDirectory+"data2.txt", "test data", false);
     }
     StringBuffer fileStr = new StringBuffer("");
     if(!shellMgr.existsFile(executableDirectory+testScriptName)){

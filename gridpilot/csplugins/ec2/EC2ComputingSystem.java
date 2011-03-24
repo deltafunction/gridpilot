@@ -460,7 +460,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       }
       shell = getShell(job.getHost());
     }
-    catch(JSchException e){
+    catch(Exception e){
       e.printStackTrace();
     }
     Debug.debug("Returning "+shell, 2);
@@ -473,9 +473,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * If no Shell exists for this host, a new one is created.
    * @param host a string identifying a host
    * @return a Shell
-   * @throws JSchException 
+   * @throws Exception 
    */
-  protected Shell getShell(String host) throws JSchException{
+  protected Shell getShell(String host) throws Exception{
     Shell mgr = null;
     /*
      * If there is no keyFile set, this is a VM reused from a previous GridPilot session.
@@ -530,9 +530,6 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         setupRuntimeEnvironmentsSSH(newShell);
       }
       MySecureShell sMgr = (MySecureShell) remoteShellMgrs.get(host);
-      if(!sMgr.isConnected()){
-        sMgr.reconnect();
-      }
       mgr = sMgr;
     }
     else if(host!=null && !host.equals("") &&

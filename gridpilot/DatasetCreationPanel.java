@@ -38,7 +38,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private String executableName = "";
   private String executableVersion = "";
   private String [] datasetIDs = new String [] {"-1"};
-  private JPanel pTop = new JPanel();
+  private JPanel pExe = new JPanel();
   private JPanel pExecutable = new JPanel();
   private JPanel pTargetDBs = new JPanel();
   private JLabel jlTargetDBSelection = null;
@@ -64,6 +64,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   private HashMap<String, String> descriptions;
   private String inputDB = null;
   private JComponent datasetChooser;
+  private JLabel instructionsLabel;
 
   public boolean editable = true;
 
@@ -159,7 +160,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   public void initGUI(){
     initButtons();
     setLayout(new BorderLayout());
-    pTop.setLayout(new FlowLayout());
+    pExe.setLayout(new FlowLayout());
      removeAll();
     
     if(editing){
@@ -195,7 +196,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       }
       initTargetDBsPanel();
-      pTop.add(pTargetDBs);
+      pExe.add(pTargetDBs);
     }
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
@@ -205,7 +206,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
     //spAttributes.setMaximumSize(new Dimension(600, 500));
     //spAttributes.setMinimumSize(new Dimension(300, 300));
     
-    pTop.add(pExecutable);
+    pExe.add(pExecutable);
     
     cbInputDBSelection = new JComboBox();
     cbInputDBSelection.addActionListener(
@@ -228,7 +229,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
       initExeVersionPanel();
       setComboBoxValues();
     }
-
+    
+    instructionsLabel = new JLabel(createDatasetInstructionsLabelString());
+    JPanel instructionsPanel = new JPanel();
+    instructionsPanel.add(instructionsLabel);
+    
+    JPanel pTop = new JPanel(new BorderLayout());
+    pTop.add(pExe, BorderLayout.NORTH);
+    pTop.add(instructionsPanel, BorderLayout.CENTER);   
     add(pTop, BorderLayout.NORTH);
     add(spAttributes, BorderLayout.CENTER);
     
@@ -341,12 +349,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
 
   private void initAttributePanel(){
-    
     pAttributes.setLayout(new GridBagLayout());
     pAttributes.removeAll();
-
     spAttributes.getViewport().add(pAttributes);
-    
     if(!reuseTextFields || tcCstAttributes==null ||
         tcCstAttributes.length!=cstAttributesNames.length){
       Debug.debug("Creating new tcCstAttributes, "+tcCstAttributes+", "+
@@ -456,6 +461,9 @@ public class DatasetCreationPanel extends CreateEditPanel{
   }
   
   private boolean isDetail(String fieldName){
+    if(detailFieldNames==null){
+      return false;
+    }
     return MyUtil.arrayContainsIgnoreCase(detailFieldNames.toArray(new String[detailFieldNames.size()]), fieldName);
   }
   
@@ -739,7 +747,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
   private void initExeVersionPanel(){
 
-    pTop.add(pVersion);
+    pExe.add(pVersion);
 
     Debug.debug("Finding versions...", 3);
 
@@ -761,7 +769,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
 
     if(versions.length==0){
       try{
-        pTop.remove(jbEditExe);
+        pExe.remove(jbEditExe);
       }
       catch(Exception e){
       }
@@ -775,7 +783,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       pVersion.add(new JLabel(executableVersion));
       //setValues();
       setValuesInAttributePanel();
-      pTop.add(jbEditExe);
+      pExe.add(jbEditExe);
     }
     else{
       cbExeVersionSelection = new JComboBox();
@@ -795,7 +803,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
         }
       );
     }
-    pTop.updateUI();
+    pExe.updateUI();
   }
   
   protected void editExecutable(){
@@ -902,7 +910,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       executableName = cbExecutableSelection.getSelectedItem().toString();
     }
     try{
-      pTop.remove(jbEditExe);
+      pExe.remove(jbEditExe);
     }
     catch(Exception e){
     }
@@ -917,14 +925,14 @@ public class DatasetCreationPanel extends CreateEditPanel{
       executableVersion = cbExeVersionSelection.getSelectedItem().toString();
     }
     try{
-      pTop.remove(jbEditExe);
+      pExe.remove(jbEditExe);
     }
     catch(Exception e){
     }
     //setValues();
     setValuesInAttributePanel();
-    pTop.add(jbEditExe);
-    pTop.validate();
+    pExe.add(jbEditExe);
+    pExe.validate();
   }
 
   private Vector<JComponent> getFields(){
@@ -1118,11 +1126,17 @@ public class DatasetCreationPanel extends CreateEditPanel{
     Debug.debug("initAttributePanel done, setting values, "+
         targetAttr.length+", "+tcCstAttributes.length, 3);
     initExecutablePanel();
-    pTop.updateUI();
-    
+        
     if(!detailsVisible){
       showDetails(false);
     }
+    else{
+      if(checkForInputDataset()){
+        instructionsLabel.setVisible(true);
+      }
+    }
+    
+    pExe.updateUI();
     
   }
   
@@ -1137,6 +1151,32 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug((show?"showing ":"hiding ")+MyUtil.getJTextOrEmptyString(comp), 2);
       comp.setVisible(show);
     }
+    if(show && checkForInputDataset()){
+      instructionsLabel.setVisible(true);
+    }
+    else{
+      instructionsLabel.setVisible(false);
+    }
   }
   
+  private boolean checkForInputDataset(){
+    Debug.debug("Checking if targetDBPluginMgr contains inputDataset. "+
+        (targetDBPluginMgr==null?"null":targetDBPluginMgr.getDBName()), 2);
+    if(targetDBPluginMgr==null){
+      return false;
+    }
+    String [] datasetFieldArray = targetDBPluginMgr.getFieldnames("dataset");  
+    boolean ret = MyUtil.arrayContainsIgnoreCase(datasetFieldArray, "inputDataset");
+    Debug.debug("targetDBPluginMgr "+(ret?"contains ":"")+"inputDataset", 2);
+    return ret;
+  }
+  
+  public String createDatasetInstructionsLabelString(){
+    String instructionLabelString = "";
+    instructionLabelString += "input dataset name: $n";
+    instructionLabelString += ", number of input files: $f";
+    instructionLabelString += ", number of input events: $e";
+    return instructionLabelString;
+  }
+
 }

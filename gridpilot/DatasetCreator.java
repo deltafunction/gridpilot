@@ -1,6 +1,7 @@
 package gridpilot;
 
 import gridfactory.common.DBRecord;
+import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.StatusBar;
 
@@ -19,8 +20,8 @@ public class DatasetCreator{
   private boolean okAll = false;
   private boolean skip = false;
   private String [] cstAttr;
-  private StatusBar statusBar;
   private String [] resCstAttr;
+  private StatusBar statusBar;
   private String [] cstAttrNames;
   private String [] datasetIDs;
   private String targetDB;
@@ -46,7 +47,7 @@ public class DatasetCreator{
     parent = _parent;
     statusBar = _statusBar;
     showResults = _showResults;
-    cstAttr = _cstAttr;
+    cstAttr = _cstAttr.clone();
     cstAttrNames =  _cstAttrNames;
     resCstAttr = _cstAttr;
     datasetIDs =  _datasetIDs;
@@ -135,7 +136,7 @@ public class DatasetCreator{
     Debug.debug("Input values "+MyUtil.arrayToString(res.values), 2);
     clearAttrs.clear();
     if(!datasetIDs[i].equals("-1")){
-      fillInValues(datasetIDs[i], i, exeName, exeVersion);
+      fillInValues(datasetIDs[i], res, i, exeName, exeVersion);
     }
     if(showResults && !okAll){
     int choice = MyUtil.showResult(cstAttrNames, resCstAttr, "dataset",
@@ -164,18 +165,27 @@ public class DatasetCreator{
     return true;
   }
 
-  private void fillInValues(String datasetId, int datasetIndex, String exeName, String exeVersion) {
+  private void fillInValues(String datasetId, DBRecord inputDataset, int datasetIndex, String exeName, String exeVersion) {
     String datasetNameField = MyUtil.getNameField(targetDB, "Dataset");
-    for(int j=0; j<cstAttrNames.length; ++j){         
+    String inputDatasetName = "";
+    String inputTotalFiles = "";
+    String inputTotalEvents = "";
+    if(datasetId!=null && inputDataset!=null){
+      inputDatasetName = dbPluginMgr.getDatasetName(datasetId);
+      inputTotalFiles = (String) inputDataset.getValue("totalFiles");
+      inputTotalEvents = (String) inputDataset.getValue("totalEvents");
+    }
+    for(int j=0; j<cstAttrNames.length; ++j){     
       // Get values from source dataset in question, excluding
       // executable, executableVersion and any other filled-in values.
       // Construct name for new target dataset.
-      Debug.debug("Filling in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
-      if((autoFillName || resCstAttr[j]==null || resCstAttr[j].equals("") || datasetIDs!=null && datasetIDs.length>1) &&
+      Debug.debug("Filling in "+cstAttrNames[j]+" : "+resCstAttr[j]+" <-- "+cstAttr[j], 3);
+      if((autoFillName || cstAttr[j]==null || cstAttr[j].equals("") ||
+          cstAttr[j].indexOf("$n")<0 && datasetIDs!=null && datasetIDs.length>1) &&
           cstAttrNames[j].equalsIgnoreCase(datasetNameField)){
         autoFillName = true;
-        resCstAttr[j] = dbPluginMgr.createTargetDatasetName(resCstAttr[j], targetDB,
-           dbPluginMgr.getDatasetName(datasetId), datasetIndex, exeName, exeVersion);
+        resCstAttr[j] = dbPluginMgr.createTargetDatasetName(cstAttr[j], targetDB,
+            inputDatasetName, datasetIndex, exeName, exeVersion);
       }
       else if(cstAttrNames[j].equalsIgnoreCase("runNumber")){
         String runNum = dbPluginMgr.getRunNumber(datasetId);
@@ -184,7 +194,7 @@ public class DatasetCreator{
         }
       }
       else if(cstAttrNames[j].equalsIgnoreCase("inputDataset")){
-        resCstAttr[j] = dbPluginMgr.getDatasetName(datasetId);
+        resCstAttr[j] = inputDatasetName;
       }
       else if(cstAttrNames[j].equalsIgnoreCase("inputDB")){
         resCstAttr[j] = dbPluginMgr.getDBName();
@@ -192,8 +202,6 @@ public class DatasetCreator{
       else if(cstAttrNames[j].equalsIgnoreCase(datasetIdentifier) ||
           cstAttrNames[j].equalsIgnoreCase("percentageValidatedFiles") ||
           cstAttrNames[j].equalsIgnoreCase("percentageFailedFiles ") ||
-          //cstAttrNames[j].equalsIgnoreCase("totalFiles") ||
-          //cstAttrNames[j].equalsIgnoreCase("totalEvents") ||
           cstAttrNames[j].equalsIgnoreCase("averageEventSize") ||
           cstAttrNames[j].equalsIgnoreCase("totalDataSize") ||
           cstAttrNames[j].equalsIgnoreCase("averageCPUTime") ||
@@ -202,6 +210,18 @@ public class DatasetCreator{
           cstAttrNames[j].equalsIgnoreCase("lastModified") ||
           cstAttrNames[j].equalsIgnoreCase("lastStatusUpdate")){
         resCstAttr[j] = "";
+      }
+      else if((cstAttrNames[j].equalsIgnoreCase(datasetNameField) ||
+              cstAttrNames[j].equalsIgnoreCase("totalEvents") ||
+              cstAttrNames[j].equalsIgnoreCase("totalFiles")) &&
+              cstAttr[j]!=null && !cstAttr[j].equals("")){
+        if(cstAttr[j].indexOf("$f")>-1 &&
+            (inputTotalFiles==null || inputTotalFiles.trim().equals(""))){
+          inputTotalFiles = Integer.toString(lookupTotalFiles(datasetId));
+        }
+        resCstAttr[j] = cstAttr[j].replaceAll("\\$n", inputDatasetName);
+        resCstAttr[j] = resCstAttr[j].replaceAll("\\$f", inputTotalFiles);
+        resCstAttr[j] = resCstAttr[j].replaceAll("\\$e", inputTotalEvents);
       }
       // See if attribute has not been set. If it hasn't, set it and clear it
       // again after the new dataset has been created.
@@ -220,6 +240,17 @@ public class DatasetCreator{
         resCstAttr[j] = "";
       }
       Debug.debug("Filled in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
+    }
+  }
+
+  private int lookupTotalFiles(String datasetId) {
+    try{
+      DBResult files = dbPluginMgr.getFiles(datasetId);
+      return files.size();
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return -1;
     }
   }
 

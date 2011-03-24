@@ -50,7 +50,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private PullMgr pullMgr;
   private String [] basicOSRTES = {"Linux", "Windows", "Mac OS X"};
   private long submitTimeoutSeconds;
-  private int mbPerVM = 512;
+  private int mbPerVM = 768;
   private HashSet<JobInfo> downloadedJobs;
   private static HashMap<String, String> remoteCopyCommands = null;
   private String [] requiredRuntimeEnvs = null;
@@ -120,14 +120,13 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         logFile.addMessage("Value of \"enforce virtualization\" is not set in configuration file", nfe);
       }
     }
-    mbPerVM = minVmMB+defaultJobMB;
     int totalVmMBs = maxMachines * mbPerVM;
     tmp = configFile.getValue(csName, "default ram per vm");
     if(tmp!=null){
       try{
         mbPerVM = Integer.parseInt(tmp);
         totalVmMBs = maxMachines * mbPerVM;
-        defaultJobMB = mbPerVM - minVmMB;
+        defaultJobMB = mbPerVM - KERNEL_MB;
       }
       catch(NumberFormatException nfe){
         logFile.addMessage("WARNING: Value of \"default ram per vm\" is not"+
@@ -346,11 +345,15 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     Debug.debug("job "+job.getIdentifier()+" has output files "+
         MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
         MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
-    return transferControl.copyToFinalDest(job, getShell(job), runDir(job), !doSystemMetadata);
+    try{
+      return transferControl.copyToFinalDest(job, getShell(job), runDir(job), !doSystemMetadata);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+      return false;
+    }
   }
 
-
-  
   /**
    * If one of the 'rtes' is a VM RTE, set this as opSys and opSysRTE of the job.
    * Otherwise, if a VM RTE provides all of the requested RTEs, set this as the
