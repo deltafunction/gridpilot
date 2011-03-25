@@ -175,7 +175,7 @@ public class DatasetCreator{
       inputTotalFiles = (String) inputDataset.getValue("totalFiles");
       inputTotalEvents = (String) inputDataset.getValue("totalEvents");
     }
-    for(int j=0; j<cstAttrNames.length; ++j){     
+    for(int j=0; j<cstAttrNames.length; ++j){
       // Get values from source dataset in question, excluding
       // executable, executableVersion and any other filled-in values.
       // Construct name for new target dataset.
@@ -219,7 +219,8 @@ public class DatasetCreator{
             (inputTotalFiles==null || inputTotalFiles.trim().equals(""))){
           inputTotalFiles = Integer.toString(lookupTotalFiles(datasetId));
         }
-        resCstAttr[j] = cstAttr[j].replaceAll("\\$n", inputDatasetName);
+        resCstAttr[j] = cstAttr[j].replaceAll("\\$n", sanitize(inputDatasetName));
+        resCstAttr[j] = resCstAttr[j].replaceAll("\\$r", inputDatasetName);
         resCstAttr[j] = resCstAttr[j].replaceAll("\\$f", inputTotalFiles);
         resCstAttr[j] = resCstAttr[j].replaceAll("\\$e", inputTotalEvents);
       }
@@ -241,6 +242,13 @@ public class DatasetCreator{
       }
       Debug.debug("Filled in "+cstAttrNames[j]+" : "+resCstAttr[j], 3);
     }
+  }
+
+  private String sanitize(String inputDatasetName) {
+    String ret = inputDatasetName.replaceAll("/+", "");
+    ret = ret.replaceAll(" +", "");
+    //ret = ret.replaceAll("\\++", "");
+    return ret;
   }
 
   private int lookupTotalFiles(String datasetId) {

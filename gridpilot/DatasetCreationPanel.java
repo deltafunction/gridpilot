@@ -1131,7 +1131,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       showDetails(false);
     }
     else{
-      if(checkForInputDataset()){
+      if(!editing && checkForInputDataset()){
         instructionsLabel.setVisible(true);
       }
     }
@@ -1151,7 +1151,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
       Debug.debug((show?"showing ":"hiding ")+MyUtil.getJTextOrEmptyString(comp), 2);
       comp.setVisible(show);
     }
-    if(show && checkForInputDataset()){
+    if(!editing && show && checkForInputDataset()){
       instructionsLabel.setVisible(true);
     }
     else{
@@ -1173,7 +1173,7 @@ public class DatasetCreationPanel extends CreateEditPanel{
   
   public String createDatasetInstructionsLabelString(){
     String instructionLabelString = "";
-    instructionLabelString += "input dataset name: $n";
+    instructionLabelString += "sanitized/raw input dataset name: $n/$r";
     instructionLabelString += ", number of input files: $f";
     instructionLabelString += ", number of input events: $e";
     return instructionLabelString;
