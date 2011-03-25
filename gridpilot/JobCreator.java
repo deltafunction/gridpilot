@@ -167,7 +167,9 @@ public class JobCreator{
             Debug.debug("nEvents specified: "+nEventsOut, 2);
           }
           catch(Exception e){
-            e.printStackTrace();
+            if(Debug.DEBUG_LEVEL>2){
+              e.printStackTrace();
+            }
           }
           break;
         }
@@ -1238,7 +1240,7 @@ public class JobCreator{
     }
     Vector<String> ret = new Vector<String>();
     String idField = MyUtil.getIdentifierField(inputMgr.getDBName(), "file");
-    String nameField = MyUtil.getIdentifierField(inputMgr.getDBName(), "name");
+    String nameField = MyUtil.getNameField(inputMgr.getDBName(), "file");
     String catalogsField = "catalogs";
     String catalogPrefix = "";
     DBRecord inputFile;
@@ -1271,7 +1273,9 @@ public class JobCreator{
           }
         }
         catch(Exception e){
-          e.printStackTrace();
+          if(Debug.DEBUG_LEVEL>2){
+            e.printStackTrace();
+          }
           inputUrlsStr = (String) inputFile.getValue(nameField);
         }
       }
