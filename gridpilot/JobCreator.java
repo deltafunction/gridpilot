@@ -322,6 +322,9 @@ public class JobCreator{
       inputMgr = null;
       inputDatasetName = null;
       inputDatasetID = null;
+      inputJobDefsPresent = false;
+      fileCatalogInput = false;
+      return;
     }
     pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
     evaluateAllWithInput();
@@ -344,7 +347,7 @@ public class JobCreator{
       Debug.debug("No event information in dataset "+currentDatasetID+
           ":"+inputJobDefRecords.getValue(0, EVENT_MIN)+inputJobDefRecords.getValue(0, EVENT_MAX), 2);
     }
-    inputJobDefsPresent  = inputJobDefIds!=null && inputJobDefIds.length>0;
+    inputJobDefsPresent = inputJobDefIds!=null && inputJobDefIds.length>0;
   }
 
   private int[] getSplitFromInputCatalog() {
