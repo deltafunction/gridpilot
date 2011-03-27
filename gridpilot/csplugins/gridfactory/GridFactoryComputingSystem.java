@@ -443,8 +443,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     // super.postProcess assumes the output files are available to the shell, so
     // we copy them over locally to make this true. Stdout/err were taken care of
     // by getCurrentOutput called from updateStatus before validation.
-    // TODO: Once GridFactory supports upload of output files for https, this should
-    // be done only for output destinations with other protocols than https.
     try{
       getOutputs((MyJobInfo) job);
     }
@@ -453,8 +451,43 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       logFile.addMessage("ERROR: could not download output files from job "+job.getIdentifier()+" : "+job.getJobId(), e);
       ok = false;
     }
+    /*try{
+      if(ok){
+        deliverStdoutErr(job);
+      }
+    }
+    catch(Exception e){
+      logFile.addMessage("WARNING: could not deliver stdout/stderr of job "+
+          job.getIdentifier()+" / "+job.getName(), e);
+    }*/
     ok = ok && super.postProcess(job);
     return ok;
+  }
+  
+  private void deliverStdoutErr(JobInfo job) throws MalformedURLException, Exception{
+    File tmpStdout = new File(job.getOutTmp());
+    File tmpStderr = new File(job.getErrTmp());
+    DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+    String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
+    String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
+    // Now upload to final destination.
+    String protocol = null;
+    try{
+      protocol = (new GlobusURL(finalStdOut)).getProtocol();
+    }
+    catch(Exception e){
+      //e.printStackTrace();
+    }
+    if(!MyUtil.isLocalFileName(finalStdOut)){
+      if(!protocol.equals("https")){
+        transferControl.upload(tmpStdout, finalStdOut);
+        transferControl.upload(tmpStderr, finalStdErr);
+      }
+    }
+    else{
+      LocalStaticShell.copyFile(tmpStdout.getAbsolutePath(), finalStdOut);
+      LocalStaticShell.copyFile(tmpStderr.getAbsolutePath(), finalStdErr);
+    }
   }
   
   private void getOutputs(MyJobInfo job) throws MalformedURLException, Exception{
@@ -474,7 +507,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           protocol = (new GlobusURL(outputDestinations[i])).getProtocol();
         }
         catch(Exception e){
-          e.printStackTrace();
+          //e.printStackTrace();
         }
         if(MyUtil.urlIsRemote(outputDestinations[i])){
           // Files that have been delivered by the script itself
@@ -602,10 +635,6 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     if(st==JobInfo.STATUS_DONE){
       // This is to make sure we have something to validate
       getCurrentOutput(job);
-      //DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
-      //String finalStdOut = dbPluginMgr.getStdOutFinalDest(job.getIdentifier());
-      //String finalStdErr = dbPluginMgr.getStdErrFinalDest(job.getIdentifier());
-      // TODO: Now upload to final destination. - first check if this is not done somewhere else
     }
     Debug.debug("Updated status of job "+job.getName()+" : "+job.getCSStatus()+" : "+csStatus, 2);
     if(csStatus==null || csStatus.equals("")){
