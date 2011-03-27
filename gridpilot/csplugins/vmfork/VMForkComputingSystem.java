@@ -1,5 +1,6 @@
 package gridpilot.csplugins.vmfork;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
@@ -15,7 +16,6 @@ import gridfactory.common.ConfirmBox;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.PullMgr;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
@@ -346,12 +346,32 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
         MyUtil.arrayToString(job.getOutputFileNames())+" --> "+
         MyUtil.arrayToString(job.getOutputFileDestinations()), 2);
     try{
-      return transferControl.copyToFinalDest(job, getShell(job), runDir(job), !doSystemMetadata);
+      return transferControl.copyToFinalDest(job, getShell(job), runDir(job),
+          getLocalJobCacheDir(job), !doSystemMetadata);
     }
     catch(Exception e){
       e.printStackTrace();
       return false;
     }
+  }
+  
+  protected String getLocalJobCacheDir(JobInfo job) {
+    String localJobCacheDir = null;
+    String workingDir = workingDirs.get("localhost");
+    if(LocalStaticShell.existsFile(workingDir)){
+      localJobCacheDir = workingDir+File.separator+job.getName();
+    }
+    else{
+      try{
+        File tmpDir = File.createTempFile(/*prefix*/MyUtil.getTmpFilePrefix()+"-VMFork-", /*suffix*/"");
+        GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
+        localJobCacheDir = tmpDir.getAbsolutePath();
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      } 
+    }
+    return localJobCacheDir;
   }
 
   /**
@@ -507,7 +527,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
   private int getSubmitting(MyJobInfo _job){
     int ret = 0;
     MyJobInfo job;
-    MyLinkedHashSet<MyJobInfo> jobs = GridPilot.getClassMgr().getSubmissionControl().getSubmittingJobs();
+    Set<MyJobInfo> jobs = GridPilot.getClassMgr().getSubmissionControl().getSubmittingJobs();
     for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
       job = it.next();
       if(!job.getIdentifier().equals(_job.getIdentifier()) && _job.getHost().equals(job.getHost())){

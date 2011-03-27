@@ -3,12 +3,13 @@ package gridpilot;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.Debug;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.ResThread;
 
 import java.net.URL;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.Vector;
-import java.util.Enumeration;
 import javax.swing.*;
 import java.util.HashMap;
 
@@ -208,14 +209,14 @@ public class JobStatusUpdateControl{
     
     // get job vector
     int [] rows = _rows;
-    Vector<MyJobInfo> jobs = null;
+    Set<MyJobInfo> jobs = null;
     if(rows==null || rows.length==0){
       // if nothing is selected, we refresh all jobs
       jobs = GridPilot.getClassMgr().getMonitoredJobs();
     }
     else{
       //rows = statusTable.getSelectedRows();
-      jobs = new Vector<MyJobInfo>();
+      jobs = new MyLinkedHashSet<MyJobInfo>();
       for(Iterator<MyJobInfo> it=JobMgr.getJobsAtRows(rows).iterator(); it.hasNext();){
         jobs.add(it.next());
       }
@@ -223,9 +224,8 @@ public class JobStatusUpdateControl{
    
     // fill toCheckJobs with running jobs
     synchronized(toCheckJobs){
-      Enumeration<MyJobInfo> e = jobs.elements();
-      while(e.hasMoreElements()){
-        MyJobInfo job = (MyJobInfo) e.nextElement();
+      for(Iterator<MyJobInfo>it=jobs.iterator(); it.hasNext();){
+        MyJobInfo job = it.next();
         Debug.debug("Checking job: "+job.getName()+" "+
             job.getNeedsUpdate() +" "+ !toCheckJobs.contains(job) +" "+
             !checkingJobs.contains(job), 3);

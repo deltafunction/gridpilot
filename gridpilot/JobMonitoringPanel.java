@@ -11,7 +11,6 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
@@ -1046,10 +1045,9 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
    * Shows/Hides rows according to the user's choice.
    */
   private void showOnlyRows(){
-    Vector<MyJobInfo> submittedJobs = GridPilot.getClassMgr().getMonitoredJobs();
-    Enumeration<MyJobInfo> e =  submittedJobs.elements();
-    while(e.hasMoreElements()){
-      MyJobInfo job = (MyJobInfo) e.nextElement();
+    Set<MyJobInfo> submittedJobs = GridPilot.getClassMgr().getMonitoredJobs();
+    for(Iterator<MyJobInfo>it=submittedJobs.iterator(); it.hasNext();){
+      MyJobInfo job = it.next();
       if(JobMgr.isRunning(job)){
         if(showRows==ONLY_RUNNING_JOBS){
           statusTable.showRow(job.getTableRow());
@@ -1093,7 +1091,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     }
     statusUpdateControl.reset();
     boolean ret = true;
-    GridPilot.getClassMgr().getMonitoredJobs().removeAllElements();
+    GridPilot.getClassMgr().getMonitoredJobs().clear();
     statusTable.createRows(0);
     try{
       for(Iterator<JobMgr> it = GridPilot.getClassMgr().getJobMgrs().iterator(); it.hasNext();){

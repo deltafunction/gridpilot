@@ -19,6 +19,7 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.DBResult;
 import gridfactory.common.Debug;
 import gridfactory.common.JobInfo;
+import gridfactory.common.LocalStaticShell;
 import gridfactory.common.LogFile;
 import gridfactory.common.Shell;
 import gridfactory.common.Util;
@@ -670,11 +671,9 @@ public class ForkComputingSystem implements MyComputingSystem{
     // In case this is not a local shell, first get the script to a local tmp file.
     if(!shell.isLocal()){
       try{
-        File tmpFile = File.createTempFile(/*prefix*/MyUtil.getTmpFilePrefix()+"-Fork-", /*suffix*/"");
-        // have the file deleted on exit
-        GridPilot.addTmpFile(tmpFile.getAbsolutePath(), tmpFile);
-        shell.download(jobScriptFile, tmpFile.getAbsolutePath());
-        jobScriptFile = tmpFile.getAbsolutePath();
+        String tmpFile = getLocalJobCacheDir(job)+File.separator+job.getName()+getCommandSuffix((MyJobInfo) job);
+        shell.download(jobScriptFile, tmpFile);
+        return new String [] {tmpFile};
       }
       catch(Exception e){
         e.printStackTrace();
@@ -1004,6 +1003,8 @@ public class ForkComputingSystem implements MyComputingSystem{
     MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
     String[][] uploadFiles;
     String [] alreadyCopiedNames;
+    // First see if we're using standard settings and can just use ~/GridPilot/jobs/'id' as
+    // cache on the host. If not, use a tmp dir.
     boolean ok = true;
     // Horrible clutch because Globus gass copy fails on empty files...
     boolean emptyFile = false;
@@ -1020,8 +1021,8 @@ public class ForkComputingSystem implements MyComputingSystem{
             outputNames[i]);
         localName = MyUtil.clearFile(localName);
         remoteName = dbPluginMgr.getJobDefOutRemoteName(jobDefID, outputNames[i]);
-        emptyFile = remoteName.startsWith("https") && (new File(localName)).length()==0;
-        ok = ok && (transferControl.copyOutputFile(localName, remoteName, shellMgr, error) ||
+        emptyFile = remoteName.startsWith("https") && (new File(localName)).exists() && (new File(localName)).length()==0;
+        ok = ok && (transferControl.copyOutputFile(localName, remoteName, shellMgr, getLocalJobCacheDir(job), error) ||
             emptyFile);
       }
       catch(Exception e){
@@ -1049,10 +1050,10 @@ public class ForkComputingSystem implements MyComputingSystem{
      * move temp StdOut -> finalStdOut
      */
     if(finalStdOut!=null && finalStdOut.trim().length()>0){
-      emptyFile = finalStdOut.startsWith("https") && (new File(job.getOutTmp())).length()==0;
-      if(transferControl.copyOutputFile(job.getOutTmp(), finalStdOut, shellMgr, error) ||
+      emptyFile = finalStdOut.startsWith("https") && (new File(job.getOutTmp())).exists() && (new File(job.getOutTmp())).length()==0;
+      if(transferControl.copyOutputFile(job.getOutTmp(), finalStdOut, shellMgr, getLocalJobCacheDir(job), error) ||
           emptyFile){
-        job.setOutTmp(finalStdOut);
+        //job.setOutTmp(finalStdOut);
       }
       else{
         ok = false;
@@ -1063,10 +1064,10 @@ public class ForkComputingSystem implements MyComputingSystem{
      * move temp StdErr -> finalStdErr
      */
     if(finalStdErr!=null && finalStdErr.trim().length()>0){
-      emptyFile = finalStdErr.startsWith("https") && (new File(job.getErrTmp())).length()==0;
-      if(transferControl.copyOutputFile(job.getErrTmp(), finalStdErr, shellMgr, error) ||
+      emptyFile = finalStdErr.startsWith("https") && (new File(job.getErrTmp())).exists() && (new File(job.getErrTmp())).length()==0;
+      if(transferControl.copyOutputFile(job.getErrTmp(), finalStdErr, shellMgr, getLocalJobCacheDir(job), error) ||
           emptyFile){
-        job.setErrTmp(finalStdErr);
+        //job.setErrTmp(finalStdErr);
       }
       else{
         ok = false;
@@ -1077,6 +1078,24 @@ public class ForkComputingSystem implements MyComputingSystem{
     
   }
   
+  protected String getLocalJobCacheDir(JobInfo job) {
+    String localJobCacheDir = null;
+    if(LocalStaticShell.existsFile(workingDir)){
+      localJobCacheDir = workingDir+File.separator+job.getName();
+    }
+    else{
+      try{
+        File tmpDir = File.createTempFile(/*prefix*/MyUtil.getTmpFilePrefix()+"-Fork-", /*suffix*/"");
+        GridPilot.addTmpFile(tmpDir.getAbsolutePath(), tmpDir);
+        localJobCacheDir = tmpDir.getAbsolutePath();
+      }
+      catch(IOException e){
+        e.printStackTrace();
+      } 
+    }
+    return localJobCacheDir;
+  }
+
   public Shell getShell(JobInfo job){
     return shell;
   }

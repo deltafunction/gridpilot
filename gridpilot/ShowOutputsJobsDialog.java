@@ -13,8 +13,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;

@@ -49,7 +49,7 @@ public class JobMgr{
    *     (they are in {@link SubmissionControl#toSubmitJobs})
    * <li>the logicalFile which have been monitored (not submitted) </ul>
    */
-  private Vector<MyJobInfo> monitoredjobs;
+  private Set<MyJobInfo> monitoredjobs;
 
   /** Index of column of icon in statusTable .*/
   public final static int FIELD_CONTROL = 0;
@@ -360,7 +360,6 @@ public class JobMgr{
 
   /**
    * Updates cell in status table which contains DB status of this specified job.
-   * @see #updateDBCells(DBVector)
    * (from AtCom)
    */
   public void updateDBCell(final MyJobInfo job){
@@ -434,7 +433,7 @@ public class JobMgr{
    * @see #updateDBCell(MyJobInfo)
    * (From AtCom)
    */
-  public void updateDBCells(Vector<MyJobInfo> jobs){
+  public void updateDBCells(Set<MyJobInfo> jobs){
     // this works fine, except that the setTable causes the right-click menu to be lost...
     /*Object [][] values = new Object[jobs.size()][GridPilot.jobStatusFields.length];
     for(int i=0; i<jobs.size(); ++i){
@@ -452,9 +451,8 @@ public class JobMgr{
     statusTable.setTable(values, GridPilot.jobStatusFields);
     */
 
-    Enumeration<MyJobInfo> e = jobs.elements();
-    while(e.hasMoreElements()){
-      updateDBCell(e.nextElement());
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      updateDBCell(it.next());
     }
     //updateJobsByStatus();
 
@@ -465,10 +463,9 @@ public class JobMgr{
    * @see #updateJobCell(MyJobInfo)
    * (From AtCom)
    */
-  public void updateJobCells(Vector<MyJobInfo> jobs){
-    Enumeration<MyJobInfo> e = jobs.elements();
-    while(e.hasMoreElements()){
-      updateJobCell(e.nextElement());
+  public void updateJobCells(Set<MyJobInfo> jobs){
+    for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
+      updateJobCell(it.next());
     }
   }
 
@@ -505,8 +502,8 @@ public class JobMgr{
     preprocessedJobsByCS = new int[css.length];
     MyJobInfo job;
 
-    for(int i=0; i<monitoredjobs.size(); ++i){
-      job = monitoredjobs.get(i);
+    for(Iterator<MyJobInfo>it=monitoredjobs.iterator(); it.hasNext();){
+      job = it.next();
       //Debug.debug("adding job "+job.getName()+
       //    " : "+job.getDBStatus()+
       //    " : "+(job.getDBStatus()<1?"":jobsByDBStatus[job.getDBStatus()-1]), 3);
@@ -601,10 +598,12 @@ public class JobMgr{
   private void doRemoveRow(String jobDefID){
     String lfn = dbPluginMgr.getJobDefinition(jobDefID).getValue("name").toString();
     // Remove jobs from status vectors
-    for(int i=0; i<monitoredjobs.size(); ++i){
-      if(monitoredjobs.get(i).getName().equals(lfn)){
-        --jobsByDBStatus[monitoredjobs.get(i).getDBStatus()-1];
-        monitoredjobs.remove(i);
+    MyJobInfo job;
+    for(Iterator<MyJobInfo>it=monitoredjobs.iterator(); it.hasNext();){
+      job = it.next();
+      if(job.getName().equals(lfn)){
+        --jobsByDBStatus[job.getDBStatus()-1];
+        monitoredjobs.remove(job);
       }
     }
     for(int i=0; i<statusTable.getRowCount(); ++i){
@@ -724,11 +723,10 @@ public class JobMgr{
    * Returns the submitted job with the specified jobDefinition.identifier.
    */
   public static MyJobInfo getJob(String jobDefID){
-    Vector<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
-    Enumeration<MyJobInfo> e = submJobs.elements();
+    Set<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     MyJobInfo job = null;
-    while(e.hasMoreElements()){
-      job = e.nextElement();
+    for(Iterator<MyJobInfo>it=submJobs.iterator(); it.hasNext();){
+      job = it.next();
       if(job.getIdentifier().equalsIgnoreCase(jobDefID)){
         return job;
       }
@@ -742,9 +740,19 @@ public class JobMgr{
    * @see #getJobsAtRows(int[])
    */
   public static MyJobInfo getJobAtRow(int row){
-    Vector<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
+    Set<MyJobInfo> submJobs = GridPilot.getClassMgr().getMonitoredJobs();
     //Debug.debug("Got jobs at row "+row+". "+submJobs.size(), 3);
-    return submJobs.get(row);
+    //return submJobs.get(row);
+    MyJobInfo job = null;
+    int i = 0;
+    for(Iterator<MyJobInfo>it=submJobs.iterator(); it.hasNext();){
+      job = it.next();
+      if(i==row /*&& job.getTableRow()==row*/){
+        return job;
+      }
+      ++i;
+    }
+    return null;
   }
 
   /**

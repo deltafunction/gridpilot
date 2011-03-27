@@ -18,7 +18,7 @@ public class JobStatisticsPanel extends StatisticsPanel{
   private static final long serialVersionUID = 1L;
 
   public void update(){
-    Vector jobMgrs = GridPilot.getClassMgr().getJobMgrs();
+    Vector<JobMgr> jobMgrs = GridPilot.getClassMgr().getJobMgrs();
     //Debug.debug("jobMgrs: "+jobMgrs.size(), 3);
     if(style<painters.size()){
       statusNames = DBPluginMgr.getDBStatusNames();

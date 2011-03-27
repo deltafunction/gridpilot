@@ -5,6 +5,7 @@ import gridfactory.common.Debug;
 import gridfactory.common.FileCacheMgr;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
+import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.Shell;
 import gridfactory.common.StatusBar;
 import gridfactory.common.TransferInfo;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.swing.JComboBox;
@@ -50,7 +52,7 @@ public class ClassMgr{
   private HashMap<String, DBPluginMgr> dbMgrs = new HashMap<String, DBPluginMgr>();
   private HashMap<String, FileTransfer> ft = new HashMap<String, FileTransfer>();
   private HashMap<String, JobMgr> jobMgrs = new HashMap<String, JobMgr>();
-  private Vector<MyJobInfo> monitoredJobs = new Vector<MyJobInfo>();
+  private Set<MyJobInfo> monitoredJobs = new MyLinkedHashSet<MyJobInfo>();
   private Collection<TransferInfo> submittedTransfers;
   private Collection<TransferInfo> runningTransfers;
   private Collection<TransferInfo> toSubmitTransfers;
@@ -369,7 +371,7 @@ public class ClassMgr{
     return transferStatisticsPanel;
   }
 
-  public Vector<MyJobInfo> getMonitoredJobs(){
+  public Set<MyJobInfo> getMonitoredJobs(){
     if(monitoredJobs==null){
       Debug.debug("submittedJobs null", 3);
     }

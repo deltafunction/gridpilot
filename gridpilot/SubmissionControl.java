@@ -41,15 +41,15 @@ public class SubmissionControl{
   private ImageIcon iconProcessing;
   private ImageIcon iconWaiting;
   /** All jobs in the system. */
-  private Vector<MyJobInfo> monitoredJobs;
+  private Set<MyJobInfo> monitoredJobs;
   /** All jobs for which preprocessing is not done yet. */
-  private MyLinkedHashSet<MyJobInfo> toPreprocessJobs = new MyLinkedHashSet<MyJobInfo>();
+  private Set<MyJobInfo> toPreprocessJobs = new MyLinkedHashSet<MyJobInfo>();
   /** All jobs for which preprocessing is in progress. */
-  private MyLinkedHashSet<MyJobInfo> preprocessingJobs = new MyLinkedHashSet<MyJobInfo>();
+  private Set<MyJobInfo> preprocessingJobs = new MyLinkedHashSet<MyJobInfo>();
   /** All jobs that have been preprocessed, but for which submitting is not done yet. */
-  private MyLinkedHashSet<MyJobInfo> toSubmitJobs = new MyLinkedHashSet<MyJobInfo>();
+  private Set<MyJobInfo> toSubmitJobs = new MyLinkedHashSet<MyJobInfo>();
   /** All jobs for which submission is in progress. */
-  private MyLinkedHashSet<MyJobInfo> submittingJobs = new MyLinkedHashSet<MyJobInfo>();
+  private Set<MyJobInfo> submittingJobs = new MyLinkedHashSet<MyJobInfo>();
  /** Maximum number of simultaneous threads for submission. */
   private int totalMaxSubmissions = 5;
   /** Maximum total number of simultaneously submitting jobs for each CS. */
@@ -269,7 +269,7 @@ public class SubmissionControl{
       String csName, DBPluginMgr dbPluginMgr){
     GridPilot.getClassMgr().getGlobalFrame().showMonitoringPanel(MonitoringPanel.TAB_INDEX_JOBS);
     //synchronized(monitoredJobs){
-      Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
+      Set<MyJobInfo> newJobs = new MyLinkedHashSet<MyJobInfo>();
       // This label is not shown because this function is not called in a Thread.
       // It seems to be quite dangerous to call this function in a thread, because
       // if one does it, you can "load job from db" during reservation (when jobs
@@ -355,7 +355,7 @@ public class SubmissionControl{
    */
   public void submitJobs(Set<MyJobInfo> jobs, String csName){
     //synchronized(monitoredJobs){
-      Vector<MyJobInfo> newJobs = new Vector<MyJobInfo>();
+      Set<MyJobInfo> newJobs = new MyLinkedHashSet<MyJobInfo>();
       MyJobInfo job;
       for(Iterator<MyJobInfo> it=jobs.iterator(); it.hasNext();){
         job = it.next();
@@ -386,7 +386,7 @@ public class SubmissionControl{
    * Submits the given jobs, on the computing system given by job.getComputingSystem. <p>
    * These jobs are put in toSubmitJobs.
    */
-  private void queue(Vector<MyJobInfo> jobs){
+  private void queue(Set<MyJobInfo> jobs){
     if(jobs==null || jobs.size()==0){
       return;
     }
@@ -413,7 +413,7 @@ public class SubmissionControl{
       monitorStatusBar.setProgressBar(pbSubmission);
       isProgressBarSet = true;
     }
-    job = jobs.get(0);
+    job = jobs.iterator().next();
     JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
     jobMgr.updateDBCells(jobs);
     jobMgr.updateJobCells(jobs);
@@ -489,13 +489,13 @@ public class SubmissionControl{
   private void cleanupAndQueue(Set<MyJobInfo> jobs){
     MyJobInfo job = null;
     JobMgr jobMgr = null;
-    HashMap<String, Vector<MyJobInfo>> submitables = new HashMap<String, Vector<MyJobInfo>>();
+    HashMap<String, MyLinkedHashSet<MyJobInfo>> submitables = new HashMap<String, MyLinkedHashSet<MyJobInfo>>();
     monitorStatusBar.setLabel("Updating job status...");
     for(Iterator<MyJobInfo>it=jobs.iterator(); it.hasNext();){
       job = it.next();
       jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
       if(!submitables.keySet().contains(job.getDBName())){
-        submitables.put(job.getDBName(), new Vector<MyJobInfo>());
+        submitables.put(job.getDBName(), new MyLinkedHashSet<MyJobInfo>());
       }
       // first clean up old job
       jobMgr.getDBPluginMgr().cleanRunInfo(job.getIdentifier());
@@ -554,7 +554,7 @@ public class SubmissionControl{
 
        case 2://No for all
          askSave = false;
-         //no break !!!
+         //no break!
          
        case 1://JOptionPane.NO_OPTION:
          if(deleteFiles){
@@ -630,6 +630,12 @@ public class SubmissionControl{
       return;
     }
     final MyJobInfo job = toPreprocessJobs.iterator().next();
+    // This should not happen, but apparently it does. Don't think I'll reintroduce synchronization though...
+    if(job.getDBStatus()==DBPluginMgr.VALIDATED || job.getDBStatus()==DBPluginMgr.FAILED ||
+        job.getDBStatus()==DBPluginMgr.SUBMITTED){
+      toPreprocessJobs.remove(job);
+      return;
+    }
     if(cancelled){
       failJob(job);
       return;
@@ -657,7 +663,7 @@ public class SubmissionControl{
       public void run(){
         try{
           doPreprocess(job);
-          Vector<MyJobInfo> updV = new Vector<MyJobInfo>();
+          Set<MyJobInfo> updV = new MyLinkedHashSet<MyJobInfo>();
           updV.add(job);
           JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
           jobMgr.updateDBCells(updV);
@@ -690,6 +696,12 @@ public class SubmissionControl{
        return;
      }
      final MyJobInfo job = toSubmitJobs.iterator().next();
+     // This should not happen, but apparently it does. Don't think I'll reintroduce synchronization though...
+     if(job.getDBStatus()==DBPluginMgr.VALIDATED || job.getDBStatus()==DBPluginMgr.FAILED ||
+         job.getDBStatus()==DBPluginMgr.SUBMITTED){
+       toPreprocessJobs.remove(job);
+       return;
+     }
      int runOk = -1;
      if(cancelled){
        failJob(job);
@@ -713,7 +725,7 @@ public class SubmissionControl{
        public void run(){
          try{
            doSubmit(job);
-           Vector<MyJobInfo> updV = new Vector<MyJobInfo>();
+           MyLinkedHashSet<MyJobInfo> updV = new MyLinkedHashSet<MyJobInfo>();
            updV.add(job);
            JobMgr jobMgr = GridPilot.getClassMgr().getJobMgr(job.getDBName());
            jobMgr.updateDBCells(updV);
@@ -733,7 +745,7 @@ public class SubmissionControl{
      }
    }
    
-   public MyLinkedHashSet<MyJobInfo> getSubmittingJobs(){
+   public Set<MyJobInfo> getSubmittingJobs(){
      return submittingJobs;
    }
    
@@ -1266,7 +1278,7 @@ public class SubmissionControl{
     cancelled = true;
     preprocessTimer.stop();
     submitTimer.stop();
-    Vector<MyJobInfo> toCancelJobs = new Vector<MyJobInfo>();
+    Set<MyJobInfo> toCancelJobs = new MyLinkedHashSet<MyJobInfo>();
     toCancelJobs.addAll(toPreprocessJobs);
     toCancelJobs.addAll(preprocessingJobs);
     if(toCancelJobs.isEmpty()){
@@ -1282,9 +1294,8 @@ public class SubmissionControl{
     MyJobInfo job = null;
     JobMgr jobMgr = null;
     try{
-      Enumeration<MyJobInfo> e = toCancelJobs.elements();
-      while(e.hasMoreElements()){
-        job = (MyJobInfo) e.nextElement();
+      for(Iterator<MyJobInfo>it=toCancelJobs.iterator(); it.hasNext();){
+        job = it.next();
         statusTable.setValueAt("Not submitted (cancelled)!", job.getTableRow(), JobMgr.FIELD_JOBID);
         statusTable.setValueAt(job.getName(), job.getTableRow(), JobMgr.FIELD_JOBNAME);
         statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
