@@ -124,6 +124,9 @@ public class GridPilot extends JApplet{
   public static String FQAN;
   public static String VOMS_DIR;
 
+  /** The last directory browsed with a JFileChooser. */
+  public static File LAST_DIR = null;
+
   /**
    * Constructor
    */

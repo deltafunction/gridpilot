@@ -5,7 +5,6 @@ import gridfactory.common.DBRecord;
 import gridfactory.common.Debug;
 import gridfactory.common.FileTransfer;
 import gridfactory.common.LocalStaticShell;
-import gridfactory.common.MyLinkedHashSet;
 import gridfactory.common.ResThread;
 import gridfactory.common.StatusBar;
 import gridfactory.common.TransferControl;
@@ -31,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Vector;
 
 import javax.swing.ImageIcon;
@@ -74,6 +74,7 @@ public class MyTransferControl extends TransferControl {
     });
     loadValues();
     cancelled = false;
+    pbSubmission = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar().createJProgressBar(0, 0);
     GridPilot.getClassMgr().setSubmittedTransfers(getSubmittedTransfers());
     GridPilot.getClassMgr().setRunningTransfers(getRunningTransfers());
   }
@@ -395,7 +396,6 @@ public class MyTransferControl extends TransferControl {
       if(!isProgressBarSet){
         // use status bar on monitoring frame
         StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
-        pbSubmission = myStatusBar.createJProgressBar(0, max);
         myStatusBar.setProgressBar(pbSubmission);
         myStatusBar.setProgressBarValue(pbSubmission, val);
         isProgressBarSet = true;
@@ -412,10 +412,13 @@ public class MyTransferControl extends TransferControl {
     myStatusBar.incrementProgressBarValue(pb, val);
   }
   
+  // This thing causes deadlocks...
   private void increaseProgressBarMax(JProgressBar pb, int val){
     StatusBar myStatusBar = GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel().getStatusBar();
     int max = myStatusBar.getProgressBarMax(pb);
     myStatusBar.setProgressBarMax(pb, max+val);
+    /*int max = pb.getMaximum();
+    pb.setMaximum(max+val);*/
   }
   
   private void setStatusBarMouseListenerCancel(JProgressBar pbSubmission) {
@@ -573,9 +576,9 @@ public class MyTransferControl extends TransferControl {
     setProgressBar1(0, 0);
 
     ResThread t = new ResThread(){
-      MyLinkedHashSet<TransferInfo> transfers = new MyLinkedHashSet<TransferInfo>();
+      LinkedHashSet<TransferInfo> transfers = new LinkedHashSet<TransferInfo>();
       public void run(){
-        increaseProgressBarMax(pbSubmission, _transfers.size());
+        //increaseProgressBarMax(pbSubmission, _transfers.size());
         if(isRand!=null && isRand.equalsIgnoreCase("yes")){
           MyUtil.shuffle(_transfers);
         }

@@ -2590,8 +2590,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
           transfers.add(new TransferInfo(srcUrl, destUrl));
         }
       }
-      GridPilot.getClassMgr().getTransferControl().queue(transfers);
       createRemoteDirs(newDirUrls);
+      Debug.debug("Queuing "+transfers.size(), 3);
+      GridPilot.getClassMgr().getTransferControl().queue(transfers);
     }
     catch(Exception e){
       GridPilot.getClassMgr().getLogFile().addMessage("Could not upload directory "+dir.getAbsolutePath(), e);
@@ -2625,7 +2626,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   private File getInputFileOrDir(){
     File file = null;
-    JFileChooser fc = new JFileChooser();
+    JFileChooser fc = new JFileChooser(GridPilot.LAST_DIR);
     fc.setDialogTitle("Choose file or directory to upload");
     //fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
     fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
@@ -2636,6 +2637,9 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
     else{
       Debug.debug("Not opening file", 3);
+    }
+    if(fc.getSelectedFile()!=null){
+      GridPilot.LAST_DIR = fc.getSelectedFile();
     }
     return file;
   }

@@ -808,7 +808,7 @@ private static String fixUrl(String _url){
    */
   public static File getDownloadDir(Component parent){
     File file = null;
-    JFileChooser fc = new JFileChooser();
+    JFileChooser fc = new JFileChooser(GridPilot.LAST_DIR);
     fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
     fc.setDialogTitle("Choose download directory");
     int returnVal = fc.showOpenDialog(parent);
@@ -818,6 +818,9 @@ private static String fixUrl(String _url){
     }
     else{
       Debug.debug("Not opening file", 3);
+    }
+    if(fc.getSelectedFile()!=null){
+      GridPilot.LAST_DIR = fc.getSelectedFile();
     }
     return file;
   }
