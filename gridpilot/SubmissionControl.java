@@ -163,7 +163,7 @@ public class SubmissionControl{
         maxRunningPerHostOnEachCS.put(csNames[i], Integer.parseInt(tmp));
       }
       catch(Exception e){
-        maxRunningPerHostOnEachCS.put(csNames[i], 1);
+        maxRunningPerHostOnEachCS.put(csNames[i], -1);
       }
     }
     Debug.debug("maxRunningPerHostOnEachCS: "+maxRunningPerHostOnEachCS, 2);
@@ -183,7 +183,7 @@ public class SubmissionControl{
         maxPreprocessingPerHostOnEachCS.put(csNames[i], Integer.parseInt(tmp));
       }
       catch(Exception e){
-        maxPreprocessingPerHostOnEachCS.put(csNames[i], 1);
+        maxPreprocessingPerHostOnEachCS.put(csNames[i], -1);
       }
     }
     Debug.debug("maxPreprocessingPerHostOnEachCS: "+maxPreprocessingPerHostOnEachCS, 2);
@@ -923,6 +923,14 @@ public class SubmissionControl{
     if(job.getHost()!=null && !job.getHost().equals("")){
       return;
     }
+
+    int hostMaxPJobs = maxPreprocessingPerHostOnEachCS.get(job.getCSName());
+    int hostMaxRJobs = maxRunningPerHostOnEachCS.get(job.getCSName());
+    // Tagging is only relevant for back-ends that are in direct contact with the worker nodes.
+    if(hostMaxPJobs<=0 || hostMaxRJobs<=0 ){
+      return;
+    }
+
     HashMap<String, Integer> hostsWithPreprocessingJobs = new HashMap<String, Integer>();
     HashMap<String, Integer> hostsWithRunningJobs = new HashMap<String, Integer>();
     HashMap<String, Integer> hostsWithDoneJobs = new HashMap<String, Integer>();
@@ -976,14 +984,10 @@ public class SubmissionControl{
     String host;
     int hostPJobs;
     int hostRJobs;
-    int hostMaxPJobs;
-    int hostMaxRJobs;
     for(Iterator<String> it=hostsWithJobs.keySet().iterator(); it.hasNext();){
       host = it.next();
       hostPJobs = hostsWithPreprocessingJobs.containsKey(host)?hostsWithPreprocessingJobs.get(host):0;
       hostRJobs = hostsWithRunningJobs.containsKey(host)?hostsWithRunningJobs.get(host):0;
-      hostMaxPJobs = maxPreprocessingPerHostOnEachCS.get(job.getCSName());
-      hostMaxRJobs = maxRunningPerHostOnEachCS.get(job.getCSName());
       Debug.debug(host+"-->"+hostPJobs+"<"+hostMaxPJobs, 3);
       Debug.debug(host+"-->"+hostRJobs+"<"+hostMaxRJobs, 3);
       if((hostPJobs<hostMaxPJobs || hostRJobs<hostMaxRJobs) &&
