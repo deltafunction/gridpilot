@@ -166,7 +166,7 @@ public class GLiteScriptGenerator extends ScriptGenerator {
       else if(remoteName.startsWith("https:")){
         writeLine(bufScript, "curl -k --cert $X509_USER_PROXY --key $X509_USER_PROXY " +
               "--capath /etc/grid-security/certificates -o "+
-              localName+" "+remoteName);
+              localName+" "+remoteName+" || curl -k -o "+localName+" "+remoteName);
       }
     }
     

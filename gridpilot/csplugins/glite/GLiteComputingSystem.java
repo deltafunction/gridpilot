@@ -328,7 +328,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     
     if(runtimes.size()<2){
       Debug.debug("WARNING: no runtime environments found", 1);
-      return;
+      //return;
     }
 
     String name = null;

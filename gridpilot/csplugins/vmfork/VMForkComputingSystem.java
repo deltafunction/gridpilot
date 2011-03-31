@@ -265,7 +265,7 @@ public class VMForkComputingSystem extends gridfactory.common.jobrun.ForkComputi
     
 
     if(!downloadedJobs.contains(job)){
-      if(!pullMgr.checkRequirements(job, virtEnforce)){
+      if(!pullMgr.checkRequirements(job, virtEnforce, false)){
         throw new Exception("Requirement(s) could not be satisfied. "+job);
       }
       Debug.debug("OpSys for "+job.getName()+" <-- "+job.getOpSys()+" : "+job.getOpSysRTE(), 2);

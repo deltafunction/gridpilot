@@ -55,6 +55,7 @@ public class NGSubmission{
   private static ARCResource[] lastSelectedResources;
   private static boolean rememberClusters = false;
   private int maxSubmitRetries = 3;
+  private static Vector<String> rememberedSelectedClusters = new Vector<String>();
 
   public NGSubmission(String _csName, String [] _clusters, String [] _excludedClusters, boolean _fastSubmission){
     Debug.debug("Loading class NGSubmission", 3);
@@ -361,15 +362,18 @@ public class NGSubmission{
     
     JCheckBox [] cbsClusters = new JCheckBox[nonExcludedClusters.length];
     for(int i=0; i<cbsClusters.length; ++i){
-      cbsClusters[i] = new JCheckBox(nonExcludedClusters[i], true);
+      cbsClusters[i] = new JCheckBox(nonExcludedClusters[i], false);
     }
-    final JCheckBox cbRemember = new JCheckBox("Remember selection", true);
+    final JCheckBox cbRemember = new JCheckBox("Don't ask again", true);
     cbRemember.setSelected(false);
     ConfirmBox confirmBox = new ConfirmBox();
     final Object [] displayObjects = new Object[3];
     JPanel jp = new JPanel(new GridLayout(cbsClusters.length, 1));
     for(int i=0; i<cbsClusters.length; ++i){
       jp.add(cbsClusters[i]);
+      if(rememberedSelectedClusters.contains(nonExcludedClusters[i])){
+        cbsClusters[i].setSelected(true);
+      }
     }
     displayObjects[0] = "OK";
     displayObjects[1] = "Cancel";
@@ -387,9 +391,11 @@ public class NGSubmission{
       if(cbRemember.isSelected()){
         rememberClusters = true;
       }
+      rememberedSelectedClusters.clear();
       Vector<String> retVec = new Vector<String>();
       for(int i=0; i<cbsClusters.length; ++i){
         if(cbsClusters[i].isSelected()){
+          rememberedSelectedClusters.add(nonExcludedClusters[i]);
           retVec.add(nonExcludedClusters[i]);
         }
       }
