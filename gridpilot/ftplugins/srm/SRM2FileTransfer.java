@@ -36,7 +36,6 @@ public class SRM2FileTransfer implements FileTransfer {
   
   private Vector<String> pendingIDs = new Vector<String> ();
   private String user = null;
-  private MyTransferControl transferControl;
   
   // Default to trying 5 checks after submitting a transfer
   private int checkRetries = 5;
@@ -66,8 +65,6 @@ public class SRM2FileTransfer implements FileTransfer {
     if(!GridPilot.IS_SETUP_RUN){
       user = GridPilot.getClassMgr().getSSL().getGridSubject();
     }
-    
-    transferControl = GridPilot.getClassMgr().getTransferControl();
 
     //System.setProperty("X509_CERT_DIR",
     //    Util.getProxyFile().getParentFile().getAbsolutePath());
@@ -182,6 +179,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String shortID = idArr[7];
     
     String status = null;
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
 
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
@@ -310,6 +308,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String requestType = idArr[1];
     String surl = idArr[6];
     String shortID = idArr[7];
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
 
     String status = "";
 
@@ -352,6 +351,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String [] idArr = MyUtil.parseSrmFileTransferID(fileTransferID);
     String requestType = idArr[1];
     String shortID = idArr[7];
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
 
     int percentComplete = -1;
 
@@ -397,6 +397,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String requestType = idArr[1];
     String shortID = idArr[7];
     long bytes = -1;
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
 
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
@@ -502,6 +503,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String requestId = idArr[2];
     String surl = idArr[6];
     String shortID = idArr[7];
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
 
     startDates.remove(fileTransferID);
     ISRM srm = connect(new GlobusURL(surl));
@@ -531,9 +533,9 @@ public class SRM2FileTransfer implements FileTransfer {
 
   // Wait for all files to be ready on the SRM server before beginning the
   // transfers. This may be reconsidered...
-  private String [] waitForOK(Vector _thesePendingIDs) throws SRMException {
+  private String [] waitForOK(Vector<String> _thesePendingIDs) throws SRMException {
     synchronized(pendingIDs){
-      Vector thesePendingIDs = _thesePendingIDs;
+      Vector<String> thesePendingIDs = _thesePendingIDs;
       String status = null;
       String [] idArray = new String[thesePendingIDs.size()];
       String [] turlArray = new String[thesePendingIDs.size()];
@@ -549,7 +551,7 @@ public class SRM2FileTransfer implements FileTransfer {
         ++i;
         for(int j=0; j<thesePendingIDs.size(); ++j){
           Debug.debug("Checking status "+i+" - "+j+":"+thesePendingIDs.size(), 3);
-          String id = (String) thesePendingIDs.get(j);
+          String id = thesePendingIDs.get(j);
           Debug.debug("of --> "+id, 3);
           try{
             status = getStatus(id);
@@ -667,6 +669,7 @@ public class SRM2FileTransfer implements FileTransfer {
   
   // if the source is srm and the destination is file or gsiftp we get
   private String[] copySrmToFileOrGsiftp(GlobusURL [] srcUrls, GlobusURL [] destUrls) throws Exception {
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     String sources[] = new String[srcUrls.length];
     String dests[] = new String[srcUrls.length];
     for(int i = 0; i<srcUrls.length; ++i){
@@ -716,7 +719,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String [] ids = new String[srcUrls.length];
     String [] assignedTurls = null;
     // First, assign temporary ids (with TURL null) and wait for ready
-    Vector thesePendingIDs = new Vector();
+    Vector<String> thesePendingIDs = new Vector<String>();
     for(int i=0; i<srcUrls.length; ++i){
       thesePendingIDs.add(pluginName+"-get::"+requestId+"::"+i+"::'"+null+"' '"+destUrls[i].getURL()+
       "' '"+srcUrls[0].getURL()+"'");
@@ -763,6 +766,7 @@ public class SRM2FileTransfer implements FileTransfer {
     statusBar.setLabel("File(s) ready, starting download.");
     try{
       // Now use some other plugin - depending on the TURL returned
+      Debug.debug("Starting to copy files with transferControl "+transferControl+"<--"+GridPilot.getClassMgr().getTransferControl(), 3);
       transferControl.startCopyFiles(turls, destUrls);
     }
     catch(Exception e){
@@ -824,7 +828,7 @@ public class SRM2FileTransfer implements FileTransfer {
     String [] ids = new String[srcUrls.length];
     String [] assignedTurls = null;
     // First, assign temporary ids (with TURL null) and wait for ready
-    Vector thesePendingIDs = new Vector();
+    Vector<String> thesePendingIDs = new Vector<String>();
     for(int i=0; i<srcUrls.length; ++i){
       thesePendingIDs.add(pluginName+"-get::"+requestId+"::"+i+"::'"+srcUrls[i].getURL()+"' '"+null+
       "' '"+destUrls[0].getURL()+"'");
@@ -869,6 +873,7 @@ public class SRM2FileTransfer implements FileTransfer {
     }
     // show message on status bar on monitoring frame
     statusBar.setLabel("File(s) ready, starting upload.");
+    MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
     try{
       // Now use some other plugin - depending on the TURL returned
       transferControl.startCopyFiles(srcUrls, turls);
@@ -1128,6 +1133,7 @@ public class SRM2FileTransfer implements FileTransfer {
     if(!pendingIDs.contains(fileTransferID) && (
         requestType.equals("get") || requestType.equals("put"))){
       // get status from GSIFTPFileTransfer (or whichever protocol the SRM uses)
+      MyTransferControl transferControl = GridPilot.getClassMgr().getTransferControl();
       try{
         internalStatus = transferControl.getInternalStatus(shortID, status);
       }
@@ -1151,20 +1157,20 @@ public class SRM2FileTransfer implements FileTransfer {
       // TODO: should this be STATUS_WAIT?
       ret = FileTransfer.STATUS_ERROR;
     }
-    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Pending")){
+    else if(ftStatus!=null && ftStatus.equalsIgnoreCase("Pending")){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null && (ftStatus.equalsIgnoreCase("Ready") ||
+    else if(ftStatus!=null && (ftStatus.equalsIgnoreCase("Ready") ||
         status.matches("^\\w+://.*"))){
       ret = FileTransfer.STATUS_WAIT;
     }
-    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Running")){
+    else if(ftStatus!=null && ftStatus.equalsIgnoreCase("Running")){
       ret = FileTransfer.STATUS_RUNNING;
     }
-    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Done")){
+    else if(ftStatus!=null && ftStatus.equalsIgnoreCase("Done")){
       ret = FileTransfer.STATUS_DONE;
     }
-    else if(ftStatus==null && ftStatus.equalsIgnoreCase("Failed")){
+    else if(ftStatus!=null && ftStatus.equalsIgnoreCase("Failed")){
       ret = FileTransfer.STATUS_FAILED;
     }
     else{
@@ -1183,12 +1189,12 @@ public class SRM2FileTransfer implements FileTransfer {
      throw new IOException("getFile not supported by SRM plugin.");
   }
 
-  public Vector list(GlobusURL globusUrl, String filter) throws Exception {
+  public Vector<String> list(GlobusURL globusUrl, String filter) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
     throw new IOException("list not supported by SRM plugin.");
   }
   
-  public Vector find(GlobusURL globusUrl, String filter) throws Exception {
+  public Vector<String> find(GlobusURL globusUrl, String filter) throws Exception {
     // No point in implementing this. SRM is anyway not browsable.
     throw new IOException("list not supported by SRM plugin.");
   }
