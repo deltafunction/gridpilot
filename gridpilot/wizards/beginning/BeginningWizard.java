@@ -1668,8 +1668,8 @@ public class BeginningWizard{
           !MyUtil.getJTextOrEmptyString(tfGfUrl).trim().equals("")){
         String gfSubmitUrl = MyUtil.getJTextOrEmptyString(tfGfUrl).trim();
         int selectedIndex = gfSubmitUrlsBox.getSelectedIndex();
-        if(selectedIndex>=0){
-          gfRteCatalogUrl = GF_RTE_CATALOG_URLS[selectedIndex];
+        if(selectedIndex>0){
+          gfRteCatalogUrl = GF_RTE_CATALOG_URLS[selectedIndex-1];
         }
         configFile.setAttributes(
             new String [] {"GridFactory", "GridFactory", "GridFactory"},
