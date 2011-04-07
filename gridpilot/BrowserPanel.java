@@ -101,7 +101,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private static int TEXTFIELDWIDTH = 32;
   //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
-  private static final int DOWNLOAD_TIMEOUT = 0;//30*60*1000;
+  private static final int DOWNLOAD_TIMEOUT = 30*60*1000;
   private static final int UPLOAD_TIMEOUT = 30*60*1000;
   private static final String FILE_FOUND_TEXT = "File found. Size: ";
   private static final String DIR_FILTER = "^*/$|";
@@ -879,7 +879,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     };
     rt.start();
     if(wait){
-      MyUtil.waitForThread(rt, "download", DOWNLOAD_TIMEOUT, "download", GridPilot.getClassMgr().getLogFile());
+      MyUtil.waitForThread(rt, "download", DOWNLOAD_TIMEOUT, "download", true, GridPilot.getClassMgr().getLogFile());
     }
   }
 
@@ -2599,7 +2599,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
     };
     rt.start();
     ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-    MyUtil.waitForThread(rt, "upload", UPLOAD_TIMEOUT, "upload", GridPilot.getClassMgr().getLogFile());
+    MyUtil.waitForThread(rt, "upload", UPLOAD_TIMEOUT, "upload", true, GridPilot.getClassMgr().getLogFile());
     ep.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
   }
   
