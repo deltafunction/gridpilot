@@ -153,6 +153,7 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
             }
             catch(Exception e1){
                e1.printStackTrace();
+               setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
             }
           }
         }).start();
@@ -207,15 +208,19 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     JPanel pButtons = new JPanel();
     bRefreshInstances.addActionListener(new ActionListener(){
       public void actionPerformed(ActionEvent e){
-        try{
-          instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
-          bLaunch.setEnabled(false);
-          bTerminate.setEnabled(false);
-          makeMenu();
-        }
-        catch(Exception e1){
-           e1.printStackTrace();
-        }
+        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+        (new Thread(){
+          public void run(){
+            try{
+              refreshInstances();
+              setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            }
+            catch(Exception e1){
+               e1.printStackTrace();
+               setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+            }
+          }
+        }).start();
       }
     });
     bTerminate.addActionListener(new ActionListener(){
@@ -237,6 +242,13 @@ public class VMMonitoringPanel extends JPanel implements ClipboardOwner{
     pButtons.add(bTerminate);
     panel.add(pButtons, BorderLayout.SOUTH);
     return panel;
+  }
+  
+  private void refreshInstances() throws Exception {
+    instanceTable.setTable(getRunningInstances(), INSTANCE_FIELDS);
+    bLaunch.setEnabled(false);
+    bTerminate.setEnabled(false);
+    makeMenu();
   }
 
   /**
