@@ -76,7 +76,7 @@ public class BeginningWizard{
   private static String[] GF_RTE_CATALOG_URLS =
     new String [] {"http://www.gridfactory.org/rtes.xml",
                    "https://gridfactory.nbi.dk/rtes/rtes.xml",
-                   "https://gridfactory.dyndns.org/rtes/rtes.xml"};
+                   "http://www.gridfactory.org/rtes.xml"};
   private String gfRteCatalogUrl = GF_RTE_CATALOG_URLS[0];
   private JExtendedComboBox gfSubmitUrlsBox = new JExtendedComboBox();
   
