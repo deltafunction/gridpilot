@@ -101,10 +101,13 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private static int TEXTFIELDWIDTH = 32;
   //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
-  private static final int UPLOAD_TIMEOUT = 30000;
+  private static final int DOWNLOAD_TIMEOUT = 30*60*1000;
+  private static final int UPLOAD_TIMEOUT = 30*60*1000;
   private static final String FILE_FOUND_TEXT = "File found. Size: ";
   private static final String DIR_FILTER = "^*/$|";
   private static final int MAX_TEXT_EDIT_LINES = 1000;
+  
+  private boolean cancelDownload = false;
 
   public static int HISTORY_SIZE = 15;
 
@@ -397,11 +400,16 @@ public class BrowserPanel extends JDialog implements ActionListener{
           else{
             url = e.getDescription();
           }
-          download(url, null);
-          //statusBar.setLabel(url+" downloaded");
           ep.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-          MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
-             "Download ok", url+" downloaded.");
+          if(url.endsWith("/")){
+            download(url, null, false);
+            statusBar.setLabel("Files from "+url+" queued");
+          }
+          else{
+            download(url, null, true);
+            MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
+                "Download done", url+" downloaded.");
+          }
         }
         else if(e instanceof HTMLFrameHyperlinkEvent){
           ((HTMLDocument) ep.getDocument()).processHTMLFrameHyperlinkEvent(
@@ -473,9 +481,15 @@ public class BrowserPanel extends JDialog implements ActionListener{
           }
           miDownload.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent ev){
-              download(url, null);
-              MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
-                 "Download ok", url+" downloaded.");
+              if(url.endsWith("/")){
+                download(url, null, false);
+                statusBar.setLabel("Files from "+url+" queued");
+              }
+              else{
+                download(url, null, true);
+                MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
+                    "Download done", url+" downloaded.");
+              }
             }
           });
           miDelete.addActionListener(new ActionListener(){
@@ -853,22 +867,32 @@ public class BrowserPanel extends JDialog implements ActionListener{
   /**
    * Download a file or directory.
    */
-  private void download(final String url, File _dir){
+  private void download(final String url, File _dir, boolean wait){
     final File dir = _dir!=null?_dir:MyUtil.getDownloadDir(this);      
     if(dir==null){
       return;
     }
     ResThread rt = new ResThread(){
       public void run(){
-        if(url.endsWith("/")){
-          downloadDir(url, dir);
-        }
-        else{
-          downloadFile(url, dir);
-        }
+        doDownload(url, dir);
       }
     };
     rt.start();
+    if(wait){
+      MyUtil.waitForThread(rt, "download", DOWNLOAD_TIMEOUT, "download", GridPilot.getClassMgr().getLogFile());
+    }
+  }
+
+  private void doDownload(final String url, File dir){
+    if(dir==null){
+      return;
+    }
+    if(url.endsWith("/")){
+      downloadDir(url, dir);
+    }
+    else{
+      downloadFile(url, dir);
+    }
   }
 
   /**
@@ -976,7 +1000,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private void downloadFile(final String url, File dir){
     Debug.debug("Getting file : "+url+" -> "+dir.getAbsolutePath(), 3);
     try{
-      statusBar.setLabel("Downloading "+url);
+      //statusBar.setLabel("Downloading "+url);
       GridPilot.getClassMgr().getTransferControl().download(url, dir);
       Debug.debug("Download done, "+url, 2);
     }
@@ -985,14 +1009,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
       GridPilot.getClassMgr().getLogFile().addMessage(error, e);
       showError(error+" : "+e.getMessage());
     }
-    try{
+    /*try{
       ep.getDocument().putProperty(
           Document.StreamDescriptionProperty, null);
       setDisplay(thisUrl);
     }
     catch(Exception e){
       e.printStackTrace();
-    }
+    }*/
   }
   
   private void showError(final String str){
@@ -2169,6 +2193,14 @@ public class BrowserPanel extends JDialog implements ActionListener{
 
   //Set lastURL and close the dialog
   void exit(){
+    
+    try{
+      setCancelDownload(true);
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    
     //GridPilot.lastURL = ep.getPage();
     Object currentUrl;
     if(withNavigation){
@@ -2472,28 +2504,76 @@ public class BrowserPanel extends JDialog implements ActionListener{
     }
   }
   
+  private void setCancelDownload(boolean b) {
+    cancelDownload = b;
+  }
+  
+  private boolean isDownloadCancelled(){
+    return cancelDownload;
+  }
+  
   private void downloadAll(final File dir){
+    if(listedUrls.isEmpty()){
+      return;
+    }
     ResThread t = new ResThread(){
       public void run(){
+        
+        JProgressBar pb = null; 
+        try{
+          statusBar.setLabel("Downloading...");
+          pb = statusBar.createJProgressBar(0, listedUrls.size());
+          pb.setToolTipText("click here to cancel");
+          pb.addMouseListener(new MouseAdapter(){
+            public void mouseClicked(MouseEvent e){
+              setCancelDownload(true);
+            }
+          });
+          statusBar.setProgressBar(pb);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
+        
         String href = null;
+        boolean cancelled = false;
+        int i = 0;
         for(Iterator<String> it=listedUrls.iterator(); it.hasNext();){
+          if(isDownloadCancelled()){
+            setCancelDownload(false);
+            cancelled = true;
+            break;
+          }
           href = (String) it.next();
           Debug.debug("Getting: "+href+" -> "+dir.getAbsolutePath(), 2);
+          try{
+            statusBar.incrementProgressBarValue(pb, 1);
+          }
+          catch(Exception e){
+            e.printStackTrace();
+          }
           try{
             //TransferControl.download(href, dir, ep);
             // Use the physical file name (strip off the first ...://.../.../
             //GridPilot.getClassMgr().getTransferControl().startCopyFiles(new GlobusURL [] {new GlobusURL(href)},
             //    new GlobusURL [] {new GlobusURL("file:///"+
             //        (new File(dir, href.replaceFirst(".*/([^/]+)$", "$1"))))});
-            download(href, dir);
+            download(href, dir, true);
+            ++i;
           }
           catch(Exception e){
             GridPilot.getClassMgr().getLogFile().addMessage("Could not download file.", e);
           }
         }
-        //statusBar.setLabel("All files downloaded");
+        try{
+          statusBar.setLabel("");
+          statusBar.removeProgressBar(pb);
+        }
+        catch(Exception e){
+          e.printStackTrace();
+        }
         MyUtil.showMessage(SwingUtilities.getWindowAncestor(getThis()),
-            "Download ok", "All file(s) downloaded.");
+            "Download "+(cancelled?"cancelled":"ok"), cancelled?"Download cancelled - stopped after "+i+" files.":"All file(s) downloaded.");
       }
     };
     //SwingUtilities.invokeLater(t);
