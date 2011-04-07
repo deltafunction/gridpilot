@@ -121,11 +121,13 @@ public class GlobalFrame extends GFrame{
             catch(Exception e){
               Debug.debug("Could not find image "+ GridPilot.RESOURCES_PATH + "aviateur.png", 3);
             }
-             monitor.add(monitoringPanel);
+            monitor.add(monitoringPanel);
             //
             monitor.setVisible(false);
             monitor.setTitle("GridPilot monitor");
-            monitor.pack();
+            // Don't do this - on Windows it causes the top left frame border to have a pieve missing.
+            // Go figure...
+            //monitor.pack();
           }
           catch(Exception e){
             e.printStackTrace();
