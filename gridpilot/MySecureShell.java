@@ -39,6 +39,7 @@ public class MySecureShell extends SecureShell{
   }
   
   protected Session connect(Session session){
+    Debug.debug("Connecting shell", 2);
     while(connecting){
       try{
         Thread.sleep(3000);
@@ -74,7 +75,9 @@ public class MySecureShell extends SecureShell{
     }
     for(int rep=0; rep<MAX_SSH_LOGIN_ATTEMPTS; ++rep){
       try{
+        Debug.debug("SSH login attempt "+rep, 2);
         singleConnect(showDialog, rep, session);
+        break;
       }
       catch(LoginException e){
         e.printStackTrace();
@@ -101,8 +104,8 @@ public class MySecureShell extends SecureShell{
     if(showDialog ||
         user==null || (password==null && (keyFile==null || keyPassphrase==null)) || host==null){
       Debug.debug("Shell login:"+showDialog+":"+
-      MyUtil.arrayToString(new String [] {"User", "password", "Host"})+" --> "+
-      MyUtil.arrayToString(new String [] {user, (password==null?"":password), host}), 2);
+         MyUtil.arrayToString(new String [] {"User", "password", "Host"})+" --> "+
+         MyUtil.arrayToString(new String [] {user, (password==null?"":password), host}), 2);
       // Only try private key once
       if(keyFile!=null && rep==0){
         up = GridPilot.userPwd("Shell login with private key on "+host,
@@ -159,7 +162,7 @@ public class MySecureShell extends SecureShell{
           up = null;
         }
       }
-      session = getJsch().getSession(user, host, port);
+      //session = getJsch().getSession(user, host, port);
       session.setHost(host);
       if(password!=null && !password.equals("")){
         session.setPassword(password);
