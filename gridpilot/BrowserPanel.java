@@ -101,7 +101,7 @@ public class BrowserPanel extends JDialog implements ActionListener{
   private static int TEXTFIELDWIDTH = 32;
   //private static int HTTP_TIMEOUT = 10000;
   private static final int OPEN_TIMEOUT = 30000;
-  private static final int DOWNLOAD_TIMEOUT = 30*60*1000;
+  private static final int DOWNLOAD_TIMEOUT = 0;//30*60*1000;
   private static final int UPLOAD_TIMEOUT = 30*60*1000;
   private static final String FILE_FOUND_TEXT = "File found. Size: ";
   private static final String DIR_FILTER = "^*/$|";
