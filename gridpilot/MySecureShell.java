@@ -81,6 +81,9 @@ public class MySecureShell extends SecureShell{
       }
       catch(LoginException e){
         e.printStackTrace();
+        if(rep<MAX_SSH_LOGIN_ATTEMPTS-1){
+          Thread.sleep(10000);
+        }
         continue;
       }
     }

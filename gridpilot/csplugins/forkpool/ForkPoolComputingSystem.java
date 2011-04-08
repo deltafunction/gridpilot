@@ -42,7 +42,7 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
     includeVMRTEs = false;
     basicOSRTES = new String [] {"Linux"};
     setupRemoteShellMgrs();
-    GridPilot.splashShow("Setting up runtime environments for "+csName);
+    GridPilot.splashShow("Discovering runtime environments on "+csName);
     setupRuntimeEnvironmentsSSH();
     Debug.debug("Using workingDir "+workingDir, 2);
     String [] rtCpCmds = GridPilot.getClassMgr().getConfigFile().getValues(
@@ -438,7 +438,9 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       job.setRTEs(deps.toArray(new String[deps.size()]));
       boolean rtesOK = setupJobRTEs((MyJobInfo) job, getShell(job));
       boolean outputFilesOK = MyUtil.setRemoteOutputFiles((MyJobInfo) job, remoteCopyCommands);
+      logFile.addInfo("Provisioning input file(s) for job "+job.getName());
       boolean inputFilesOK = getInputFiles((MyJobInfo) job, getShell(job));
+      logFile.addInfo("Input file(s) are now all ready for job "+job.getName());
       ret = rtesOK && outputFilesOK && inputFilesOK;
       if(!rtesOK){
         logFile.addMessage("WARNING: could not setup RTEs for job "+job.getName());
@@ -529,8 +531,8 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
       }
     }
     if(anyRunning){
-      message += ". The stdout/stderr of these jobs will be lost\n" +
-          "and their output files will not be catalogued.";
+      message += ". The output files of these jobs " +
+      		"will not be catalogued until you start GridPilot again.";
       try{
         MyUtil.showError(message);
       }

@@ -368,6 +368,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       for(Iterator<Instance> itt=res.getInstances().iterator(); itt.hasNext();){
         inst = itt.next();
         if(!inst.isRunning()){
+          remoteShellMgrs.remove(inst.getDnsName());
           continue;
         }
         Debug.debug("checking instance "+inst.getDnsName(), 2);
@@ -440,13 +441,13 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   }
   
   public void exit() {
+    haltNonBusy();
     try{
       super.exit();
     }
     catch(Exception e){
       e.printStackTrace();
     }
-    haltNonBusy();
     ec2mgr.exit();
   }
 
