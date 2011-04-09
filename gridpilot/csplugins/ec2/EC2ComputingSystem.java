@@ -19,7 +19,6 @@ import org.globus.gsi.GlobusCredentialException;
 import org.globus.util.GlobusURL;
 import org.ietf.jgss.GSSException;
 
-import com.jcraft.jsch.JSchException;
 import com.xerox.amazonws.ec2.EC2Exception;
 import com.xerox.amazonws.ec2.ImageDescription;
 import com.xerox.amazonws.ec2.ReservationDescription;
@@ -540,7 +539,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return mgr;
   }
 
-  private boolean checkHostForJobs(int i) throws JSchException {
+  private int checkHostForJobs(int i) throws Exception {
     String host = hosts[i];
     int maxP = 1;
     int preprocessing = 0;
@@ -552,24 +551,15 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("--> Preprocessing: "+preprocessing, 2);
     if(preprocessing>=maxP){
       Debug.debug("Not selecting host "+host+" : "+preprocessing+">="+maxP, 2);
-      return false;
+      return -1;
     }
-    /*int maxR = 1;
+    
     int running = 0;
-    if(maxRunningJobs!=null && maxRunningJobs.length>i && maxRunningJobs[i]!=null){
-      maxR = Integer.parseInt(maxRunningJobs[i]);
-    }
     Shell thisShell = getShell(host);
     if(thisShell!=null){
       running = thisShell.getJobsNumber();
     }
-    Debug.debug("Checking host "+host+" for running jobs - max "+maxR, 2);
-    Debug.debug("--> running: "+running, 2);
-    if(running>=maxR){
-      Debug.debug("Not selecting host "+host+" : "+running+">="+maxR, 2);
-      return false;
-    }*/
-    return true;
+    return running;
   }
   
   public void setCSUserInfo(MyJobInfo job) {
@@ -1011,7 +1001,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
    * start shell and get host if none is running on the slot.
    */
   protected synchronized String selectHost(JobInfo job){
+    int runningJobs = -1;
+    int currentlyChosenRunningJobs = -1;
     // First try to use an already used instance
+    int chosenI = -1;
     for(int i=0; i<hosts.length; ++i){
       try{
         if(hosts[i]==null){
@@ -1029,10 +1022,10 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             preprocessingHostJobs.containsKey(hosts[i])){
           if(checkHostProvides(hosts[i], job)){
             Debug.debug("Dependencies provided by host", 2);
-            if(checkHostForJobs(i)){
-              job.setHost(hosts[i]);
-              saveJobHost(job);
-              return hosts[i];
+            runningJobs = checkHostForJobs(i);
+            if(runningJobs>-1 && (currentlyChosenRunningJobs==-1 || runningJobs<currentlyChosenRunningJobs)){
+              currentlyChosenRunningJobs = runningJobs;
+              chosenI = i;
             }
           }
           else{
@@ -1044,6 +1037,19 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         e.printStackTrace();
       }
     }
+    if(currentlyChosenRunningJobs>-1){
+      int maxR = 1;
+      if(maxRunningJobs!=null && maxRunningJobs.length>chosenI && maxRunningJobs[chosenI]!=null){
+        maxR = Integer.parseInt(maxRunningJobs[chosenI]);
+      }
+      Debug.debug("Checking host "+hosts[chosenI]+" for running jobs - max "+maxR, 2);
+      Debug.debug("--> running: "+currentlyChosenRunningJobs, 2);
+      if(currentlyChosenRunningJobs<maxR){
+        job.setHost(hosts[chosenI]);
+        saveJobHost(job);
+        return hosts[chosenI];
+      }
+    }
     // then try to boot an instance
     Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
     String bootedHost = bootInstance(job);
@@ -1053,7 +1059,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       return bootedHost;
     }
     // then see if we can queue the job on a host
-    //return super.selectHost(job);
+    if(currentlyChosenRunningJobs>-1){
+      return hosts[chosenI];
+    }
     return null;
   }
   
