@@ -94,7 +94,7 @@ public class JobMonitoringPanel extends CreateEditPanel implements ListPanel{
     String timeout = GridPilot.getClassMgr().getConfigFile().getValue(GridPilot.TOP_CONFIG_SECTION, "Decide timeout");
     if(timeout!=null){
       try{
-        decideTimeout = Integer.parseInt(timeout);
+        decideTimeout = 1000*Integer.parseInt(timeout);
       }
       catch(Exception e){
         GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not parse decide timeout", e);
