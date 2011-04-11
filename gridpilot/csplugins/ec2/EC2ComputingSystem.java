@@ -516,6 +516,8 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
           return null;
         }
         // This means the VM has just been booted or has been terminated or GridPilot has just been started
+        // Give it a few seconds to start the ssh server.
+        Thread.sleep(12000);
         Shell newShellMgr = new MySecureShell(host, user, ec2mgr.getKeyFile(), "");
         remoteShellMgrs.put(host, newShellMgr);
         setupRuntimeEnvironmentsSSH(newShellMgr);
@@ -1045,6 +1047,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       Debug.debug("Checking host "+hosts[chosenI]+" for running jobs - max "+maxR, 2);
       Debug.debug("--> running: "+currentlyChosenRunningJobs, 2);
       if(currentlyChosenRunningJobs<maxR){
+        Debug.debug("Selecting host "+hosts[chosenI]+" for job "+job.getName(), 2);
         job.setHost(hosts[chosenI]);
         saveJobHost(job);
         return hosts[chosenI];
@@ -1054,6 +1057,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
     String bootedHost = bootInstance(job);
     if(bootedHost!=null){
+      Debug.debug("Selecting host "+hosts[chosenI]+" for job "+job.getName(), 2);
       job.setHost(bootedHost);
       saveJobHost(job);
       return bootedHost;
@@ -1168,9 +1172,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         if(inst.isRunning() || inst.getState().equalsIgnoreCase("running")){
           break;
         }
-        Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
-        Thread.sleep(10000);
       }
+      Debug.debug("Waiting for EC2 machine to boot... "+inst.getState()+":"+inst.getStateCode(), 1);
+      Thread.sleep(10000);
       // If the VM RTE has any dependencies on EBSSnapshots, create EBS volume, 
       // and add initLines to the runtimeEnvironment record and mount the volume.
       ebsSnapshots = getEBSSnapshots(job.getOpSysRTE(), ((MyJobInfo) job).getDBName());

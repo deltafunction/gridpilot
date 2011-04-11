@@ -148,7 +148,19 @@ public class ForkScriptGenerator extends ScriptGenerator{
     // Input files section
     try{
       writeBlock(buf, "Input files", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+      if(onWindows){
+        writeLine(buf, "echo Download start: %date% %time%");
+      }
+      else{
+        writeLine(buf, "echo Download start: `date`");
+      }
       MyUtil.writeInputFilesSection(job, buf, commentStart, remoteCopyCommands);
+      if(onWindows){
+        writeLine(buf, "echo Download end: %date% %time%");
+      }
+      else{
+        writeLine(buf, "echo Download end: `date`");
+      }
     }
     catch(IOException e){
       logFile.addMessage("Problem with input files. Cannot proceed with "+job, e);

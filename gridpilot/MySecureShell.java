@@ -38,7 +38,7 @@ public class MySecureShell extends SecureShell{
     MAX_GET_CHANNEL_TRIES = 1;
   }
   
-  protected Session connect(Session session){
+  protected Session connect(Session session) throws IOException{
     Debug.debug("Connecting shell", 2);
     while(connecting){
       try{
@@ -56,18 +56,13 @@ public class MySecureShell extends SecureShell{
     try{
       doConnect(session);
     }
-    catch(Exception e){
-      Debug.debug("Could not connect via ssh, "+user+", "+password+", "+host+
-          ". "+e.getMessage(), 1);
-      e.printStackTrace();
-    }
     finally{
       connecting = false;
     }
     return session;
   }
 
-  private void doConnect(Session session) throws InterruptedException, IOException {
+  private void doConnect(Session session) throws IOException {
     boolean showDialog = true;
     // if global frame is set, this is a reload
     if(GridPilot.getClassMgr().getGlobalFrame()!=null){
@@ -82,18 +77,27 @@ public class MySecureShell extends SecureShell{
       catch(LoginException e){
         e.printStackTrace();
         if(rep<MAX_SSH_LOGIN_ATTEMPTS-1){
-          Thread.sleep(10000);
+          try{
+            Thread.sleep(10000);
+          }
+          catch(InterruptedException e1) {
+            e1.printStackTrace();
+            break;
+          }
         }
         continue;
       }
     }
     try{
-      maxChannels = Integer.parseInt(
+      int newMaxChannels = 3 + Integer.parseInt(
           configFile.getValue("Computing systems", "max simultaneous submissions"))+
       Integer.parseInt(
           configFile.getValue(GridPilot.TOP_CONFIG_SECTION, "max simultaneous checking"))+
           Integer.parseInt(
               configFile.getValue("Computing systems", "max simultaneous validating"));
+      if(newMaxChannels>maxChannels){
+        maxChannels = newMaxChannels;
+      }
     }
     catch(Exception e){
       Debug.debug("WARNING: could not construct number of channels. "+
@@ -101,7 +105,7 @@ public class MySecureShell extends SecureShell{
     }      
   }
 
-  private void singleConnect(boolean showDialog, int rep, Session session) throws LoginException, InterruptedException, IOException {
+  private void singleConnect(boolean showDialog, int rep, Session session) throws LoginException, IOException {
     String [] up = null;
 
     if(showDialog ||
@@ -191,7 +195,12 @@ public class MySecureShell extends SecureShell{
         MyUtil.showError((rep+1)+" SSH login(s) failed on "+host);
       }
       else{
-        Thread.sleep(10000L);
+        try{
+          Thread.sleep(10000L);
+        }
+        catch(InterruptedException e1) {
+          e1.printStackTrace();
+        }
       }
       password = null;
       throw new LoginException();

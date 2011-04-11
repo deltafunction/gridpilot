@@ -984,6 +984,7 @@ public class SubmissionControl{
     String host;
     int hostPJobs;
     int hostRJobs;
+    String chosenHost = null;
     for(Iterator<String> it=hostsWithJobs.keySet().iterator(); it.hasNext();){
       host = it.next();
       hostPJobs = hostsWithPreprocessingJobs.containsKey(host)?hostsWithPreprocessingJobs.get(host):0;
@@ -992,18 +993,19 @@ public class SubmissionControl{
       Debug.debug(host+"-->"+hostRJobs+"<"+hostMaxRJobs, 3);
       if((hostPJobs<hostMaxPJobs || hostRJobs<hostMaxRJobs) &&
           hostPJobs+hostRJobs<hostMaxPJobs+hostMaxRJobs){
-        if((hostRJobs<=rJobs || hostPJobs<=pJobs) &&
-            hostRJobs+hostPJobs<=pJobs+rJobs){
+        if((hostRJobs<rJobs || hostPJobs<pJobs) &&
+            hostRJobs+hostPJobs<pJobs+rJobs){
           pJobs = hostRJobs;
           rJobs = hostPJobs;
-          job.setHost(host);
+          chosenHost = host;
         }
       }
     }
-    if(job.getHost()!=null && !job.getHost().equals("")){
+    if(chosenHost!=null && !chosenHost.trim().equals("")){
+      job.setHost(chosenHost);
+      Debug.debug("Selecting host "+chosenHost+" for job "+job.getName(), 2);
       statusTable.setValueAt(job.getHost()==null?"":job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
     }
-    Debug.debug("Set host of job "+job.getName()+" to "+job.getHost(), 1);
   }
 
   /**

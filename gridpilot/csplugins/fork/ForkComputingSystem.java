@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.util.AbstractList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -801,7 +802,6 @@ public class ForkComputingSystem implements MyComputingSystem{
     Debug.debug("Getting input files for job " + job.getName(), 2);
     String [] jobInputFiles = dbPluginMgr.getJobDefInputFiles(job.getIdentifier());
     String [] dlInputFiles = new String [] {};
-    boolean ignoreRemoteInputs = false;
     if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
       dlInputFiles = job.getDownloadFiles();
       Vector<String> jobInputFilesVector = new Vector<String>();
@@ -814,9 +814,7 @@ public class ForkComputingSystem implements MyComputingSystem{
       for(int i=0; i<jobInputFiles.length; ++i){
         jobInputFiles[i] = jobInputFilesVector.get(i);
       }
-      ignoreRemoteInputs = true;
     }
-    job.setDownloadFiles(new String [] {});
     String [] inputFiles = new String [transInputFiles.length+jobInputFiles.length+
                                        dlInputFiles.length];
     for(int i=0; i<transInputFiles.length; ++i){
@@ -829,8 +827,11 @@ public class ForkComputingSystem implements MyComputingSystem{
       inputFiles[i+transInputFiles.length+jobInputFiles.length] = dlInputFiles[i];
     }
     Vector<String> downloadVector = new Vector<String>();
-    String [] downloadFiles = null;
+    if(job.getDownloadFiles()!=null && job.getDownloadFiles().length>0){
+      Collections.addAll(downloadVector, job.getDownloadFiles());
+    }
     boolean ok = true;
+    String protocol;
     for(int i=0; i<inputFiles.length; ++i){
       try{
         inputFiles[i] = Util.fixSrmUrl(inputFiles[i]);
@@ -855,28 +856,30 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
       fileName = Util.removeQuotes(fileName);
       if(inputFiles[i]!=null && inputFiles[i].trim().length()!=0){
+        protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
+        if(remoteCopyCommands!=null && !inputFiles[i].equals(protocol) && 
+            remoteCopyCommands.containsKey(protocol)
+            ){
+          // If a remote copy command is defined and matches the protocol, use it, i.e.
+          // have the job script get input files.
+          downloadVector.add(inputFiles[i]);
+        }
         // Remote shell
         if(!thisShellMgr.isLocal()){
-          ok = ok && remoteShellCopy(inputFiles[i], fileName, job, thisShellMgr, ignoreRemoteInputs, downloadVector);
+          ok = ok && remoteShellCopy(inputFiles[i], fileName, job, thisShellMgr, downloadVector);
         }
         // Local shell
         else{
-          ok = ok && localShellCopy(inputFiles[i], fileName, job, thisShellMgr, ignoreRemoteInputs, urlDir, downloadVector);
+          ok = ok && localShellCopy(inputFiles[i], fileName, job, thisShellMgr, urlDir, downloadVector);
         }
       }
     }
-    downloadFiles = new String[downloadVector.size()];
-    for(int i=0; i<downloadVector.size(); ++i){
-      if(downloadVector.get(i)!=null){
-        downloadFiles[i] = (String) downloadVector.get(i);
-      }
-    }
-    job.setDownloadFiles(downloadFiles);
+    job.setDownloadFiles(downloadVector.toArray(new String[downloadVector.size()]));
     return ok;
   }
   
   private boolean localShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
-      boolean ignoreRemoteInputs, String urlDir, AbstractList<String> downloadVector) {
+      String urlDir, AbstractList<String> downloadVector) {
     boolean ok = false;
     // If source starts with file:/, / or c:\ /, just copy over the local file.
     if(inputFile.startsWith("/") ||
@@ -909,20 +912,22 @@ public class ForkComputingSystem implements MyComputingSystem{
       }
     }
     // If source is remote, get it
-    else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFile)){
+    else if(MyUtil.urlIsRemote(inputFile)){
       try{
-        // This method uses fileTransfer.getFile(), which is not implemented by the SRM plugin.
-        //transferControl.download(urlDir + fileName, new File(runDir(job)));
-        // This method uses the queue() method, which is implemented by all plugins.
-        GridPilot.getClassMgr().getTransferStatusUpdateControl().localDownload(
-            urlDir + fileName, fileName, new File(runDir(job)), submitTimeout);
+        if(!downloadVector.contains(inputFile)){
+          // This method uses fileTransfer.getFile(), which is not implemented by the SRM plugin.
+          //transferControl.download(urlDir + fileName, new File(runDir(job)));
+          // This method uses the queue() method, which is implemented by all plugins.
+          GridPilot.getClassMgr().getTransferStatusUpdateControl().localDownload(
+              urlDir + fileName, fileName, new File(runDir(job)), submitTimeout);
+        }
       }
       catch(Exception ioe){
         logFile.addMessage("WARNING: GridPilot could not get input file "+inputFile+
             ".", ioe);
         ioe.printStackTrace();
         // If we could not get file natively, as a last resort, try and
-        // have the job script get it (assuming that e.g. the runtime environment ARC has been required)
+        // have the job script get it (assuming that e.g. the relevant environment has been required)
         downloadVector.add(inputFile);
       }
     }
@@ -936,7 +941,7 @@ public class ForkComputingSystem implements MyComputingSystem{
   }
 
   private boolean remoteShellCopy(String inputFile, String fileName, JobInfo job, Shell thisShellMgr,
-      boolean ignoreRemoteInputs, AbstractList<String> downloadVector) {
+      AbstractList<String> downloadVector) {
     boolean ok = true;
     // If source starts with file:/, scp the file from local disk.
     if(inputFile.matches("^file:/*[^/]+.*")){
@@ -951,18 +956,10 @@ public class ForkComputingSystem implements MyComputingSystem{
     else if(inputFile.startsWith("/")){
     }
     // If source is remote, have the job script get it
-    // (assuming that e.g. the runtime environment ARC has been required)
-    else if(!ignoreRemoteInputs && MyUtil.urlIsRemote(inputFile)){
-      String protocol = inputFile.replaceFirst("^(\\w+):.*$", "$1");
+    // (assuming that e.g. the relevant runtime environment has been required)
+    else if(MyUtil.urlIsRemote(inputFile)){
       try{
-        if(remoteCopyCommands!=null && !inputFile.equals(protocol) && 
-            remoteCopyCommands.containsKey(protocol)
-            ){
-          // If a remote copy command is defined and matches the protocol, use it, i.e.
-          // have the job script get input files.
-          downloadVector.add(inputFile);
-        }
-        else{
+        if(!downloadVector.contains(inputFile)){
           Debug.debug("Getting input file "+inputFile+" --> "+runDir(job), 2);
           GridPilot.getClassMgr().getTransferStatusUpdateControl().copyInputFile(
               MyUtil.clearFile(inputFile), runDir(job)+"/"+fileName, thisShellMgr, true, submitTimeout, error);
