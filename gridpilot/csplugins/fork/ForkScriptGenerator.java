@@ -253,7 +253,7 @@ public class ForkScriptGenerator extends ScriptGenerator{
     }
   }
 
-  private void writeExecutableSection(String jobDefID, DBPluginMgr dbPluginMgr, String commentStart,
+  protected void writeExecutableSection(String jobDefID, DBPluginMgr dbPluginMgr, String commentStart,
       StringBuffer buf, boolean onWindows, Shell shell,
       String scriptDest, String scriptSrc, String scriptName) throws IOException {
     String [] formalParam = dbPluginMgr.getExecutableArguments(jobDefID);

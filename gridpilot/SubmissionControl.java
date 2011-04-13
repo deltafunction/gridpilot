@@ -1136,7 +1136,8 @@ public class SubmissionControl{
       monitorStatusBar.incrementProgressBarValue(pbSubmission, 1);
       if(monitorStatusBar.cleanupProgressBar(pbSubmission)==1){
         isProgressBarSet = false;
-        monitorStatusBar.setLabel("Submission done.");
+        //monitorStatusBar.setLabel("Submission done.");
+        GridPilot.getClassMgr().getStatusBar().setLabel("Submission failed.");
       }
     }
   }

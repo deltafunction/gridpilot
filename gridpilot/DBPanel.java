@@ -4095,8 +4095,8 @@ public class DBPanel extends JPanel implements ListPanel, ClipboardOwner{
   private void showSubmissionError(Exception e, Vector<?> selectedJobDefinitions, String csName) {
     String error = e.getMessage();
     MyUtil.showMessage(window,
-        "Submission timed out", "Timed out waiting for submission of the "+
-            (selectedJobDefinitions.isEmpty()?"":"first ")+"job." +
+        "Submission timed out", "There was a problem submitting "+
+            (selectedJobDefinitions.isEmpty()?"":"the first ")+"job." +
             "\nPlease check that you're allowed to run jobs on "+csName+
             "\nand that any runtime environments your job's executable is requiring" +
             "\nare available on the chosen computing system.\n\n" +

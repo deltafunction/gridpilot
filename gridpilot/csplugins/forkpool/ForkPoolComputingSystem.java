@@ -265,12 +265,17 @@ public class ForkPoolComputingSystem extends ForkComputingSystem implements MyCo
   }
 
   public void updateStatus(Vector<JobInfo> jobs){
-    for(int i=0; i<jobs.size(); ++i)
+    MyJobInfo job = null;
+    Shell thisSell;
+    for(Iterator<JobInfo>it=jobs.iterator(); it.hasNext();)
       try{
-        updateStatus((MyJobInfo) jobs.get(i), getShell((MyJobInfo) jobs.get(i)));
+        job = (MyJobInfo) it.next();
+        thisSell = getShell(job);
+        updateStatus(job, thisSell);
       }
       catch(Exception e){
-        error = "Exception during job " + ((MyJobInfo) jobs.get(i)).getName() + " update : \n" +
+        error = "Exception during job  update : \n" +
+        "\tJob\t: " + job +
         "\tException\t: " + e.getMessage();
         logFile.addMessage(error, e);
         e.printStackTrace();

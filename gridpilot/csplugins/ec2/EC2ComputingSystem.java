@@ -69,6 +69,7 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
   private HashMap<String, String> loginUsers;
   private int ramMB = -1;
   private String instanceType = null;
+  private boolean terminateHostsOnJobEnd;
   
   // These variables will be set in the shells run on EC2 instances
   private static String AWS_ACCESS_KEY_ID_VAR = "AWS_ACCESS_KEY_ID";
@@ -84,6 +85,11 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     }
     
     ConfigFile configFile = GridPilot.getClassMgr().getConfigFile();
+    
+    String termHostsStr = configFile.getValue(csName, "Terminate hosts on job end");
+    terminateHostsOnJobEnd = termHostsStr!=null&&!termHostsStr.equals("")&&
+                             (termHostsStr.equalsIgnoreCase("yes") || termHostsStr.equalsIgnoreCase("true"))?
+                             true:false;
 
     ignoreBaseSystemAndVMRTEs = false;
     
@@ -1007,9 +1013,14 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     int currentlyChosenRunningJobs = -1;
     // First try to use an already used instance
     int chosenI = -1;
+    int shutDownSlot = -1;
+    int bootSlot = -1;
     for(int i=0; i<hosts.length; ++i){
       try{
         if(hosts[i]==null){
+          if(bootSlot==-1){
+            bootSlot = i;
+          }
           continue;
         }
         if(!hostIsRunning(hosts[i])){
@@ -1028,6 +1039,9 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
             if(runningJobs>-1 && (currentlyChosenRunningJobs==-1 || runningJobs<currentlyChosenRunningJobs)){
               currentlyChosenRunningJobs = runningJobs;
               chosenI = i;
+            }
+            if(shutDownSlot==-1 && runningJobs==0){
+              shutDownSlot = i;
             }
           }
           else{
@@ -1053,14 +1067,28 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
         return hosts[chosenI];
       }
     }
+    // if no slots are free try to free one
+    if(bootSlot==-1 && shutDownSlot>-1){
+      Debug.debug("Shutting down "+hosts[bootSlot], 2);
+      try{
+        terminateHost(hosts[bootSlot]);
+        bootSlot = shutDownSlot;
+      }
+      catch(Exception e){
+        logFile.addMessage("WARNING: could not terminate EC2 host "+hosts[bootSlot], e);
+        return null;
+      }
+    }
     // then try to boot an instance
-    Debug.debug("Nope, no host can be reused, trying to boot a fresh one.", 2);
-    String bootedHost = bootInstance(job);
-    if(bootedHost!=null){
-      Debug.debug("Selecting host "+hosts[chosenI]+" for job "+job.getName(), 2);
-      job.setHost(bootedHost);
-      saveJobHost(job);
-      return bootedHost;
+    Debug.debug("Nope, no host can be reused, trying to boot a fresh one. "+bootSlot, 2);
+    if(bootSlot>-1){
+      hosts[bootSlot] = bootInstance(job);
+      if(hosts[bootSlot]!=null){
+        Debug.debug("Selecting host "+hosts[bootSlot]+" for job "+job.getName(), 2);
+        job.setHost(hosts[bootSlot]);
+        saveJobHost(job);
+        return hosts[bootSlot];
+      }
     }
     // then see if we can queue the job on a host
     if(currentlyChosenRunningJobs>-1){
@@ -1069,6 +1097,28 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
     return null;
   }
   
+  private void terminateHost(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
+    List<ReservationDescription> reservationList = ec2mgr.listReservations();
+    List<Instance> instanceList = null;
+    Instance instance = null;
+    ReservationDescription reservation = null;
+    reservationList = ec2mgr.listReservations();
+    instanceList = null;
+    instance = null;
+    Debug.debug("Finding reservations. "+reservationList.size(), 1);
+    for(Iterator<ReservationDescription> it=reservationList.iterator(); it.hasNext();){
+      reservation = it.next();
+      instanceList = ec2mgr.listInstances(reservation);
+      // "Reservation ID", "Owner", "Instance ID", "AMI", "State", "Public DNS", "Key"
+      for(Iterator<Instance> itt=instanceList.iterator(); itt.hasNext();){
+        instance = itt.next();
+        if(instance.getDnsName().equals(host)){
+          ec2mgr.terminateInstances(new String[]{instance.getInstanceId()});
+        }
+      }
+    }    
+  }
+
   private boolean hostIsRunning(String host) throws EC2Exception, GlobusCredentialException, IOException, GeneralSecurityException, GSSException {
     List<ReservationDescription> reservationList = ec2mgr.listReservations();
     List<Instance> instanceList = null;
@@ -1468,6 +1518,17 @@ public class EC2ComputingSystem extends ForkPoolComputingSystem implements MyCom
       rteInstaller.install(rtes[i], ip, shell);
       logFile.addInfo(rtes[i]+" successfully installed.");
     }
+  }
+  
+  protected void updateStatus(MyJobInfo job, Shell shellMgr) throws Exception{
+    if(shellMgr==null && terminateHostsOnJobEnd){
+      // If there is no ShellMgr, the job was probably started in another session,
+      // finished and shut down the machine.
+      job.setStatusDone();
+      job.setCSStatus(JobInfo.getStatusName(JobInfo.STATUS_DONE));
+      return;
+    }
+    super.updateStatus(job, shellMgr);
   }
 
 }
