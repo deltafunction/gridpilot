@@ -1092,10 +1092,6 @@ public class SubmissionControl{
     statusTable.setValueAt(null, job.getTableRow(), JobMgr.FIELD_CONTROL);
     if(!bailOut && ok){
       Debug.debug("Job "+job.getName()+" ready for submission", 2);
-      if(!submitTimer.isRunning()){
-        Debug.debug("Starting submission timer", 2);
-        submitTimer.restart();
-      }
       preprocessingJobs.remove(job);
       toSubmitJobs.add(job);
       job.setDBStatus(DBPluginMgr.PREPARED);
@@ -1104,6 +1100,10 @@ public class SubmissionControl{
       incrementProgressBar(job.getDBStatus());
       statusTable.setValueAt(job.getHost()==null?"":job.getHost(), job.getTableRow(), JobMgr.FIELD_HOST);
       statusTable.setValueAt(iconWaiting, job.getTableRow(), JobMgr.FIELD_CONTROL);
+      if(!submitTimer.isRunning()){
+        Debug.debug("Starting submission timer", 2);
+        submitTimer.restart();
+      }
     }
     else if(!bailOut && checkPreprocessTimeout(job)){
       job.setDBStatus(DBPluginMgr.DEFINED);
