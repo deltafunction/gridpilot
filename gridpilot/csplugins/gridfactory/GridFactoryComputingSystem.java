@@ -280,7 +280,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
           MyUtil.arrayToString(job.getRTEs()),
           job.getOpSys(),
           job.getUserInfo(),
-          MyUtil.arrayToString(job.getAllowedVOs(), job.getJobId()),
+          MyUtil.arrayToString(job.getAllowedVOs()),
           null
       };
 
