@@ -74,10 +74,10 @@ public class SubmissionControl{
   private HashMap<MyJobInfo, Integer> preprocessRetryJobs;
   private boolean randomize = false;
   private String [] csNames;
-  /** Number of milliseconds to wait for each preprocessing thread. */
-  private int PREPROCESS_TIMEOUT = 240000;
+  /** Number of milliseconds to wait for each preprocess thread. */
+  private int PREPROCESS_TIMEOUT = 4*60*1000;
   /** Number of milliseconds to wait for each submit thread. */
-  private int SUBMIT_TIMEOUT = 240000;
+  private int SUBMIT_TIMEOUT = 4*60*1000;
   private boolean cancelled = false;
   private static final int CAN_NEVER_PREPROCESS_OR_RUN = -1;
   private static final int CANNOT_PREPROCESS_OR_RUN_NOW = 0;
@@ -99,7 +99,12 @@ public class SubmissionControl{
       public void actionPerformed(ActionEvent e){
         (new Thread(){
           public void run(){
-            trigPreprocess();
+            try{
+              trigPreprocess();
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
           }
         }).start();
       }
@@ -109,7 +114,12 @@ public class SubmissionControl{
       public void actionPerformed(ActionEvent e){
         (new Thread(){
           public void run(){
-            trigSubmit();
+            try{
+              trigSubmit();
+            }
+            catch(Exception e){
+              e.printStackTrace();
+            }
           }
         }).start();
       }
@@ -695,10 +705,12 @@ public class SubmissionControl{
        return;
      }
      final MyJobInfo job = toSubmitJobs.iterator().next();
+     Debug.debug("Submit timer kicking on "+job.getName(), 3);
      // This should not happen, but apparently it does. Don't think I'll reintroduce synchronization though...
      if(job.getDBStatus()==DBPluginMgr.VALIDATED || job.getDBStatus()==DBPluginMgr.FAILED ||
          job.getDBStatus()==DBPluginMgr.SUBMITTED){
-       toPreprocessJobs.remove(job);
+       Debug.debug("WARNING: job "+job.getName()+" has status "+DBPluginMgr.getStatusName(job.getDBStatus()), 3);
+       toSubmitJobs.remove(job);
        return;
      }
      int runOk = -1;
@@ -712,13 +724,15 @@ public class SubmissionControl{
      catch(Exception e){
        e.printStackTrace();
      }
-     if(runOk!=CAN_RUN && !submittingJobs.contains(job)){
-       // Put back in queue
-       toSubmitJobs.remove(job);
-       toSubmitJobs.add(job);
+     if(runOk!=CAN_RUN){
+       Debug.debug("Cannot run "+job.getName()+" --> "+runOk, 3);
+       if(!submittingJobs.contains(job)){
+         // Put back in queue
+         toSubmitJobs.remove(job);
+         toSubmitJobs.add(job);
+       }
        return;
      }
-     Debug.debug("Submit timer kicking on "+job.getName(), 3);
      // prepare job (download input files to worker node if possible)
      MyResThread t = new MyResThread(){
        public void run(){
