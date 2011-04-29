@@ -647,11 +647,17 @@ public class ExportImport {
     String path = null;
     for(int i=0; i<lastUrlsList.length; ++i){
       try{
-        path = (new GlobusURL(lastUrlsList[i])).getPath();
+        if(MyUtil.isLocalFileName(lastUrlsList[i])){
+          path = lastUrlsList[i];
+        }
+        else{
+          path = (new GlobusURL(lastUrlsList[i])).getPath();
+        }
       }
-      catch (MalformedURLException e) {
+      catch(Exception e){
         e.printStackTrace();
         path = null;
+        continue;
       }
       if(!lastUrlsList[i].endsWith("/") && MyUtil.filterMatches(path, filter)){
         files.add(lastUrlsList[i]);
