@@ -115,6 +115,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
   
   private HashSet<Integer> blacklistedWmProxyAPIs = new HashSet<Integer>();
   private int currentWmProxyAPIIndex = 0;
+  private Vector<String> sortedHosts;
   
   // At least for now, we only have Linux resources on EGEE
   public static final String OS = "Linux";
@@ -245,9 +246,10 @@ public class GLiteComputingSystem implements MyComputingSystem{
         public void run(){
           try{
             String msg = "WARNING: MDS timeout. gLite RTEs may not be up to date.";
-            MyUtil.showMessage("No RTEs", msg);
+            MyUtil.showMessage("No RTEs", msg+" See the log for details.");
             for(Iterator<Exception> it=excpts.iterator(); it.hasNext();){
-              logFile.addMessage(msg, it.next());
+              logFile.addMessage(msg+" You may want to change \"runtime clusters\" to some other "+
+                  "hosts from "+sortedHosts, it.next());
             }
           }
           catch(Exception e){
@@ -308,7 +310,7 @@ public class GLiteComputingSystem implements MyComputingSystem{
     
     if(foundHosts.isEmpty()){
       String randomHost = allHosts.iterator().next();
-      Vector<String> sortedHosts = new Vector<String>(allHosts);
+      sortedHosts = new Vector<String>(allHosts);
       Collections.sort(sortedHosts);
       logFile.addMessage("None of "+MyUtil.arrayToString(rteClusters)+
           " could be queried for GLite runtime environments.\n" +
@@ -500,15 +502,29 @@ public class GLiteComputingSystem implements MyComputingSystem{
 
     String [] patternAndReplacements = null;
     String ret = "";
+    String rep = "";
+    boolean cont = false;
     for(Iterator<String[]> it=rteScriptMappings.iterator(); it.hasNext();){
       patternAndReplacements = it.next();
       if(patternAndReplacements!=null && patternAndReplacements.length>1 &&
           name.matches(patternAndReplacements[0])){
         for(int i=1; i<patternAndReplacements.length; ++i){
+          if(cont){
+            rep += " "+patternAndReplacements[i];
+            cont = false;
+          }
+          else{
+            rep = patternAndReplacements[i];
+          }
+          if(rep.endsWith("\\")){
+            rep = rep.substring(0, rep.length()-1);
+            cont = true;
+            continue;
+          }
           if(i>1){
             ret += "\n";
           }
-          ret += "source "+name.replaceFirst(patternAndReplacements[0], patternAndReplacements[i]);
+          ret += "source "+name.replaceFirst(patternAndReplacements[0], rep);
         }
       }
     }
