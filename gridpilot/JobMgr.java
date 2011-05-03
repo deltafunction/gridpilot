@@ -14,6 +14,7 @@ import java.net.URL;
 import java.util.*;
 
 import javax.swing.ImageIcon;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
@@ -1319,12 +1320,15 @@ public class JobMgr{
   public static void cleanJobs(final int [] rows) {
     ConfirmBox confirmBox = new ConfirmBox(
         (Window) SwingUtilities.getRoot(GridPilot.getClassMgr().getGlobalFrame().getMonitoringPanel())); 
+    final JCheckBox cbCleanup = new JCheckBox("Delete output file(s)", true);
     try{
       int choice = confirmBox.getConfirm("Confirm clean",
           "This will clean all files produced by the job(s)\n" +
           "both remotely and locally.\n" +
-          "Are you sure you want to do this?", new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
-                                                             MyUtil.mkCancelObject(confirmBox.getOptionPane())});
+          "Are you sure you want to do this?",
+          new Object[] {MyUtil.mkOkObject(confirmBox.getOptionPane()),
+                        MyUtil.mkCancelObject(confirmBox.getOptionPane()),
+                        cbCleanup});
       if(choice!=0){
         return;
       }
@@ -1337,6 +1341,10 @@ public class JobMgr{
     for(int i=0; i<rows.length; ++i){
       job = getJobAtRow(rows[i]);
       GridPilot.getClassMgr().getCSPluginMgr().cleanup(job);
+      if(cbCleanup.isSelected()){
+        GridPilot.getClassMgr().getDBPluginMgr(job.getDBName()
+           ).purgeJobFiles(job.getIdentifier());
+      }
       // TODO: This will set the job as Defined. Not sure if this is a good idea...
       /*job.setDBStatus(DBPluginMgr.DEFINED);
       GridPilot.getClassMgr().getJobMgr(job.getDBName()).updateDBCell(job);

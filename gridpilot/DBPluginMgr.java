@@ -2390,46 +2390,62 @@ public class DBPluginMgr extends DBCache implements Database{
    * Delete physical file(s) produced by job
    * - including stdout and stderr and, if the DB is not a file catalog,
    * all output file(s). If the DB is a file catalog, the first output file
-   * is not deleted.
+   * is only deleted if it is not registered.
    * @param datasetID
    */
   protected boolean purgeJobFiles(String jobDefId){
     boolean ret = true;
     DBRecord jobDef = getJobDefinition(jobDefId);
-    String [] toDeleteFiles = null;
     if(((String) jobDef.getValue("status")).equalsIgnoreCase(getStatusName(DEFINED))){
       return ret;
     }
+    Vector<String> toDeleteFilesVec = new Vector<String>();
+    toDeleteFilesVec.add((String) jobDef.getValue("stdoutDest"));
+    toDeleteFilesVec.add((String) jobDef.getValue("stderrDest"));
     try{
       if(isFileCatalog()){
         // In this case: don't delete the first of the output files, since
         // this is the file registered in the file catalog and will be
         // deleted when deleting the file catalog entry.
         String [] outFiles = getExecutableOutputs(getJobDefExecutableID(jobDefId));
-        toDeleteFiles = new String [outFiles.length+2-(outFiles.length>0?1:0)];
-        toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
-        toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
-        for(int i=2; i<toDeleteFiles.length; ++i){
-          toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-1]);
+        if(outFiles.length>0){
+          String datasetId = getJobDefDatasetID(jobDefId);
+          String firstPfn = getJobDefOutRemoteName(jobDefId, outFiles[0]);
+          // TODO: This is a waste: consider adding a method getFile(String pfn).
+          DBResult files = getFiles(datasetId);
+          DBRecord file;
+          String pfnsField = MyUtil.getPFNsField(dbName);
+          boolean firstPfnRegistered = false;
+          for(Iterator<DBRecord> it=files.iterator(); it.hasNext();){
+            file = it.next();
+            if(file.getValue(pfnsField).equals(firstPfn)){
+              firstPfnRegistered = true;
+              break;
+            }
+          }
+          if(!firstPfnRegistered){
+            toDeleteFilesVec.add(firstPfn);
+          }
+          for(int i=1; i<outFiles.length; ++i){
+            toDeleteFilesVec.add(getJobDefOutRemoteName(jobDefId, outFiles[i]));
+          }
         }
       }
       else{
         String [] outFiles = getExecutableOutputs(getJobDefExecutableID(jobDefId));
-        toDeleteFiles = new String [outFiles.length+2];
-        toDeleteFiles[0] = (String) jobDef.getValue("stdoutDest");
-        toDeleteFiles[1] = (String) jobDef.getValue("stderrDest");
-        for(int i=2; i<toDeleteFiles.length; ++i){
-          toDeleteFiles[i] = getJobDefOutRemoteName(jobDefId, outFiles[i-2]);
+        for(int i=0; i<outFiles.length; ++i){
+          toDeleteFilesVec.add(getJobDefOutRemoteName(jobDefId, outFiles[i]));
         }
       }
-      Debug.debug("Deleting files "+MyUtil.arrayToString(toDeleteFiles), 2);        
+      String [] toDeleteFiles = toDeleteFilesVec.toArray(new String[toDeleteFilesVec.size()]);
+      Debug.debug("Deleting files "+toDeleteFilesVec, 2);        
       if(toDeleteFiles!=null){
         GridPilot.getClassMgr().getTransferControl().deleteFiles(toDeleteFiles);
       }
     }
     catch(Exception e){
       ret = false;
-      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete file(s) "+toDeleteFiles);
+      GridPilot.getClassMgr().getLogFile().addMessage("WARNING: Could not delete file(s) "+toDeleteFilesVec);
     }
     return ret;
   }
