@@ -304,34 +304,9 @@ public class ForkScriptGenerator extends ScriptGenerator{
   private void writeRuntimeSection(String commentStart, StringBuffer buf, DBPluginMgr dbPluginMgr,
       String jobDefID, boolean onWindows) {
     writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-    // For each runtime environment used, get its init text (if present) and write it out,
-    // source the setup script
-    String[] rtes = dbPluginMgr.getRuntimeEnvironments(jobDefID);
-    if(ignoreBaseSystemAndVMRTEs){
-      rtes = MyUtil.removeBaseSystemAndVM(rtes, null);
-    }
-    for(int i=0; i<rtes.length; ++i){
-      writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
-      String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName);
-      writeLine(buf, initTxt==null?"":initTxt);
-      // Just try and source any setup script found by scanRTEDir or from
-      // the catalog.
-      // Notice that catalog RTEs are not installed on the fly by this computing system,
-      // (so they must have been installed by hand...)
-      // Classes that inherit may choose to do this.
-      if(!onWindows){
-        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+" 1 >& /dev/null").replaceAll("//", "/"));
-        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+"/"+"control/runtime 1 >& /dev/null").replaceAll("//", "/"));
-      }
-      else{
-        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
-        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-            "/"+rtes[i]+"/"+"control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
-      }
-    }
+    // First source any required runtime environments.
+    // ### Doing this after the job RTEs breaks ATLAS on GridFactory - GridCopy has to be
+    //     sourced before ATLAS. Let's just hope other RTEs are not that fragile...
     if(requiredRuntimeEnvs!=null && requiredRuntimeEnvs.length>0){
       Debug.debug("Adding sourcing of required RTEs: "+MyUtil.arrayToString(requiredRuntimeEnvs), 2);
       // requiredRuntimeEnv is only needed to get input files from
@@ -358,6 +333,34 @@ public class ForkScriptGenerator extends ScriptGenerator{
           writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
               "/"+requiredRuntimeEnvs[i]+"/control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
         }
+      }
+    }
+    // For each runtime environment used, get its init text (if present) and write it out,
+    // source the setup script
+    String[] rtes = dbPluginMgr.getRuntimeEnvironments(jobDefID);
+    if(ignoreBaseSystemAndVMRTEs){
+      rtes = MyUtil.removeBaseSystemAndVM(rtes, null);
+    }
+    for(int i=0; i<rtes.length; ++i){
+      writeBlock(buf, "runtime environment: " + rtes[i], ScriptGenerator.TYPE_COMMENT, commentStart);
+      String initTxt = dbPluginMgr.getRuntimeInitText(rtes[i], csName);
+      writeLine(buf, initTxt==null?"":initTxt);
+      // Just try and source any setup script found by scanRTEDir or from
+      // the catalog.
+      // Notice that catalog RTEs are not installed on the fly by this computing system,
+      // (so they must have been installed by hand...)
+      // Classes that inherit may choose to do this.
+      if(!onWindows){
+        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+" 1 >& /dev/null").replaceAll("//", "/"));
+        writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+"/"+"control/runtime 1 >& /dev/null").replaceAll("//", "/"));
+      }
+      else{
+        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
+        writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+            "/"+rtes[i]+"/"+"control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
       }
     }
     writeLine(buf, "");

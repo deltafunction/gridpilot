@@ -185,11 +185,11 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     String [] rtes0 = dbPluginMgr.getRuntimeEnvironments(job.getIdentifier());
     Debug.debug("The job "+job.getIdentifier()+" requires RTEs: "+MyUtil.arrayToString(rtes0), 2);
     MyLinkedHashSet<String> allRtes = new MyLinkedHashSet<String>();
-    if(rtes0!=null){
-      Collections.addAll(allRtes, rtes0);
-    }
     if(requiredRuntimeEnvs!=null){
       Collections.addAll(allRtes, requiredRuntimeEnvs);
+    }
+    if(rtes0!=null){
+      Collections.addAll(allRtes, rtes0);
     }
     MyLinkedHashSet<String> rtes = new MyLinkedHashSet<String>();
     String rte;
