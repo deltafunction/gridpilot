@@ -303,38 +303,6 @@ public class ForkScriptGenerator extends ScriptGenerator{
 
   private void writeRuntimeSection(String commentStart, StringBuffer buf, DBPluginMgr dbPluginMgr,
       String jobDefID, boolean onWindows) {
-    writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
-    // First source any required runtime environments.
-    // ### Doing this after the job RTEs breaks ATLAS on GridFactory - GridCopy has to be
-    //     sourced before ATLAS. Let's just hope other RTEs are not that fragile...
-    if(requiredRuntimeEnvs!=null && requiredRuntimeEnvs.length>0){
-      Debug.debug("Adding sourcing of required RTEs: "+MyUtil.arrayToString(requiredRuntimeEnvs), 2);
-      // requiredRuntimeEnv is only needed to get input files from
-      // remote sources or copy ouput files to final destinations
-      String initTxt = null;
-      for(int i=0; i<requiredRuntimeEnvs.length; ++i){
-        try{
-          initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnvs[i], csName).toString();
-        }
-        catch(Exception e){
-          e.printStackTrace();
-          logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnvs[i], e);
-        }
-        writeLine(buf, initTxt);
-        if(!onWindows){
-          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+" 1 >& /dev/null").replaceAll("//", "/"));
-          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+"/control/runtime 1 >& /dev/null").replaceAll("//", "/"));
-        }
-        else{
-          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
-          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
-              "/"+requiredRuntimeEnvs[i]+"/control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
-        }
-      }
-    }
     // For each runtime environment used, get its init text (if present) and write it out,
     // source the setup script
     String[] rtes = dbPluginMgr.getRuntimeEnvironments(jobDefID);
@@ -361,6 +329,39 @@ public class ForkScriptGenerator extends ScriptGenerator{
             "/"+rtes[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
         writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
             "/"+rtes[i]+"/"+"control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
+      }
+    }
+    writeBlock(buf, "Runtime setup", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+    // Source any required runtime environments.
+    // ### Doing this after the job RTEs breaks ATLAS on GridFactory for some jobs - GridCopy has to be
+    //     sourced before ATLAS. Let's just hope other RTEs are not that fragile...
+    // ### Well, guess what: sourcing  ATLAS after GridCopy break GridCopy...
+    if(requiredRuntimeEnvs!=null && requiredRuntimeEnvs.length>0){
+      Debug.debug("Adding sourcing of required RTEs: "+MyUtil.arrayToString(requiredRuntimeEnvs), 2);
+      // requiredRuntimeEnv is only needed to get input files from
+      // remote sources or copy ouput files to final destinations
+      String initTxt = null;
+      for(int i=0; i<requiredRuntimeEnvs.length; ++i){
+        try{
+          initTxt = dbPluginMgr.getRuntimeInitText(requiredRuntimeEnvs[i], csName).toString();
+        }
+        catch(Exception e){
+          e.printStackTrace();
+          logFile.addMessage("WARNING: could not find required runtime environment "+requiredRuntimeEnvs[i], e);
+        }
+        writeLine(buf, initTxt);
+        if(!onWindows){
+          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+" 1 >& /dev/null").replaceAll("//", "/"));
+          writeLine(buf, ("source "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+"/control/runtime 1 >& /dev/null").replaceAll("//", "/"));
+        }
+        else{
+          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+" 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
+          writeLine(buf, ("call "+MyUtil.clearFile(runtimeDirectory)+
+              "/"+requiredRuntimeEnvs[i]+"/control/runtime.bat 1 1>NUL 2>NUL").replaceAll("//", "/").replaceAll("/", "\\\\"));
+        }
       }
     }
     writeLine(buf, "");
