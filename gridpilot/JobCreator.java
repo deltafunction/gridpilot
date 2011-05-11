@@ -978,7 +978,13 @@ public class JobCreator{
       for(int i=0; i<nPartitions; ++i){
         inputFile = inputMgr.getFile(inputDatasetName, inputFileIds[currentPartition-1+i], DBPluginMgr.LOOKUP_PFNS_ONE);
         inputUrlsStr = (String) inputFile.getValue(pfnsField);
-        inputUrls = MyUtil.split(inputUrlsStr);
+        try{
+          inputUrls = MyUtil.splitUrls(inputUrlsStr);
+        }
+        catch(Exception e){
+          GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not split URLs "+inputUrlsStr, e);
+          inputUrls = MyUtil.split(inputUrlsStr);
+        }
         // Take the first PFN found
         String firstInputUrl = inputUrls[0];
         Debug.debug("Using input file "+firstInputUrl, 2);
@@ -1240,7 +1246,7 @@ public class JobCreator{
     }
     Vector<String> ret = new Vector<String>();
     String idField = MyUtil.getIdentifierField(inputMgr.getDBName(), "file");
-    String nameField = MyUtil.getNameField(inputMgr.getDBName(), "file");
+    String pfnsField = MyUtil.getPFNsField(inputMgr.getDBName());
     String catalogsField = "catalogs";
     String catalogPrefix = "";
     DBRecord inputFile;
@@ -1269,17 +1275,23 @@ public class JobCreator{
             if(catalogPrefix!=null && !catalogPrefix.equals("") && !catalogPrefix.endsWith("/")){
               catalogPrefix = catalogPrefix+"/";
             }
-            inputUrlsStr = catalogPrefix+((String) inputFile.getValue(nameField));
+            inputUrlsStr = catalogPrefix+((String) inputFile.getValue(pfnsField));
           }
         }
         catch(Exception e){
           if(Debug.DEBUG_LEVEL>2){
             e.printStackTrace();
           }
-          inputUrlsStr = (String) inputFile.getValue(nameField);
+          inputUrlsStr = (String) inputFile.getValue(pfnsField);
         }
       }
-      inputUrls = MyUtil.split(inputUrlsStr);
+      try{
+        inputUrls = MyUtil.splitUrls(inputUrlsStr);
+      }
+      catch(Exception e){
+        GridPilot.getClassMgr().getLogFile().addMessage("WARNING: could not split URLs "+inputUrlsStr, e);
+        inputUrls = MyUtil.split(inputUrlsStr);
+      }
       // Take the first PFN found
       String firstInputUrl = inputUrls[0];
       Debug.debug("Using input file "+firstInputUrl, 2);
