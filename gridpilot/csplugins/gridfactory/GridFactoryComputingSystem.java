@@ -570,9 +570,55 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
     File tmpStdout = new File(job.getOutTmp());
     File tmpStderr = new File(job.getErrTmp());   
     String [] res = new String[2];
+    boolean downloadFromFinalDest = false;
     try{
-      int st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
-      if(st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED || st==JobInfo.STATUS_UPLOADED){
+      int st = -1;
+      Debug.debug("Getting output for job "+job.getName()+" / "+job.getStatus()+"-->"+JobInfo.getStatusName(job.getStatus()), 2);
+      if(job.getStatus()==JobInfo.STATUS_DEFINED){
+        // Freshly loaded job
+        DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+        String dbStatusStr = dbPluginMgr.getJobDefStatus(job.getIdentifier());
+        int dbStatus = DBPluginMgr.getStatusId(dbStatusStr);
+        if(dbStatus==DBPluginMgr.VALIDATED){
+          downloadFromFinalDest = true;
+          st = JobInfo.STATUS_DONE;
+          if(job.getStdoutDest()==null || job.getStdoutDest().trim().equals("")){
+            job.setStdoutDest(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()));
+            job.setStderrDest(dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
+          }
+        }
+      }
+      else if(job.getStatus()==JobInfo.STATUS_DONE || job.getStatus()==JobInfo.STATUS_FAILED){
+        st = job.getStatus();
+      }
+      else{
+        st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
+      }
+      if((st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED) &&
+          (downloadFromFinalDest || job.getDBStatus()==DBPluginMgr.VALIDATED)){
+        if(job.getStdoutDest()==null || job.getStdoutDest().trim().equals("")){
+          DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(((MyJobInfo) job).getDBName());
+          job.setStdoutDest(dbPluginMgr.getStdOutFinalDest(job.getIdentifier()));
+          job.setStderrDest(dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
+        }
+        // stdout
+        transferControl.download(job.getStdoutDest(), tmpStdout);
+        res[0] = LocalStaticShell.readFile(tmpStdout.getAbsolutePath());
+        // stderr
+        boolean ok = true;
+        try{
+          transferControl.download(job.getStderrDest(), tmpStderr);
+        }
+        catch(Exception e){
+          ok = false;
+          e.printStackTrace();
+        }
+        if(ok){
+          res[1] = LocalStaticShell.readFile(tmpStderr.getAbsolutePath());
+        }
+      }
+      else if(st==JobInfo.STATUS_DONE || st==JobInfo.STATUS_FAILED || st==JobInfo.STATUS_UPLOADED || st==JobInfo.STATUS_EXECUTED ||
+          st==JobInfo.STATUS_ERROR){
         // stdout
         fileTransfer.getFile(new GlobusURL(job.getJobId()+"/stdout"), tmpStdout);
         res[0] = LocalStaticShell.readFile(tmpStdout.getAbsolutePath());
@@ -594,7 +640,7 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
             (int) GridPilot.getClassMgr().getCSPluginMgr().currentOutputTimeOut, null);
       }
       else{
-        throw new IOException("Job is not in a state that allows getting output - "+JobInfo.getStatusName(st));
+        throw new IOException("Job is not in a state that allows getting output - "+st+"-->"+JobInfo.getStatusName(st));
       }
     }
     catch(Exception ee){

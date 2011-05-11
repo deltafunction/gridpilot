@@ -1050,7 +1050,7 @@ public class JobMgr{
     boolean succes = true;
     String dbStatus = DBPluginMgr.getStatusName(dbStatusNr);
 
-    if (job.getDBStatus()==dbStatusNr){
+    if(job.getDBStatus()==dbStatusNr){
       Debug.debug("job.getDBStatus()==dbStatus", 3);
       return true;
     }

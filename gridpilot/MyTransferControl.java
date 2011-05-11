@@ -1439,7 +1439,8 @@ public class MyTransferControl extends TransferControl {
   }
   
   private void doDownload(final String url, File destination) throws Exception{
-    if(url==null || url.endsWith("/")|| destination==null){
+    if(url==null || url.trim().equals("") || url.endsWith("/") ||
+        destination==null || destination.getAbsolutePath().equals("")){
       throw new IOException("ERROR: source or destination not given. "+
           url+":"+destination);
     }      
@@ -1462,13 +1463,13 @@ public class MyTransferControl extends TransferControl {
       destFileName = destination.getName();
     }
     
-    setStatusBarText("Downloading "+srcFileName+" from "+srcUrlDir+" to "+downloadDir);
+    setStatusBarText("Downloading "+srcFileName+" from "+srcUrlDir+" to "+downloadDir+"-->"+destFileName);
 
     Debug.debug("Downloading "+srcFileName+" from "+srcUrlDir, 3);
     // local directory
     if(!MyUtil.urlIsRemote(srcUrlDir)/*srcUrlDir.startsWith("file:")*/){
       String fsPath = MyUtil.clearTildeLocally(MyUtil.clearFile(url));
-      Debug.debug("Downloading file to "+downloadDir.getAbsolutePath(), 3);        
+      Debug.debug("Copying "+fsPath+" to "+downloadDir.getAbsolutePath(), 3);        
       if(fsPath==null || downloadDir==null){
         throw new IOException("ERROR: source or destination directory not given. "+
             fsPath+":"+downloadDir);
