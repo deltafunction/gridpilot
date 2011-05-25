@@ -73,11 +73,6 @@ public class BeginningWizard{
     new String [] {"https://www.gridfactory.org/"+GF_SUBMIT_DIR,
                    "https://gridfactory.nbi.dk/"+GF_SUBMIT_DIR,
                    "https://gridfactory.dyndns.org/"+GF_SUBMIT_DIR};
-  private static String[] GF_RTE_CATALOG_URLS =
-    new String [] {"http://www.gridfactory.org/rtes.xml",
-                   "https://gridfactory.nbi.dk/rtes/rtes.xml",
-                   "http://www.gridfactory.org/rtes.xml"};
-  private String gfRteCatalogUrl = GF_RTE_CATALOG_URLS[0];
   private JExtendedComboBox gfSubmitUrlsBox = new JExtendedComboBox();
   
   public BeginningWizard(boolean firstRun){
@@ -1667,14 +1662,10 @@ public class BeginningWizard{
       if(MyUtil.getJTextOrEmptyString(tfGfUrl)!=null &&
           !MyUtil.getJTextOrEmptyString(tfGfUrl).trim().equals("")){
         String gfSubmitUrl = MyUtil.getJTextOrEmptyString(tfGfUrl).trim();
-        int selectedIndex = gfSubmitUrlsBox.getSelectedIndex();
-        if(selectedIndex>0){
-          gfRteCatalogUrl = GF_RTE_CATALOG_URLS[selectedIndex-1];
-        }
         configFile.setAttributes(
-            new String [] {"GridFactory", "GridFactory", "GridFactory"},
-            new String [] {"Enabled", "Submission URLs", "Runtime catalog URLs"},
-            new String [] {"yes", gfSubmitUrl, gfRteCatalogUrl}
+            new String [] {"GridFactory", "GridFactory"},
+            new String [] {"Enabled", "Submission URLs"},
+            new String [] {"yes", gfSubmitUrl}
             );
       }
       else{

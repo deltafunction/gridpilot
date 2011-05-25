@@ -202,7 +202,7 @@ public class TestDatasets {
           else if(fields[i].equalsIgnoreCase("outputFiles")){
             values[i] = "out.txt";
           }
-          else if(fields[i].equalsIgnoreCase("script")){
+          else if(fields[i].equalsIgnoreCase("executableFile")){
             values[i] = "file:"+executableDirectory+testScriptName;
           }
           else if(fields[i].equalsIgnoreCase("comment")){

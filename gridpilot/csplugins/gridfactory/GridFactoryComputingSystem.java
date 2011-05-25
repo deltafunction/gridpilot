@@ -91,6 +91,14 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
       submitHosts[i] = (new GlobusURL(submitURLs[i])).getHost();
     }
     rteCatalogUrls = configFile.getValues(csName, "Runtime catalog URLs");
+    if(rteCatalogUrls==null || rteCatalogUrls.length==0){
+      rteCatalogUrls = new String [submitURLs.length];
+      for(int i=0; i<rteCatalogUrls.length; ++i){
+        rteCatalogUrls[i] = submitURLs[i].trim().replaceFirst("^(.*/)[^/]+/*$", "$1")+
+           "rtes/"+RTEMgr.RTE_CATALOG_NAME;
+      }
+    }
+    Debug.debug("Using RTE catalog URLs: "+MyUtil.arrayToString(rteCatalogUrls), 2);
     requiredRuntimeEnvs = configFile.getValues(csName, "Required runtime environments");
     String cpuTime = configFile.getValue(csName, "CPU time");
     if(cpuTime!=null && !cpuTime.trim().equals("")){

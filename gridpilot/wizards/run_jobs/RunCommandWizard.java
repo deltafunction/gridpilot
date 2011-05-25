@@ -5,6 +5,7 @@ import gridfactory.common.DBResult;
 import gridfactory.common.GFrame;
 import gridfactory.common.LocalStaticShell;
 import gridfactory.common.ResThread;
+import gridfactory.common.StatusBar;
 import gridpilot.DBPluginMgr;
 
 import gridpilot.GridPilot;
@@ -71,6 +72,10 @@ public class RunCommandWizard extends GFrame{
     JPanel jp = mkPanel();
     sp.getViewport().add(jp);
     add(sp);
+    
+    statusBar = new StatusBar();
+    statusBar.setLabel(" ");
+    this.getContentPane().add(statusBar, BorderLayout.SOUTH);
     
     int maxHeight = Toolkit.getDefaultToolkit().getScreenSize().height-10;
     int maxWidth = Toolkit.getDefaultToolkit().getScreenSize().width-10;
@@ -396,7 +401,7 @@ public class RunCommandWizard extends GFrame{
     }
     workThread = new ResThread(){
       public void run(){
-        statusBar.setLabel("Preparing jobs, please wait...");
+        statusBar.setLabel("Preparing job, please wait...");
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
         statusBar.animateProgressBar();
         statusBar.setIndeterminateProgressBarToolTip("click here to interrupt (not recommended)");
@@ -412,7 +417,7 @@ public class RunCommandWizard extends GFrame{
         DBPluginMgr dbPluginMgr = GridPilot.getClassMgr().getDBPluginMgr(DB_NAME);
         // write cmd in the executable script
         String executableID = dbPluginMgr.getExecutableID(myExecutableName, myExecutableVersion);
-        String scriptFile = (String) dbPluginMgr.getExecutable(executableID).getValue("script");
+        String scriptFile = (String) dbPluginMgr.getExecutable(executableID).getValue("executableFile");
         try{
           LocalStaticShell.writeFile(MyUtil.clearTildeLocally(MyUtil.clearFile(scriptFile)),
               cmd, false);
@@ -421,6 +426,8 @@ public class RunCommandWizard extends GFrame{
           e2.printStackTrace();
           MyUtil.showError("ERROR: could not write executable script"+scriptFile+".\n" +
                 "Check permissions.");
+          statusBar.setLabel("");
+          setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
           return;
         }
         // update my_dataset with the output location and

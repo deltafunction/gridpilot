@@ -368,16 +368,16 @@ public class ForkScriptGenerator extends ScriptGenerator{
   }
 
   private void writeHeader(boolean onWindows, StringBuffer buf, String commentStart) {
-    // sleep 5 seconds, to give GridPilot a chance to pick up the process id
+    // sleep 2 seconds, to give GridPilot a chance to pick up the process id
     // for very short jobs
-    writeBlock(buf, "Sleep 5 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
+    writeBlock(buf, "Sleep 2 seconds before start", ScriptGenerator.TYPE_SUBSECTION, commentStart);
     // this is to be sure to have some stdout (jobs without are considered failed)
     writeLine(buf, "echo starting...");
     if(!!onWindows){
-      writeLine(buf, "ping -n 10 127.0.0.1 >/nul");
+      writeLine(buf, "ping -n 2 127.0.0.1 >/nul");
     }
     else{
-      writeLine(buf, "sleep 5");
+      writeLine(buf, "sleep 2");
       // Start time
       writeLine(buf, "START_TIME=`date '+%s'`");  
     }
