@@ -9,7 +9,6 @@ import gridfactory.common.Util;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.sql.SQLException;
 import java.util.Vector;
 
