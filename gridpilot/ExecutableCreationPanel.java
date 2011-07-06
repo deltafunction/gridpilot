@@ -82,7 +82,8 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     datasetExecutableVersionReference =
       MyUtil.getDatasetExecutableVersionReference(dbPluginMgr.getDBName());
     // Find executable ID from table
-    if((executableID==null || executableID.equals("")) && table!=null && table.getSelectedRow()>-1){
+    if((executableID==null || executableID.equals("") || executableID.equals("-1")) &&
+        table!=null && table.getSelectedRow()>-1 && editing){
       for(int i=0; i<table.getColumnNames().length; ++i){
         Object fieldVal = table.getUnsortedValueAt(table.getSelectedRow(),i);
         Debug.debug("Column name: "+table.getColumnNames().length+":"+i+" "+table.getColumnName(i), 3);
@@ -92,13 +93,9 @@ public class ExecutableCreationPanel extends CreateEditPanel{
         }
       }
     }
-    if((executableID!=null && !executableID.equals("")) &&
+    if((executableID!=null && !executableID.equals("") && !executableID.equals("-1")) &&
         editing){
       Debug.debug("Editing...", 3);
-      if(executableID==null || executableID.equals("-1") ||
-          executableID.equals("")){
-        Debug.debug("ERROR: could not find executableID.", 1);
-      }
       // Fill cstAttr from db
       executable = dbPluginMgr.getExecutable(executableID);
       for(int i=0; i<cstAttributesNames.length; ++i){
@@ -134,7 +131,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
 
     setBorder(new TitledBorder(new EtchedBorder(EtchedBorder.RAISED,
         Color.white,new Color(165, 163, 151)), 
-        (executableID==null||executableID.equals("-1")?"new executable":"executable "+executableID)));
+        (executableID==null||executableID.equals("-1")||executableID.equals("")?"new executable":"executable "+executableID)));
     
     //spAttributes.setPreferredSize(new Dimension(650, 280));
     //spAttributes.setMinimumSize(new Dimension(650, 500));
@@ -142,7 +139,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     setLayout(new GridBagLayout());
     removeAll();
 
-    initRuntimeEnvironmentPanel(Integer.parseInt(executableID));
+    initRuntimeEnvironmentPanel();
 
     //initAttributePanel();
     
@@ -240,7 +237,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
   }
 
   // TODO: hash by first letter if number of entries exceeds ~20
-  private void initRuntimeEnvironmentPanel(int datasetID){
+  private void initRuntimeEnvironmentPanel(){
     
     pRuntimeEnvironment.removeAll();
     pRuntimeEnvironment.setLayout(new FlowLayout());
@@ -355,7 +352,7 @@ public class ExecutableCreationPanel extends CreateEditPanel{
     else{
       runtimeEnvironmentName = cbRuntimeEnvironmentSelection.getSelectedItem().toString();
     }
-    editExecutable(Integer.parseInt(executableID), runtimeEnvironmentName);
+    editExecutable(editing?Integer.parseInt(executableID):-1, runtimeEnvironmentName);
   }
   
   private void initVars() {

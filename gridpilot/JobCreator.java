@@ -230,7 +230,7 @@ public class JobCreator{
       if(eventSplits!=null && eventSplits.length>0 && eventSplits[0][0]>-1){
         lastPartition = firstPartition+eventSplits.length-1;
         Debug.debug("found first partition from event splitting: "+firstPartition, 1);
-        Debug.debug("found last partition rom event splitting: "+lastPartition, 1);
+        Debug.debug("found last partition from event splitting: "+lastPartition, 1);
       }      
       // If that didn't work, see if we can get the number of files
       // of the output dataset directly
@@ -968,7 +968,7 @@ public class JobCreator{
   private void getFileNames(int currentPartition, Vector<String> inputFileURLs, Vector<String> inputFileNames) {
     
     // If $u, $p or $f is used and lookupPfns is false do a PFN lookup to set inputFileNames and inputFilesUrls.
-    if(!lookupPfns){
+    if(fileCatalogInput && !lookupPfns){
       DBRecord inputFile;
       String inputUrlsStr;
       String [] inputUrls;
@@ -1224,10 +1224,10 @@ public class JobCreator{
         inputFileName = inputMgr.getOutputFiles(inputJobDefIds[currentPartition-1])[0];
         inputFiles.add(inputMgr.getJobDefOutRemoteName(inputJobDefIds[currentPartition-1], inputFileName));
       }
-      Debug.debug("Input files ---> "+inputFiles, 2);
     }
     inputFileURLs.clear();
     inputFileURLs.addAll(inputFiles);
+    Debug.debug("Input files ---> "+inputFileURLs, 2);
   }
 
   private Vector<String> findInputUrlsFromTotalAndNEvents(int currentPartition, int lastPartition) {
