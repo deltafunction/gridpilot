@@ -1,5 +1,5 @@
 #
-# @($)$Id: CESNET-CA-Root.info,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# @($)$Id: CESNET-CA-Root.info,v 1.2 2011/08/24 08:40:21 fjob Exp $
 # /DC=cz/DC=cesnet-ca/O=CESNET CA/CN=CESNET CA Root
 #
 alias = CESNET-CA-Root
@@ -9,5 +9,5 @@ crl_url = http://crl.cesnet-ca.cz/CESNET_CA_Root.crl
 policy_url = http://www.cesnet.cz/pki/en/ch-cp-cps.html
 email = ca@cesnet.cz
 status = accredited:classic
-version = 1.34
+version = 1.38
 sha1fp.0 = E7:84:74:90:F7:11:43:FC:CE:F6:F6:5A:30:DA:1F:23:9E:0F:D7:BA

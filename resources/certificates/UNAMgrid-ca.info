@@ -1,5 +1,5 @@
 #
-# @(#)$Id: UNAMgrid-ca.info,v 1.1 2010/04/02 19:15:56 fjob Exp $
+# @(#)$Id: UNAMgrid-ca.info,v 1.2 2011/08/24 08:40:19 fjob Exp $
 # Information for UNAMgird CA
 #
 alias =	UNAMgrid-ca
@@ -9,4 +9,4 @@ crl_url = http://ca.unamgrid.unam.mx/pub/crl/unamgrid-ca-crl.crl
 email = camanager@ca.unamgrid.unam.mx
 status = accredited:classic
 sha1fp.0 = 12:2A:3C:30:69:03:E7:C6:A6:37:D3:7E:95:ED:4D:FC:A9:1E:57:C3
-version = 1.34
+version = 1.38

@@ -1,7 +1,7 @@
 ##############################################################################
 #NAMESPACES-VERSION: 1.0
 #
-# @(#)$Id: SWITCHgrid-Root.namespaces,v 1.1 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: SWITCHgrid-Root.namespaces,v 1.2 2011/08/24 08:40:18 fjob Exp $
 # CA alias    : SWITCHgrid-Root
 #    subjectDN: /C=CH/O=Switch - Teleinformatikdienste fuer Lehre und Forschung/CN=SWITCHgrid Root CA
 #    hash     : d0b701c0

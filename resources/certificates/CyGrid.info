@@ -1,5 +1,5 @@
 #
-# @(#)$Id: CyGrid.info,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# @(#)$Id: CyGrid.info,v 1.2 2011/08/24 08:40:21 fjob Exp $
 # Information for CA CyGrid
 #   obtained from afe55e66 in CyGrid/
 alias = CyGrid
@@ -8,5 +8,5 @@ crl_url = http://cygrid.org.cy/CyGridCA/afe55e66.r0
 email = cygrid-ca@ucy.ac.cy
 url = http://cygrid.org.cy/CyGridCA/
 status = accredited:classic
-version = 1.34
+version = 1.38
 sha1fp.0 = 31:75:10:A5:62:1D:14:F0:A9:EC:68:14:F0:33:7E:49:FD:E4:37:95

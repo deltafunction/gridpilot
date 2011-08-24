@@ -1,0 +1,58 @@
+----- BEGIN REQUEST HEADER TEXT -----
+"Please read the instructions below carefully!"
+
+"This is a Certificate Request file. It should be mailed to your local"
+"registration authority (RA) for identity validation. You can find the"
+"list of approved RAs at:"
+
+"    http://hep.nbi.dk/CA/"
+
+=========================================================================
+
+A private key and a certificate request has been generated with the
+subject:
+
+"    ${SUBJECT}"
+
+"The above string (without the emailaddress field if present) is known"
+as your ${SERVICE} certificate subject, and uniquely identifies
+this ${SERVICE} inside the NorduGrid CA.
+
+"If the subject above is not appropriate, rerun this script with"
+"the -force and -int options."
+
+Your private key is stored in ${KEY_FILE}
+Your request is stored in ${REQUEST_FILE}
+
+Your certificate will be mailed to you within 7 working days after it
+has been recieved by the NorduGrid CA.
+
+If you have any questions about the certificate contact
+the ${GSI_CA_NAME} at ${GSI_CA_EMAIL_ADDR}
+
+----- END REQUEST HEADER TEXT -----
+
+----- BEGIN USER INSTRUCTIONS TEXT -----
+
+"        IMPORTANT   IMPORTANT  IMPORTANT"
+
+"Please read the instructions in:"
+
+"                 ${REQUEST_FILE}"
+
+"carefully in order to finalize and get your certificate."
+
+----- END USER INSTRUCTIONS TEXT -----
+
+----- BEGIN NONUSER INSTRUCTIONS TEXT -----
+
+"        IMPORTANT   IMPORTANT  IMPORTANT"
+
+"Please read the instructions in:"
+
+"                 ${REQUEST_FILE}"
+
+"carefully in order to finalize and get your certificate."
+
+----- END NONUSER INSTRUCTIONS TEXT -----
+

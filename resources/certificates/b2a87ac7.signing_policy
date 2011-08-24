@@ -1,4 +1,4 @@
-# @(#)$Id: b2a87ac7.signing_policy,v 1.1 2010/04/02 19:15:56 fjob Exp $
+# @(#)$Id: b2a87ac7.signing_policy,v 1.2 2011/08/24 08:40:19 fjob Exp $
 # CERN TCA
 access_id_CA            X509    '/DC=ch/DC=cern/CN=CERN Trusted Certification Authority'
 pos_rights              globus  CA:sign

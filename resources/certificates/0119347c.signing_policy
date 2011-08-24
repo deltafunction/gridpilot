@@ -1,4 +1,4 @@
-# $Id: 0119347c.signing_policy,v 1.1 2010/04/02 19:16:00 fjob Exp $
+# $Id: 0119347c.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $
 #
 # This file is parsed from start to finish with a given CA and subject
 # name.
@@ -32,8 +32,8 @@
 # End DOE SG CA Policy
 # 
 # $Log: 0119347c.signing_policy,v $
-# Revision 1.1  2010/04/02 19:16:00  fjob
-# CA certificates update
+# Revision 1.2  2011/08/24 08:40:21  fjob
+# update
 #
 # Revision 1.2  2006/11/24 17:00:35  pmacvsdg
 # Updated ESnet and DOEGrids certs as per Mike signed mail of Nov 9 2006
@@ -56,7 +56,7 @@
 # Modified the access_id_CA and included /O=ESnet
 #
 # Revision 1.2  2003/05/03 01:18:09  dhiva
-# $Id: 0119347c.signing_policy,v 1.1 2010/04/02 19:16:00 fjob Exp $ included for all these files
+# $Id: 0119347c.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $ included for all these files
 #
 # Revision 1.1  2003/05/03 01:15:06  dhiva
 # Globus Support Files for pki1.doegrids.org CA

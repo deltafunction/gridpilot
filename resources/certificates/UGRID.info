@@ -1,5 +1,5 @@
 #
-# @(#)$Id: UGRID.info,v 1.1 2010/04/02 19:16:00 fjob Exp $
+# @(#)$Id: UGRID.info,v 1.2 2011/08/24 08:40:21 fjob Exp $
 # UGRID - The Ukrainian Grid CA
 #
 alias = UGRID
@@ -8,5 +8,5 @@ crl_url = http://ca.ugrid.org/cacrl.der
 email = ca@ugrid.org
 status = accredited:classic
 url = https://ca.ugrid.org/
-version = 1.34
+version = 1.38
 sha1fp.0 = 1C:FD:9C:16:99:60:1F:34:25:5C:68:39:7D:A4:40:3C:A8:DC:AE:5F

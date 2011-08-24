@@ -1,0 +1,9 @@
+# @(#)policy-igtf-slcs.info - IGTF slcs authorities
+# Generated Friday, 04 Feb, 2011
+version = 1.38
+requires = ncsa-gridshib-ca = 1.38, \
+    DFN-SLCS = 1.38, \
+    FNAL-SLCS = 1.38, \
+    SWITCHslcs = 1.38, \
+    NCSA-slcs = 1.38, \
+    NERSC-SLCS = 1.38

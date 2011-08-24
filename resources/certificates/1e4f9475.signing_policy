@@ -1,5 +1,5 @@
 # EACL MARGI CA
-# @(#)$Id: 1e4f9475.signing_policy,v 1.1 2010/04/02 19:15:54 fjob Exp $
+# @(#)$Id: 1e4f9475.signing_policy,v 1.2 2011/08/24 08:40:18 fjob Exp $
 #
 access_id_CA   X509   '/C=MK/O=MARGI/CN=MARGI-CA'
 pos_rights     globus CA:sign

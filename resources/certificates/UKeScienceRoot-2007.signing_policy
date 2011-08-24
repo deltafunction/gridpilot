@@ -1,4 +1,4 @@
-# @(#)$Id: UKeScienceRoot-2007.signing_policy,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# @(#)$Id: UKeScienceRoot-2007.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $
  access_id_CA   X509    '/C=UK/O=eScienceRoot/OU=Authority/CN=UK e-Science Root'
  pos_rights     globus  CA:sign
  cond_subjects  globus  '"/C=UK/O=eScienceCA/OU=Authority/CN=UK e-Science CA"'

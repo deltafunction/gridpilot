@@ -1,5 +1,5 @@
 #
-# @(#)$Id: BrGrid.signing_policy,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# @(#)$Id: BrGrid.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $
 #
 access_id_CA   X509   '/C=BR/O=ICPEDU/O=UFF BrGrid CA/CN=UFF Brazilian Grid Certification Authority'
 

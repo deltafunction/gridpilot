@@ -1,5 +1,5 @@
 #
-# @(#)$Id: DFN-GridGermany-Root.info,v 1.1 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: DFN-GridGermany-Root.info,v 1.2 2011/08/24 08:40:18 fjob Exp $
 # Information for CA DFN-GridGermany-Root
 #   obtained from 1149214e in DFN/
 alias = DFN-GridGermany-Root
@@ -8,5 +8,5 @@ crl_url = http://cdp1.pca.dfn.de/dfn-pki/certification/x509/grid/g1/data/crls/ro
 email = dfnpca@dfn-cert.de
 status = accredited:classic
 url = http://www.pki.dfn.de/index.php?id=grid
-version = 1.34
+version = 1.38
 sha1fp.0 = 1C:BB:D4:BA:97:7B:3A:B9:FF:CD:4A:97:77:50:87:9C:6A:2E:8E:38

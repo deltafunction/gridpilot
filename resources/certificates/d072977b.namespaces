@@ -1,7 +1,7 @@
 ##############################################################################
 #NAMESPACES-VERSION: 1.0
 #
-# @(#)$Id: d072977b.namespaces,v 1.1 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: d072977b.namespaces,v 1.2 2011/08/24 08:40:19 fjob Exp $
 # CA alias    : IRAN-GRID
 #    subord_of: 
 #    subjectDN: /C=IR/O=IPM/O=IRAN-GRID/CN=IRAN-GRID CA

@@ -1,5 +1,5 @@
 #
-# @(#)$Id: IUCC.info,v 1.1 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: IUCC.info,v 1.2 2011/08/24 08:40:18 fjob Exp $
 # Information for CA IUCC
 #   obtained from 6fee79b0 in IUCC/
 alias = IUCC
@@ -8,5 +8,5 @@ email = ca@iucc.ac.il
 ca_url = http://certificate.iucc.ac.il/ca/cacert.pem
 crl_url = http://certificate.iucc.ac.il/ca/cacrl.pem
 status = accredited:classic
-version = 1.34
+version = 1.38
 sha1fp.0 = BE:D5:68:B0:9A:7F:46:77:10:F5:CD:26:6F:D2:66:3F:53:8D:1E:6B

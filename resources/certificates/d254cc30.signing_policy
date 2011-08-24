@@ -1,4 +1,4 @@
-# @(#)$Id: d254cc30.signing_policy,v 1.4 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: d254cc30.signing_policy,v 1.5 2011/08/24 08:40:18 fjob Exp $
 # CERN Root
 access_id_CA            X509    '/DC=ch/DC=cern/CN=CERN Root CA'
 pos_rights              globus  CA:sign

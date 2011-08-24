@@ -1,5 +1,5 @@
 #
-# @(#)$Id: 719a853d.signing_policy,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# @(#)$Id: 719a853d.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $
 #
 access_id_CA   X509   '/DC=BR/DC=UFF/DC=IC/O=UFF LACGrid CA/CN=UFF Latin American and Caribbean Catch-all Grid CA'
 pos_rights     globus CA:sign

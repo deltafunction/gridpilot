@@ -1,4 +1,4 @@
-# $Id: 12d0da68.signing_policy,v 1.1 2010/04/02 19:15:55 fjob Exp $ 
+# $Id: 12d0da68.signing_policy,v 1.2 2011/08/24 08:40:19 fjob Exp $ 
 
 # ca-signing-policy.conf, see ca-signing-policy.doc for more information
 #
@@ -38,8 +38,8 @@
 # End DOE SG CA Policy
 # 
 # $Log: 12d0da68.signing_policy,v $
-# Revision 1.1  2010/04/02 19:15:55  fjob
-# CA certificates update
+# Revision 1.2  2011/08/24 08:40:19  fjob
+# update
 #
 # Revision 1.2  2006/11/24 17:00:35  pmacvsdg
 # Updated ESnet and DOEGrids certs as per Mike signed mail of Nov 9 2006
@@ -63,7 +63,7 @@
 # to   /DC=DOEGrids
 #
 # Revision 1.2  2003/05/03 01:16:38  dhiva
-# $Id: 12d0da68.signing_policy,v 1.1 2010/04/02 19:15:55 fjob Exp $ Included
+# $Id: 12d0da68.signing_policy,v 1.2 2011/08/24 08:40:19 fjob Exp $ Included
 #
 # Revision 1.1  2003/05/03 01:15:05  dhiva
 # Globus Support Files for pki1.doegrids.org CA

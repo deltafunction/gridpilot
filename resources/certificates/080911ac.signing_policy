@@ -1,4 +1,4 @@
-# @(#)$Id: 080911ac.signing_policy,v 1.1 2010/04/02 19:15:58 fjob Exp $
+# @(#)$Id: 080911ac.signing_policy,v 1.2 2011/08/24 08:40:20 fjob Exp $
 access_id_CA      X509     '/C=BM/O=QuoVadis Limited/OU=Root Certification Authority/CN=QuoVadis Root Certification Authority'
 pos_rights        globus   CA:sign
 cond_subjects     globus   '"/C=BM/O=QuoVadis Limited/OU=Root Certification Authority/CN=QuoVadis Root Certification Authority" "/C=BM/O=QuoVadis Limited/OU=Issuing Certification Authority/CN=QuoVadis Grid ICA"'

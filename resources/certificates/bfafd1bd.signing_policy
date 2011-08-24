@@ -1,5 +1,5 @@
 #
-# $Id: bfafd1bd.signing_policy,v 1.1 2010/04/02 19:15:58 fjob Exp $
+# $Id: bfafd1bd.signing_policy,v 1.2 2011/08/24 08:40:20 fjob Exp $
 #
 access_id_CA      X509        '/C=IL/O=IUCC/CN=IUCC/emailAddress=ca@mail.iucc.ac.il'
 pos_rights        globus      CA:sign

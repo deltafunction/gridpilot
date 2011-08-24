@@ -1,9 +1,9 @@
-# @(#)$Id: MREN-CA.info,v 1.1 2010/04/02 19:15:57 fjob Exp $
+# @(#)$Id: MREN-CA.info,v 1.2 2011/08/24 08:40:20 fjob Exp $
 alias = MREN-CA
 url = http://mren-ca.ac.me/
 ca_url = http://www.mren-ca.ac.me/ca/ca.crt
 crl_url = http://www.mren-ca.ac.me/ca/crl-v2.crl
 email = mren-ca@ac.me
 status = accredited:classic
-version = 1.34
+version = 1.38
 sha1fp.0 = 6F:D0:0E:A3:93:F9:EF:9E:68:F7:F4:29:60:D0:95:AD:A9:48:41:BE

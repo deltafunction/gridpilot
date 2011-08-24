@@ -1,0 +1,12 @@
+# @(#)$Id: UTN-USERFirst-Hardware.info,v 1.1 2011/08/24 08:40:22 fjob Exp $
+# UTN-USERFirst-Hardware.crt (as subordinate of AddTrust External CA Root)
+alias = UTN-USERFirst-Hardware
+requires = AddTrust-External-CA-Root
+ca_url = http://crt.usertrust.com/UTNAddTrustServer_CA.crt
+crl_url = http://crl.usertrust.com/UTN-USERFirst-Hardware.crl
+policy_url = http://www.comodo.com/about/comodo-agreements.php
+url = http://www.comodo.com/
+email = tcs-pma@terena.org
+status = accredited:classic
+version = 1.38
+sha1fp.0 = 3D:4B:2A:4C:64:31:71:43:F5:02:58:D7:E6:FD:7D:3C:02:1A:52:9E

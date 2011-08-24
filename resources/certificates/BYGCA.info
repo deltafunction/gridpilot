@@ -1,5 +1,5 @@
 # BYGCA - Belarusian Grid CA (UIIP NASB)
-# @(#)$Id: BYGCA.info,v 1.1 2010/04/02 19:16:00 fjob Exp $
+# @(#)$Id: BYGCA.info,v 1.2 2011/08/24 08:40:21 fjob Exp $
 #   
 alias = BYGCA
 ca_url = http://ca.grid.by/bygca-cacert.pem
@@ -8,5 +8,5 @@ policy_url = http://ca.grid.by/cpcps.html
 email = ca@newman.bas-net.by
 status = accredited:classic
 url = http://ca.grid.by/
-version = 1.34
+version = 1.38
 sha1fp.0 = 33:D6:1F:E9:AF:6F:98:D4:89:27:C1:AA:88:0E:8F:4B:66:0B:A2:72

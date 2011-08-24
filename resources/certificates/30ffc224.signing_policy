@@ -1,5 +1,5 @@
 # EACL DFN-GridGermany-Root
-# $Id: 30ffc224.signing_policy,v 1.1 2010/04/02 19:15:59 fjob Exp $
+# $Id: 30ffc224.signing_policy,v 1.2 2011/08/24 08:40:21 fjob Exp $
 # The DFN-GridGermany-Root CA only signs the User and Server sub-CAs
 #
 access_id_CA  X509   '/C=DE/O=DFN-Verein/OU=DFN-PKI/CN=DFN-Verein PCA Grid - G01'

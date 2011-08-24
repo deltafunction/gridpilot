@@ -1,5 +1,5 @@
 # Date: 22 Mayo 2007
-# @(#)$Id: REUNA-ca.signing_policy,v 1.1 2010/04/02 19:15:55 fjob Exp $
+# @(#)$Id: REUNA-ca.signing_policy,v 1.2 2011/08/24 08:40:18 fjob Exp $
 #
 access_id_CA	X509	'/C=CL/O=REUNACA/CN=REUNA Certification Authority'
 pos_rights	globus	CA:sign
