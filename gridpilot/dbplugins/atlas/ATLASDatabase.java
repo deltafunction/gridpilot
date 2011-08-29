@@ -55,11 +55,13 @@ public class ATLASDatabase extends DBCache implements Database{
   
   public final static String DQ2_API_VERSION = "0_3_0";
   
-  private String dq2Server;
+  private String dq2ReaderServer;
+  private String dq2WriterServer;
   private String dq2Port;
   private String dq2SecurePort;
   private String dq2Path;
-  private String dq2Url;
+  private String dq2ReaderUrl;
+  private String dq2WriterUrl;
   private String dbName;
   private String [] preferredSites;
   private String [] skipSites;
@@ -71,7 +73,8 @@ public class ATLASDatabase extends DBCache implements Database{
   private TiersOfAtlas toa = null;
   private HashSet<String> httpSwitches = new HashSet<String>();
   private boolean forceFileDelete = false;
-  private DQ2Access dq2Access = null;
+  private DQ2Access dq2ReadAccess = null;
+  private DQ2Access dq2WriteAccess = null;
   private LFCConfig lfcConfig = new LFCConfig();
   private String[] fileFields;
  
@@ -107,7 +110,8 @@ public class ATLASDatabase extends DBCache implements Database{
           useCachingStr.equalsIgnoreCase("true"))?true:false);
     }
 
-    dq2Server = configFile.getValue(dbName, "DQ2 server");
+    dq2ReaderServer = configFile.getValue(dbName, "DQ2 reader server");
+    dq2WriterServer = configFile.getValue(dbName, "DQ2 writer server");
     dq2Port = configFile.getValue(dbName, "DQ2 port");
     dq2SecurePort = configFile.getValue(dbName, "DQ2 secure port");
     dq2Path = configFile.getValue(dbName, "DQ2 path");
@@ -126,22 +130,34 @@ public class ATLASDatabase extends DBCache implements Database{
       logFile.addMessage(error);
     }
 
-    if(dq2Server==null || dq2Path==null){
+    if(dq2ReaderServer==null || dq2Path==null){
       error = "ERROR: DQ2 not configured. Aborting.";    
       logFile.addMessage(error);
       return;
     }
 
     //dq2Url = http://atlddmpro.cern.ch:8000/dq2/
-    dq2Url = "http://"+dq2Server+(dq2Port==null?"":":"+dq2Port)+
+    dq2ReaderUrl = "http://"+dq2ReaderServer+(dq2Port==null?"":":"+dq2Port)+
        (dq2Path.startsWith("/")?dq2Path:"/"+dq2Path)+(dq2Path.endsWith("/")?"":"/");
+    dq2WriterUrl = "http://"+dq2ReaderServer+(dq2Port==null?"":":"+dq2Port)+
+    (dq2Path.startsWith("/")?dq2Path:"/"+dq2Path)+(dq2Path.endsWith("/")?"":"/");
     error = "";
 
     try{
-      dq2Access = new DQ2Access(dq2Server, Integer.parseInt(dq2SecurePort), dq2Path);
+      dq2ReadAccess = new DQ2Access(dq2ReaderServer, Integer.parseInt(dq2SecurePort), dq2Path);
     }
     catch(Exception e){
-      error = "ERROR: could connect to DQ2 at "+dq2Url+" on port "+dq2SecurePort;
+      error = "ERROR: could connect to DQ2 at "+dq2ReaderUrl+" on port "+dq2SecurePort+
+         ". DQ2 cannot be used.";
+      logFile.addMessage(error, e);
+    }
+    
+    try{
+      dq2WriteAccess = new DQ2Access(dq2WriterServer, Integer.parseInt(dq2SecurePort), dq2Path);
+    }
+    catch(Exception e){
+      error = "ERROR: could connect to DQ2 at "+dq2WriterUrl+" on port "+dq2SecurePort+
+         ". Registering datasets in DQ2 will not be possible.";
       logFile.addMessage(error, e);
     }
     
@@ -437,7 +453,7 @@ public class ATLASDatabase extends DBCache implements Database{
       // dsns can be looked up with simple GET
       //if(complete.equals("") && incomplete.equals("")){
         if(vuid.equals("")){
-          get = dq2Url+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+get;
+          get = dq2ReaderUrl+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+get;
           Debug.debug(">>> get string was : "+get, 3);        
           URL url = null;
           try{
@@ -457,7 +473,7 @@ public class ATLASDatabase extends DBCache implements Database{
             //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
             //ret = readGetUrl(new URL(url));
             //ret = URLDecoder.decode(ret, "utf-8");
-            str = dq2Access.getDatasetsByVUIDs("['"+vuid+"']").trim();
+            str = dq2ReadAccess.getDatasetsByVUIDs("['"+vuid+"']").trim();
           }
           catch(Exception e){
             Debug.debug("WARNING: search returned an error "+str, 1);
@@ -768,7 +784,7 @@ public class ATLASDatabase extends DBCache implements Database{
       String str = readGetUrl(url);*/
       String str;
       try{
-        str = dq2Access.getDatasetFiles("['"+vuid+"']");
+        str = dq2ReadAccess.getDatasetFiles("['"+vuid+"']");
         // get rid of time stamp.
         str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
         Debug.debug("Found files : "+str, 3);
@@ -950,7 +966,7 @@ public class ATLASDatabase extends DBCache implements Database{
       //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
       //ret = readGetUrl(new URL(url));
       //ret = URLDecoder.decode(ret, "utf-8");
-      ret = dq2Access.getDatasetLocations("["+vuidsString+"]");
+      ret = dq2ReadAccess.getDatasetLocations("["+vuidsString+"]");
     }
     catch(Exception e){
       e.printStackTrace();
@@ -2215,9 +2231,9 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
         }
         // This will only be reached if the deletion of the physical files went well
         // or cleanup was not selected.
-        dq2Access.deleteFiles(datasetID, fileIDs);
+        dq2WriteAccess.deleteFiles(datasetID, fileIDs);
         if(allFilesDeleted){
-          dq2Access.deleteFromSite(datasetID, homeSite);
+          dq2WriteAccess.deleteFromSite(datasetID, homeSite);
         }
       }
     }
@@ -2366,7 +2382,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     if(!datasetExists){
       try{
         GridPilot.getClassMgr().getStatusBar().setLabel("Creating new dataset "+dsn);
-        vuid = dq2Access.createDataset(dsn, null, null);
+        vuid = dq2WriteAccess.createDataset(dsn, null, null);
         datasetExists = true;
       }
       catch(Exception e){
@@ -2410,7 +2426,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       try{
         Debug.debug("Registering new lfn " +shortLfn+
           " with DQ2, "+size+", "+checksum, 2);
-        dq2Access.addLFNsToDataset(vuid, lfns, guids, sizes, checksums);
+        dq2WriteAccess.addLFNsToDataset(vuid, lfns, guids, sizes, checksums);
       }
       catch(Exception e){
         error = "WARNING: could not update dataset "+dsn+" in DQ2 "+
@@ -2479,7 +2495,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           }
         }
         if(!siteRegistered){
-          dq2Access.registerLocation(vuid, dsn, datasetComplete, homeSite);
+          dq2WriteAccess.registerLocation(vuid, dsn, datasetComplete, homeSite);
         }
         clearCacheEntries("dataset");
       }
@@ -2536,7 +2552,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       if(getStop()){
         return false;
       }
-      vuid = dq2Access.createDataset(dsn, null, vuid);
+      vuid = dq2WriteAccess.createDataset(dsn, null, vuid);
     }
     catch(Exception e){
       appendError(e.getMessage());
@@ -2655,7 +2671,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
                 }
                 Debug.debug("Deleting location "+dqLocations[0].getComplete()[j]+
                     " for vuid "+vuid, 2);
-                dq2Access.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
+                dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
               }
               // Set the new ones
               Set<String> oldLocationsSet = new HashSet<String>();
@@ -2666,7 +2682,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
                 }
                 Debug.debug("Registering location "+newLocations[j]+
                     " for vuid "+vuid, 2);
-                dq2Access.registerLocation(vuid, dsn, true, newLocations[j]);
+                dq2WriteAccess.registerLocation(vuid, dsn, true, newLocations[j]);
               }
             }
             //BNLTAPE CERNPROD CYF LYONTAPE CSCS
@@ -2680,7 +2696,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
                 }
                 Debug.debug("Deleting location "+dqLocations[0].getIncomplete()[j]+
                     " for vuid "+vuid, 2);
-                dq2Access.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
+                dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
               }
               Set<String> oldLocationsSet = new HashSet<String>();
               Collections.addAll(oldLocationsSet, dqLocations[0].getIncomplete());
@@ -2690,7 +2706,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
                 }
                 Debug.debug("Registering location "+newLocations[j]+
                     " for vuid "+vuid, 2);
-                dq2Access.registerLocation(vuid, dsn, false, newLocations[j]);
+                dq2WriteAccess.registerLocation(vuid, dsn, false, newLocations[j]);
               }
             }
           }
@@ -2769,7 +2785,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
 
     // Now, delete the dataset
     try{
-      dq2Access.deleteDataset(dsn, datasetID);
+      dq2WriteAccess.deleteDataset(dsn, datasetID);
     }
     catch(Exception e){
       error = "ERROR: Could not delete dataset "+dsn;
@@ -3076,7 +3092,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       if(!datasetName.endsWith("/")){
         return ret;
       }
-      String res = dq2Access.getDatasetsInContainer(datasetName);
+      String res = dq2ReadAccess.getDatasetsInContainer(datasetName);
       Debug.debug("getDatasetsInContainer --> "+ret, 2);
       ret = MyUtil.split(res.replaceAll("'", "").replaceFirst("\\[", "").replaceFirst("\\]", ""), ", ");
       Debug.debug("container datasets --> "+MyUtil.arrayToString(ret, ":"), 2);
