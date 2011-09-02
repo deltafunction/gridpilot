@@ -496,7 +496,7 @@ public class MySSL extends SSL{
           String caCertsDirStr = caCertsDir==null||caCertsDir.trim().equals("")?null:MyUtil.clearTildeLocally(MyUtil.clearFile(caCertsDir));
           
           // This works with gLite and ARC
-          Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile+":"+i, 2);
+          Debug.debug("Creating VOMS proxy from "+keyFile+"/"+certFile+":"+i+":"+vomsDir, 2);
           VomsProxyFactory vpf = new VomsProxyFactory(VomsProxyFactory.CERTIFICATE_PEM,
               GridPilot.VOMS_SERVER_URL, GridPilot.VO, keyPassword, proxy.getAbsolutePath(),
               certFile, keyFile, caCertsDirStr, vomsDir,
