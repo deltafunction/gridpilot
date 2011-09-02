@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
@@ -639,7 +640,9 @@ public class ClassMgr{
     if(fromJar==-1){
       // try and see if SSl.class was loaded from a jar
       try{
-        fromJar = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), false).size()>0?1:0;
+        List<String> files = MyUtil.listFromJAR("/resources/vomsdir", this.getClass(), true);
+        fromJar = files.isEmpty()?0:1;
+        Debug.debug("this class loaded from jar. "+fromJar+":"+files, 2);
       }
       catch(Exception e){
         e.printStackTrace();
