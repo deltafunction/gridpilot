@@ -1570,7 +1570,7 @@ public class BeginningWizard{
       if(cluster==null || cluster.trim().equals("")){
         MyUtil.showMessage("No clusters defined",
             "WARNING: you have not defined any NorduGrid  clusters.\n" +
-            "This may causes submission to NorduGrid to be very slow as all clusters\n" +
+            "This may cause submission to NorduGrid to be very slow as all clusters\n" +
             "will be queried on each submission.\n" +
             "You can change this in the preferences.");
       }
