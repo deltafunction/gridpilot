@@ -27,6 +27,8 @@ import org.globus.gsi.GlobusCredential;
  * @author  Cyril Topfel
  */
 public class SecureWebServiceConnection extends WebServiceConnection {
+  
+  private static boolean HTTPS_INITIALIZED = false;
 
 	/**
 	 * Instantiates a connection 
@@ -51,7 +53,10 @@ public class SecureWebServiceConnection extends WebServiceConnection {
 	 * this initialized the SSLContext and sets the Trust- and KeyManagers
 	 * 
 	 */	
-	private void init() throws Exception {
+	private synchronized void init() throws Exception {
+	  if(HTTPS_INITIALIZED){
+	    return;
+	  }
     trustWrongHostName();
     trustAllCerts();
     MyUtil.checkAndActivateSSL(new String[] {"https://atlddm.cern.ch/"});
@@ -63,6 +68,7 @@ public class SecureWebServiceConnection extends WebServiceConnection {
       keyManagerFactory.init(ssl.getKeyStore(), ssl.getKeyPassword().toCharArray());
       SSLContext context = SSLContext.getInstance("TLS");
       context.init(keyManagerFactory.getKeyManagers(), null, new SecureRandom());
+      HTTPS_INITIALIZED = true;
     }
     catch(Exception e) {
       e.printStackTrace();

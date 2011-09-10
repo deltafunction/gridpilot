@@ -108,7 +108,8 @@ public class MySSL extends SSL{
         sslInitialized = true;
       }
     }
-    Debug.debug("Activating SSL with password "+GridPilot.KEY_PASSWORD, 2);
+    Debug.debug("Activating SSL with password "+GridPilot.KEY_PASSWORD+", CA certs in "+GridPilot.CA_CERTS_DIR+
+        " and truststore "+GridPilot.TRUSTSTORE_FILE, 2);
     activateSSL(GridPilot.CERT_FILE, GridPilot.KEY_FILE, GridPilot.KEY_PASSWORD, GridPilot.CA_CERTS_DIR, GridPilot.TRUSTSTORE_FILE);
     credential = super.getCredential();
     sslOk = true;

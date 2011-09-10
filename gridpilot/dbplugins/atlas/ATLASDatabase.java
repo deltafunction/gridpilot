@@ -1208,7 +1208,7 @@ public class ATLASDatabase extends DBCache implements Database{
       activateSsl();
       return (new MySQLLookupPFN(this, catalogServer, lfn, guid, findAll)).lookup();
     }
-    else if(catalogUrl.getProtocol().equals("http")){
+    else if(catalogUrl.getProtocol().equals("https")){
       activateSsl();
       return (new LRCLookupPFN(this, catalogServer, lfn, guid, findAll)).lookup();
     }
