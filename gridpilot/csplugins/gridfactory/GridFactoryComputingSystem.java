@@ -595,6 +595,9 @@ public class GridFactoryComputingSystem extends ForkComputingSystem implements M
             job.setStderrDest(dbPluginMgr.getStdErrFinalDest(job.getIdentifier()));
           }
         }
+        else{
+          st = getLRMS().getJobStatus(MyUtil.getHostFromID(job.getJobId()), job.getJobId(), null);
+        }
       }
       else if(job.getStatus()==JobInfo.STATUS_DONE || job.getStatus()==JobInfo.STATUS_FAILED){
         st = job.getStatus();
