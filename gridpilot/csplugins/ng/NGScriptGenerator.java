@@ -206,7 +206,7 @@ public class NGScriptGenerator extends ScriptGenerator{
         // URL is full path of input file
         inputFileURL = MyUtil.clearTildeLocally(MyUtil.clearFile(inputFiles[i]));
       }
-      Debug.debug("Input file physical name: "+inputFileURL, 3);
+      Debug.debug("Input file physical name: "+inputFileURL+"<--"+inputFiles[i], 3);
      
       String protocol = inputFiles[i].replaceFirst("^(\\w+):.*$", "$1");
       if(remoteCopyCommands==null || !remoteCopyCommands.containsKey(protocol)){
@@ -223,6 +223,9 @@ public class NGScriptGenerator extends ScriptGenerator{
           writeLine(bufXRSL,"(\""+inputFileName+"\" \""+inputFileURL+"\")");
           //remoteInputFilesList.add(inputFileURL);
         }
+      }
+      else{
+        Debug.debug("File will be downloaded by script: "+inputFileURL+"<--"+inputFiles[i], 3);
       }
     }
     writeLine(bufXRSL,")");
