@@ -166,7 +166,7 @@ public class ExportImport {
       Debug.debug("Exporting rows "+MyUtil.arrayToString(ids), 2);
       query += " WHERE";
       for(int i=0; i<ids.length; ++i){
-        query += (i>0?" AND ":" ")+idField+" = "+ids[i];
+        query += (i>0?" OR ":" ")+idField+" = "+ids[i];
       }
     }
     DBResult dbResult =
