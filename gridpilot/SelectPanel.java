@@ -30,7 +30,7 @@ public class SelectPanel extends JPanel{
   private GridBagConstraints gbcVC;
   private SPanel.ConstraintPanel spcp;
   private SPanel sPanel;
-  private static final int SEARCH_FIELD_SIZE = 20;
+  private static final int SEARCH_FIELD_SIZE = 42;
   private KeyAdapter enterKeyAdapter = null;
 
   /**
