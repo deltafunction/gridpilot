@@ -3,6 +3,7 @@ package gridpilot.dbplugins.atlas;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,6 +12,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.rmi.RemoteException;
 import java.security.GeneralSecurityException;
@@ -21,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.Vector;
 import java.util.regex.Matcher;
@@ -36,8 +39,10 @@ import org.glite.lfc.internal.FileDesc;
 
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.globus.util.GlobusURL;
-import org.ietf.jgss.GSSCredential;
 
+import org.htmlcleaner.*;
+
+import org.ietf.jgss.GSSCredential;
 
 import gridfactory.common.ConfigFile;
 import gridfactory.common.DBCache;
@@ -61,6 +66,7 @@ public class ATLASDatabase extends DBCache implements Database{
   private String dq2SecurePort;
   private String dq2Path;
   private String dq2ReaderUrl;
+  private String dq2Url;
   private String dq2WriterUrl;
   private String dbName;
   private String [] preferredSites;
@@ -136,7 +142,7 @@ public class ATLASDatabase extends DBCache implements Database{
       return;
     }
 
-    //dq2Url = http://atlddmpro.cern.ch:8000/dq2/
+    dq2Url = "http://atlddmpro.cern.ch:8000/dq2/";
     dq2ReaderUrl = "http://"+dq2ReaderServer+(dq2Port==null?"":":"+dq2Port)+
        (dq2Path.startsWith("/")?dq2Path:"/"+dq2Path)+(dq2Path.endsWith("/")?"":"/");
     dq2WriterUrl = "http://"+dq2ReaderServer+(dq2Port==null?"":":"+dq2Port)+
@@ -311,7 +317,7 @@ public class ATLASDatabase extends DBCache implements Database{
   }
   
   // Just a wrapper calling doDoSelect an appropriate number of times if ORs are present
-  public DBResult doSelect(String selectRequest, String idField, boolean findAll){
+  public DBResult doSelect(String selectRequest, String idField, boolean findAll) throws IOException{
     if(!selectRequest.toLowerCase().contains(" or ")){
       return doDoSelect(selectRequest, idField, findAll);
     }
@@ -327,38 +333,12 @@ public class ATLASDatabase extends DBCache implements Database{
     return DBResult.merge(ret);
   }
     
-  public /*synchronized*/ DBResult doDoSelect(String selectRequest, String idField, boolean findAll){
+  public /*synchronized*/ DBResult doDoSelect(String selectRequest, String idField, boolean findAll) throws IOException{
         
-    JProgressBar pb = null;
-    String req = selectRequest;
-    Pattern patt;
-    Matcher matcher;
-    String [] fields;
-    String [][] values;
-
-    // *, row1, row2 -> *
-    if(selectRequest.matches("SELECT \\*\\,.*") ||
-        selectRequest.matches("SELECT \\* FROM .+")){
-      Debug.debug("Correcting non-valid select pattern", 3);
-      patt = Pattern.compile("SELECT \\*\\, (.+) FROM", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll("SELECT * FROM");
-    }
-    // Make sure we have identifier as last column.
-    else{
-      patt = Pattern.compile(", "+idField+", ", Pattern.CASE_INSENSITIVE);
-      matcher = patt.matcher(req);
-      req = matcher.replaceAll(", ");
-      patt = Pattern.compile(" "+idField+" FROM", Pattern.CASE_INSENSITIVE);
-      if(!patt.matcher(req).find()){
-        patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
-        matcher = patt.matcher(req);
-        req = matcher.replaceAll(", "+idField+" FROM "+"$1");
-      }
-    }
-    
+    String req = sanitizeRequest(selectRequest, idField);
     Debug.debug("request: "+req, 3);
     String table = req.replaceFirst("SELECT (.+) FROM (\\S+)\\s*.*", "$2");
+    String [] fields;
     String fieldsString = req.replaceFirst("SELECT (.*) FROM (\\S+)\\s*.*", "$1");
     if(fieldsString.indexOf("*")>-1){
       fields = getFieldNames(table);
@@ -379,37 +359,562 @@ public class ATLASDatabase extends DBCache implements Database{
       queryResults.put(selectRequest, res);
       return res;
     }
-    
-    String get = null;
-    String conditions = null;
-    
+
     // Find != rules. < and > rules could be done in the same way...
-    conditions = req.replaceFirst("SELECT (.*) FROM (\\w*) WHERE (.*)", "$3");
-    HashMap<String, String> excludeMap = new HashMap<String, String>();
-    String pattern = null;
-    String conditions1 = conditions;
-    while(conditions1.matches(".+ (\\S+) != (\\S+)\\s*.*")){
-      Debug.debug("Constructing exclude map, "+conditions1, 3);
-      pattern = conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "$2");
-      pattern = pattern.replaceAll("\\*", "\\.\\*");
-      excludeMap.put(conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "$1"),
-          pattern);
-      conditions1 = conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "");
-    }
-    
+    String conditions = req.replaceFirst("SELECT (.*) FROM (\\w*) WHERE (.*)", "$3");
+    HashMap<String, String> excludeMap = constructExcludeMap(conditions);
     Debug.debug("Exclude patterns: "+
         MyUtil.arrayToString(excludeMap.keySet().toArray())+"-->"+
         MyUtil.arrayToString(excludeMap.values().toArray()), 2);
 
+    //String get = null;
     //---------------------------------------------------------------------
     if(table.equalsIgnoreCase("dataset")){
       // "dsn", "vuid", "incomplete", "complete"
+      DatasetGetQuery dq = new DatasetGetQuery(conditions);
+      Debug.debug("dsn, vuid, complete, incomplete: "+
+          dq.dsn+", "+dq.vuid+", "+dq.complete+", "+dq.incomplete, 2);
+      String str = getDatasetQueryResult(dq);
+      // Check if the result is of the form {...}
+      // We expect something like
+      // "{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}"
+      if(str==null || str.trim().equals("") || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
+        Debug.debug("WARNING: search returned an error:"+str+":", 1);
+        return new DBResult(fields, new String[0][fields.length]);
+      }
       
-      String dsn = "";
-      String vuid = "";
-      String complete = "";
-      String incomplete = "";
+      // Now parse the DQ string and construct DBRecords
+      DBResult res = parseDatasetQueryResult(str, dq, fields, excludeMap);
+      queryResults.put(selectRequest, res);
+      return res;
+    }
+   //---------------------------------------------------------------------
+    else if(table.equalsIgnoreCase("file")){
+      // "dsn", "lfn", "pfns", "guid", "bytes", "checksum" - to save lookups allow also search on vuid
+      FileGetQuery fq = new FileGetQuery(conditions);
+      /*URL url = null;
+      try{
+        url = new URL(get);
+      }
+      catch(MalformedURLException e){
+        error = "Could not construct "+get;
+        Debug.debug(error, 2);
+        return null;
+      }
+      // Get the DQ result
+      String str = readGetUrl(url);*/
+      
+      String str;
+      try{
+        str = dq2ReadAccess.getDatasetFiles("['"+fq.vuid+"']");
+        Debug.debug("Found files : "+str, 3);
+      }
+      catch(Exception e1){
+        error = "Could not get file names for "+fq.vuid;
+        Debug.debug(error, 2);
+        return null;
+      }
+      DBResult res = parseFileQueryResult(str, fq, fields, excludeMap, idField, findAll);
+      queryResults.put(selectRequest, res);
+      return res;
+    }
+    else{
+      Debug.debug("WARNING: table "+table+" not supported", 1);
+      return null;
+    }
+  }
+  
+  protected class MyTagNodeVisitor implements TagNodeVisitor {
+    private LinkedHashSet<String> lines = new LinkedHashSet<String>();
+    public boolean visit(TagNode tagNode, HtmlNode htmlNode) {
+        if (htmlNode instanceof TagNode) {
+            TagNode tag = (TagNode) htmlNode;
+            String tagName = tag.getName();
+            if("td".equalsIgnoreCase(tagName)) {
+              lines.add(tag.getText().toString());
+            }
+        }
+        // tells visitor to continue traversing the DOM tree
+        return true;
+    }
+    protected LinkedHashSet<String> getLines(){
+      return lines;
+    }
+  }
 
+
+  /**
+   * This is for parsing the result of a query without user-agent set to dqcurl.
+   * In this case the result is an html table. The table does not include anything but
+   * the dsns, so it's a bit useless for our purposes.
+   * @param str
+   * @param dq
+   * @param fields
+   * @param excludeMap
+   * @return
+   * @throws IOException
+   */
+  private DBResult parseDatasetQueryResultHTML(String str, DatasetGetQuery dq, String [] fields,
+      HashMap<String, String> excludeMap) throws IOException {
+    
+    final HtmlCleaner cleaner = new HtmlCleaner();
+    TagNode node = cleaner.clean(new ByteArrayInputStream(str.getBytes()));
+    MyTagNodeVisitor tgv = new MyTagNodeVisitor();
+    node.traverse(tgv);
+    HashSet<String> records = tgv.getLines();
+    if(records==null || records.size()==0){
+      Debug.debug("WARNING: no records found with "+str, 2);
+      return new DBResult(fields, new String[0][fields.length]);
+    }
+    String [][] values = new String[records.size()][fields.length];
+    DBResult ret = new DBResult(fields, values);
+    DBRecord rec;
+    for(int i=0; i<records.size(); ++i){
+      rec = ret.get(i);
+      try{
+        rec.setValue("dsn", records.iterator().next());
+        ret.set(i, rec);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+    }
+    return ret;
+  }
+  
+  private DBResult parseDatasetQueryResult(String str, DatasetGetQuery dq, String [] fields,
+      HashMap<String, String> excludeMap) throws IOException {
+    // Now parse the DQ string and construct DBRecords
+    String [] records = MyUtil.split(str, "\\}, ");
+    if(records==null || records.length==0){
+      Debug.debug("WARNING: no records found with "+str, 2);
+      return new DBResult(fields, new String[0][fields.length]);
+    }
+    Vector<String[]> valuesVector = new Vector<String[]>();
+    for(int i=0; i<records.length; ++i){
+      setDqVars(records[i], dq, fields, excludeMap, valuesVector);
+    }
+    String [][] values = new String[valuesVector.size()][fields.length];
+    for(int i=0; i<valuesVector.size(); ++i){
+      for(int j=0; j<fields.length; ++j){
+        values[i][j] = valuesVector.get(i)[j];
+      }
+      Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
+    }
+    return new DBResult(fields, values);
+  }
+  
+  private void setDqVars(String entry, DatasetGetQuery dq, String[] fields,
+      HashMap<String, String> excludeMap, Vector<String[]> valuesVector) {
+    //String duid = null;
+    String [] record = null;
+    String vuidsString = null;
+    entry = entry.replaceFirst("^\\{", "");
+    entry = entry.replaceFirst("\\}\\}$", "");
+    record = MyUtil.split(entry, ": \\{'vuids': ");
+    DQ2Locations [] dqLocations = null;
+    
+    if(record!=null && record.length>1){
+      // If the string is the result of a dsn=... request, the
+      // split went ok and this should work:
+      String name = record[0].replaceAll("'", "");
+      //duid = record[0].replaceFirst("'duid': '(.*)'", "$1");
+      vuidsString = record[1].replaceFirst("\\[(.*)\\], .*", "$1");
+      String [] vuids = MyUtil.split(vuidsString, ", ");
+      Debug.debug("Found "+vuids.length+" vuids: "+vuidsString, 3);
+      if(vuids.length==1){
+        dq.vuid = vuids[0];
+      }
+      try{
+        dqLocations = getLocations(vuidsString);
+      }
+      catch(IOException e){
+        error = "WARNING: could not find locations.";
+        GridPilot.getClassMgr().getStatusBar().setLabel(error);
+        e.printStackTrace();
+        logFile.addMessage(error, e);
+      }
+      Vector<String> recordVector = new Vector<String>();
+      for(int j=0; j<vuids.length; ++j){
+        Debug.debug("vuid: "+vuids[j], 3);
+        recordVector = constructDatasetRecordVector0(dq, fields, dqLocations[j], excludeMap, name);
+        if(recordVector!=null){
+          Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
+          valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
+        }
+        else{
+          Debug.debug("Excluding record ", 2);
+        }
+      }
+    }
+    else{
+      // Otherwise it should be the result of a vuid=... request and
+      // this should work:
+      if(dq.vuid!=null && dq.vuid.length()>0){
+        try{
+          dqLocations = getLocations("'"+dq.vuid+"'");
+        }
+        catch(IOException e){
+          error = "WARNING: could not find locations.";
+          GridPilot.getClassMgr().getStatusBar().setLabel(error);
+          e.printStackTrace();
+          logFile.addMessage(error, e);
+        }
+        //record = Util.split(line, "'dsn': ");
+        //{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}
+        record = MyUtil.split(entry, "'[^']+': ");
+        String name = entry.replaceFirst(".*'([^']+)': \\[\\d+\\].*", "$1");
+        if(name.equals(entry)){
+          name = "";
+        }
+        // If some selection boxes have been set, use patterns for restricting.
+        dq.complete = dq.complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+        dq.incomplete = dq.incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+        dq.dsn = dq.dsn.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+        Vector<String> recordVector = constructDatasetRecordVector(dq, fields, dqLocations[0], excludeMap, name);
+        if(recordVector!=null){
+          Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
+          valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
+        }
+        else{
+          Debug.debug("Excluding record ", 2);
+        }
+      }
+      else{
+        Debug.debug("ERROR: something went wrong; could " +
+            "not parse "+entry, 2);
+      }
+    }
+  }
+
+  private Vector<String> constructDatasetRecordVector0(DatasetGetQuery dq, String[] fields,
+      DQ2Locations dqLocations, HashMap<String, String> excludeMap, String name) {
+    Vector<String>recordVector = new Vector<String>();
+    String entry = null;
+    for(int k=0; k<fields.length; ++k){
+      entry = constructDatasetRecordEntry0(dq, fields[k], dqLocations, excludeMap, name);
+      if(entry==null){
+        recordVector = null;
+        break;
+      }
+      recordVector.add(entry);          
+    }
+    return recordVector;
+  }
+
+  private Vector<String> constructDatasetRecordVector(DatasetGetQuery dq, String[] fields,
+      DQ2Locations dqLocations, HashMap<String, String> excludeMap, String name) {
+    Vector<String>recordVector = new Vector<String>();
+    String entry = null;
+    for(int k=0; k<fields.length; ++k){
+      entry = constructDatasetRecordEntry(dq, fields[k], dqLocations, excludeMap, name);
+      if(entry==null){
+        recordVector = null;
+        break;
+      }
+      recordVector.add(entry);          
+    }
+    return recordVector;
+  }
+
+  private String constructDatasetRecordEntry0(DatasetGetQuery dq,
+      String field, DQ2Locations dqLocations, HashMap<String, String> excludeMap, String name) {
+    String entry = null;
+    boolean exCheck = true;
+    // If some selection boxes have been set, use patterns for restricting.
+    dq.vuid = dq.vuid.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+    dq.complete = dq.complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+    dq.incomplete = dq.incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
+    Debug.debug("Matching: "+dq.vuid+":"+dq.complete+":"+dq.incomplete, 2);
+    if(field.equalsIgnoreCase("dsn")){
+      entry = name;
+    }
+    else if(field.equalsIgnoreCase("vuid")){
+      dq.vuid = dq.vuid.replaceAll("'", "");
+      if(dq.vuid==null || dq.vuid.equals("") || dq.vuid.matches("(?i)"+dq.vuid)){
+        Debug.debug("Adding vuid: "+dq.vuid, 3);
+        entry = dq.vuid;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else if(field.equalsIgnoreCase("incomplete") &&
+        dqLocations!=null && dqLocations!=null){
+      String incompleteString =
+        MyUtil.arrayToString(dqLocations.getIncomplete());
+      if(dq.incomplete==null || dq.incomplete.equals("") ||
+          incompleteString.matches("(?i)"+dq.incomplete)){
+        Debug.debug("Adding incomplete: "+incompleteString, 3);
+        entry = incompleteString;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else if(field.equalsIgnoreCase("complete") &&
+        dqLocations!=null && dqLocations!=null){
+      String completeString =
+        MyUtil.arrayToString(dqLocations.getComplete());
+      Debug.debug("Matching complete; "+completeString+"<->"+dq.complete, 3);
+      if(dq.complete==null || dq.complete.equals("") ||
+          completeString.matches("(?i)"+dq.complete)){
+        Debug.debug("Adding complete: "+completeString, 3);
+        entry = completeString;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else{
+      entry = "";
+    }
+    if(excludeMap.containsKey(field) &&
+        entry!=null && entry.matches("(?i)"+excludeMap.get(field))){
+      exCheck = false;
+    }
+    return exCheck?entry:null;
+  }
+
+  private String constructDatasetRecordEntry(DatasetGetQuery dq,
+      String field, DQ2Locations dqLocations, HashMap<String, String> excludeMap, String name) {
+    boolean exCheck = true;
+    String entry = null;
+    if(field.equalsIgnoreCase("dsn")){
+      if(dq.dsn.equals("") || name.matches("(?i)"+dq.dsn)){
+        entry = name;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else if(field.equalsIgnoreCase("vuid")){
+      Debug.debug("Adding vuid: "+dq.vuid, 3);
+      entry = dq.vuid;
+    }
+    else if(field.equalsIgnoreCase("incomplete") && dqLocations!=null ){
+      String incompleteString =
+        MyUtil.arrayToString(dqLocations.getIncomplete());
+      if(dq.incomplete==null || dq.incomplete.equals("") ||
+          incompleteString.matches("(?i)"+dq.incomplete)){
+       entry = incompleteString;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else if(field.equalsIgnoreCase("complete") && dqLocations!=null){
+      String completeString =
+        MyUtil.arrayToString(dqLocations.getComplete());
+      if(dq.complete==null || dq.complete.equals("") ||
+          completeString.matches("(?i)"+dq.complete)){
+        entry = completeString;
+      }
+      else{
+        exCheck = false;
+      }
+    }
+    else{
+      entry = "";
+    }
+    if(excludeMap.containsKey(field) &&
+        entry!=null && entry.toString().matches(
+            "(?i)"+excludeMap.get(field).toString())){
+      exCheck = false;
+    }
+    return exCheck?entry:null;
+  }
+
+  private String getDatasetQueryResult(DatasetGetQuery dq) {
+    String str = null;
+    // dsns can be looked up with simple GET
+    if(dq.vuid.equals("")){
+      URL url = null;
+      try{
+        url = new URL(dq.get);
+      }
+      catch(MalformedURLException e){
+        error = "Could not construct "+dq.get;
+        Debug.debug(error, 2);
+        return null;
+      }
+      // Get the DQ result
+      str = readGetUrl(url).trim();
+    }
+    else if(dq.dsn.equals("")){
+      try{
+        //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
+        //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
+        //ret = readGetUrl(new URL(url));
+        //ret = URLDecoder.decode(ret, "utf-8");
+        str = dq2ReadAccess.getDatasetsByVUIDs("['"+dq.vuid+"']").trim();
+      }
+      catch(Exception e){
+        Debug.debug("WARNING: search returned an error "+str, 1);
+        return null;
+      }
+    }
+    return str;
+  }
+
+  private DBResult parseFileQueryResult(String str, FileGetQuery fq, String [] fields,
+      HashMap<String,String> excludeMap, String idField, boolean findAll) {
+    // get rid of time stamp.
+    str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
+    // Discard html
+    str = str.replaceFirst("(?i)(?s)<html>.*</html>", "");
+    // Check if the result is of the form {...}
+    if(!str.matches("^\\{.*\\}$")){
+      Debug.debug("ERROR: cannot parse search result "+str, 1);
+      return new DBResult(fields, new String[0][fields.length]);
+    }
+    // Now parse the DQ string and construct DBRecords
+    str = str.replaceFirst("^\\{", "");
+    str = str.replaceFirst("\\}$", "");
+    String [] records = MyUtil.split(str, "\\}, ");
+    if(records==null || records.length==0){
+      Debug.debug("WARNING: no records found with "+str, 2);
+      return new DBResult(fields, new String[0][fields.length]);
+    }    
+    GridPilot.getClassMgr().getStatusBar().stopAnimation();
+    JProgressBar pb = null;
+    if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
+      pb = MyUtil.setProgressBar(records.length, dbName);
+    }
+    Vector<String[]> valuesVector = new Vector<String[]>();
+    for(int i=0; i<records.length; ++i){
+      if(getStop()){
+        break;
+      }
+      GridPilot.getClassMgr().getStatusBar().setLabel("Record "+(i+1)+" : "+records.length);
+      try{
+        if(pb!=null){
+          pb.setValue(i+1);
+        }
+      }
+      catch(Exception ee){
+      }
+      setFqVars(records[i], fq, fields, findAll, excludeMap, valuesVector);
+    }
+    //setFindPFNs(true);
+    if(pb!=null){
+      GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
+      GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
+    }
+    String [][] values = new String[valuesVector.size()][fields.length];
+    for(int i=0; i<valuesVector.size(); ++i){
+      for(int j=0; j<fields.length; ++j){
+        values[i][j] = valuesVector.get(i)[j];
+      }
+      Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
+    }
+    return new DBResult(fields, values, idField);
+  }
+
+  private void setFqVars(String line, FileGetQuery fq, String[] fields, boolean findAll,
+      HashMap<String, String> excludeMap, Vector<String[]> valuesVector) {
+    
+    Vector<String> recordVector = new Vector<String>();
+    boolean exCheck = true;
+    String [] record = MyUtil.split(line, ": \\{");
+    if(record==null || record.length==0){
+      Debug.debug("WARNING: could not parse record "+record, 2);
+      return;
+    }
+    // If the string is the result of a vuid=... request, the
+    // split went ok and this should work:
+    fq.guid = record[0].replaceAll("'", "").trim();
+    fq.lfn = record[1].replaceAll(".*'lfn': '([^']*)'.*", "$1").trim();
+    fq.bytes = record[1].replaceAll(".*'filesize': '([^']*)'.*", "$1").trim();
+    if(fq.bytes.equals(record[1])){
+      fq.bytes = record[1].replaceAll(".*'filesize': (\\w+)[\\W]*.*", "$1").trim();
+      if(fq.bytes.equals(record[1])){
+        fq.bytes = "";
+      }
+    }
+    fq.checksum = record[1].replaceAll(".*'checksum': '([^']*)'.*", "$1").trim();
+    if(fq.checksum.equals(record[1])){
+      fq.checksum = "";
+    }
+    String catalogs = "";
+    Debug.debug("Finding PFNs "+lookupPFNs(), 2);
+    Debug.debug("Using guid "+fq.guid+" extracted from "+MyUtil.arrayToString(record), 2);
+    if(lookupPFNs()){
+      PFNResult pfnRes = null;
+      try{
+        pfnRes = findPFNs(fq, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
+        catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
+        fq.bytes = (fq.bytes.equals("")&&pfnRes.getBytes()!=null&&
+           !pfnRes.getBytes().equals("")?pfnRes.getBytes():fq.bytes);
+        fq.checksum = (fq.checksum.equals("")&&pfnRes.getChecksum()!=null&&
+           !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():fq.checksum);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      fq.pfns = MyUtil.arrayToString(pfnRes.getPfns().toArray(new String[pfnRes.getPfns().size()]));
+    }
+    else{
+      fq.pfns = "";
+    }
+
+    recordVector = new Vector<String>();
+    exCheck = true;
+    for(int k=0; k<fields.length; ++k){
+      if(fields[k].equalsIgnoreCase("lfn")){
+        //recordVector.add(lfn);
+        recordVector.add(/*(lfn.startsWith("/")?"":"/")+*//*makeAtlasPath(lfn)*/fq.lfn);
+      }
+      else if(fields[k].equalsIgnoreCase("dsn")){
+        recordVector.add(fq.dsn);
+      }
+      else if(fields[k].equalsIgnoreCase("pfns")){
+        recordVector.add(fq.pfns);
+      }
+      else if(fields[k].equalsIgnoreCase("guid")){
+        recordVector.add(fq.guid);
+      }
+      else if(fields[k].equalsIgnoreCase("vuid")){
+        recordVector.add(fq.vuid);
+      }
+      else if(fields[k].equalsIgnoreCase("catalogs")){
+        recordVector.add(catalogs);
+      }
+      else if(fields[k].equalsIgnoreCase("bytes")){
+        recordVector.add(fq.bytes);
+      }
+      else if(fields[k].equalsIgnoreCase("checksum")){
+        recordVector.add(fq.checksum);
+      }
+      else{
+        recordVector.add("");
+      }
+      if(excludeMap.containsKey(fields[k]) &&
+          recordVector.get(k).toString().matches(
+              excludeMap.get(fields[k]).toString())){
+        exCheck = false;
+      }
+    }
+    if(exCheck){
+      Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray(new String[recordVector.size()])), 3);
+      valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
+    }
+    else{
+      Debug.debug("Excluding record ", 2);
+    }       
+
+  }
+
+  protected class DatasetGetQuery {
+    
+    String get;
+    String dsn = "";
+    String vuid = "";
+    String complete = "";
+    String incomplete = "";
+    
+    DatasetGetQuery(String conditions) {
+      
       // Construct get string. Previously this worked for dsn= and vuid= requests.
       // With v0.3 it works only with dsn= requests.
       get = conditions.replaceAll("(?i)\\bdsn = (\\S+)", "dsn=$1");      
@@ -430,7 +935,8 @@ public class ATLASDatabase extends DBCache implements Database{
       get = get.replaceAll("(?i)\\bincomplete CONTAINS (\\S+)", "incomplete=$1*");
 
       
-      get = get.replaceAll(" AND ", "&");
+      get = dq2ReaderUrl+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+
+         get.replaceAll(" AND ", "&");
 
       if(get.matches("(?i).*\\bdsn=(\\S+).*")){
         dsn = get.replaceFirst("(?i).*\\bdsn=(\\S+).*", "$1");
@@ -447,268 +953,25 @@ public class ATLASDatabase extends DBCache implements Database{
         incomplete = get.replaceFirst("(?i).*\\bincomplete=(\\S+).*", "$1");
       }
       
-      String str = null;
-      Debug.debug("dsn, vuid, complete, incomplete: "+
-          dsn+", "+vuid+", "+complete+", "+incomplete, 2);
-      // dsns can be looked up with simple GET
-      //if(complete.equals("") && incomplete.equals("")){
-        if(vuid.equals("")){
-          get = dq2ReaderUrl+"ws_repository/rpc?operation=queryDatasetByName&version=0&API="+DQ2_API_VERSION+"&"+get;
-          Debug.debug(">>> get string was : "+get, 3);        
-          URL url = null;
-          try{
-            url = new URL(get);
-          }
-          catch(MalformedURLException e){
-            error = "Could not construct "+get;
-            Debug.debug(error, 2);
-            return null;
-          }
-          // Get the DQ result
-          str = readGetUrl(url).trim();
-        }
-        else if(dsn.equals("")){
-          try{
-            //Debug.debug(">>> get string was : "+dq2Url+"ws_location/rpc?"+
-            //    "operation=queryDatasetLocations&API="+DQ2_API_VERSION+"&dsns=[]&vuids="+"["+vuidsString+"]", 3);
-            //ret = readGetUrl(new URL(url));
-            //ret = URLDecoder.decode(ret, "utf-8");
-            str = dq2ReadAccess.getDatasetsByVUIDs("['"+vuid+"']").trim();
-          }
-          catch(Exception e){
-            Debug.debug("WARNING: search returned an error "+str, 1);
-            return new DBResult(fields, new String[0][fields.length]);
-          }
-        }
-        // Check if the result is of the form {...}
-        // We expect something like
-        // "{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}"
-        if(str==null || !str.matches("^\\{.*\\}$") || str.matches("^\\{\\}$")){
-          Debug.debug("WARNING: search returned an error:"+str+":", 1);
-          return new DBResult(fields, new String[0][fields.length]);
-        }
-      //}
-      // DQ2 cannot handle other searches.
-      if(str==null){
-        error = "WARNING: cannot perform search "+get;
-        Debug.debug(error, 1);
-        return new DBResult(fields, new String[0][fields.length]);
-      }
+      Debug.debug(">>> get string is : "+get, 3); 
       
-      // Now parse the DQ string and construct DBRecords
-      String [] records = MyUtil.split(str, "\\}, ");
-      if(records==null || records.length==0){
-        Debug.debug("WARNING: no records found with "+str, 2);
-        return new DBResult(fields, new String[0][fields.length]);
-      }
-      
-      Vector<String[]> valuesVector = new Vector<String[]>();
-      String [] record = null;
-      String vuidsString = null;
-      String [] vuids = null;
-      //String duid = null;
-      for(int i=0; i<records.length; ++i){
-        
-        Vector<String> recordVector = new Vector<String>();
-        boolean exCheck = true;
-        records[i] = records[i].replaceFirst("^\\{", "");
-        records[i] = records[i].replaceFirst("\\}\\}$", "");
-        record = MyUtil.split(records[i], ": \\{'vuids': ");
-        
-        if(record!=null && record.length>1){
-          // If the string is the result of a dsn=... request, the
-          // split went ok and this should work:
-          String name = record[0].replaceAll("'", "");
-          //duid = record[0].replaceFirst("'duid': '(.*)'", "$1");
-          vuidsString = record[1].replaceFirst("\\[(.*)\\], .*", "$1");
-          vuids = MyUtil.split(vuidsString, ", ");
-          Debug.debug("Found "+vuids.length+" vuids: "+vuidsString, 3);
-          DQ2Locations [] dqLocations = null;
-          try{
-            dqLocations = getLocations(vuidsString);
-          }
-          catch(IOException e){
-            error = "WARNING: could not find locations.";
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-            e.printStackTrace();
-            logFile.addMessage(error, e);
-          }
-          // If some selection boxes have been set, use patterns for restricting.
-          vuid = vuid.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-          complete = complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-          incomplete = incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-          Debug.debug("Matching: "+vuid+":"+complete+":"+incomplete, 2);
-          for(int j=0; j<vuids.length; ++j){
-            Debug.debug("vuid: "+vuids[j], 3);
-            recordVector = new Vector<String>();
-            exCheck = true;
-            for(int k=0; k<fields.length; ++k){
-              if(fields[k].equalsIgnoreCase("dsn")){
-                recordVector.add(name);
-              }
-              else if(fields[k].equalsIgnoreCase("vuid")){
-                vuids[j] = vuids[j].replaceAll("'", "");
-                if(vuid==null || vuid.equals("") || vuids[j].matches("(?i)"+vuid)){
-                  Debug.debug("Adding vuid: "+vuids[j], 3);
-                  recordVector.add(vuids[j]);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else if(fields[k].equalsIgnoreCase("incomplete") &&
-                  dqLocations!=null && dqLocations[j]!=null){
-                String incompleteString =
-                  MyUtil.arrayToString(dqLocations[j].getIncomplete());
-                if(incomplete==null || incomplete.equals("") ||
-                    incompleteString.matches("(?i)"+incomplete)){
-                  Debug.debug("Adding incomplete: "+incompleteString, 3);
-                  recordVector.add(incompleteString);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else if(fields[k].equalsIgnoreCase("complete") &&
-                  dqLocations!=null && dqLocations[j]!=null){
-                String completeString =
-                  MyUtil.arrayToString(dqLocations[j].getComplete());
-                Debug.debug("Matching complete; "+completeString+"<->"+complete, 3);
-                if(complete==null || complete.equals("") ||
-                    completeString.matches("(?i)"+complete)){
-                  Debug.debug("Adding complete: "+completeString, 3);
-                  recordVector.add(completeString);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else{
-                recordVector.add("");
-              }
-              if(excludeMap.containsKey(fields[k]) &&
-                  recordVector.get(k).toString().matches(
-                      "(?i)"+excludeMap.get(fields[k]).toString())){
-                exCheck = false;
-              }
-            }
-            if(exCheck){
-              Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
-              valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
-            }
-            else{
-              Debug.debug("Excluding record ", 2);
-            }
-          }
-        }
-        else{
-          // Otherwise it should be the result of a vuid=... request and
-          // this should work:
-          if(vuid!=null && vuid.length()>0){
-            DQ2Locations [] dqLocations = null;
-            try{
-              dqLocations = getLocations("'"+vuid+"'");
-            }
-            catch(IOException e){
-              error = "WARNING: could not find locations.";
-              GridPilot.getClassMgr().getStatusBar().setLabel(error);
-              e.printStackTrace();
-              logFile.addMessage(error, e);
-            }
-            //record = Util.split(records[i], "'dsn': ");
-            //{'user.FrederikOrellana5894-ATLAS.testdataset': [1]}
-            record = MyUtil.split(records[i], "'[^']+': ");
-            String name = records[i].replaceFirst(".*'([^']+)': \\[\\d+\\].*", "$1");
-            if(name.equals(records[i])){
-              name = "";
-            }
-            // If some selection boxes have been set, use patterns for restricting.
-            complete = complete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-            incomplete = incomplete.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-            dsn = dsn.replaceAll("([^\\.])\\*", "$1.*").replaceFirst("^\\*", ".*");
-            for(int k=0; k<fields.length; ++k){
-              if(fields[k].equalsIgnoreCase("dsn")){
-                if(dsn.equals("") || name.matches("(?i)"+dsn)){
-                  recordVector.add(name);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else if(fields[k].equalsIgnoreCase("vuid")){
-                Debug.debug("Adding vuid: "+vuid, 3);
-                recordVector.add(vuid);
-              }
-              else if(fields[k].equalsIgnoreCase("incomplete") &&
-                  dqLocations!=null && dqLocations[0]!=null){
-                String incompleteString =
-                  MyUtil.arrayToString(dqLocations[0].getIncomplete());
-                if(incomplete==null || incomplete.equals("") ||
-                    incompleteString.matches("(?i)"+incomplete)){
-                  recordVector.add(incompleteString);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else if(fields[k].equalsIgnoreCase("complete") &&
-                  dqLocations!=null && dqLocations[0]!=null){
-                String completeString =
-                  MyUtil.arrayToString(dqLocations[0].getComplete());
-                if(complete==null || complete.equals("") ||
-                    completeString.matches("(?i)"+complete)){
-                  recordVector.add(completeString);
-                }
-                else{
-                  exCheck = false;
-                }
-              }
-              else{
-                recordVector.add("");
-              }
-              if(excludeMap.containsKey(fields[k]) &&
-                  recordVector.get(k).toString().matches(
-                      "(?i)"+excludeMap.get(fields[k]).toString())){
-                exCheck = false;
-              }
-            }
-            if(exCheck){
-              Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray()), 3);
-              valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
-            }
-            else{
-              Debug.debug("Excluding record ", 2);
-            }
-          }
-          else{
-            Debug.debug("ERROR: something went wrong; could " +
-                "not parse "+records[i], 2);
-          }
-        }
-      }
-      values = new String[valuesVector.size()][fields.length];
-      for(int i=0; i<valuesVector.size(); ++i){
-        for(int j=0; j<fields.length; ++j){
-          values[i][j] = valuesVector.get(i)[j];
-        }
-        Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
-      }
-      DBResult res = new DBResult(fields, values);
-      queryResults.put(selectRequest, res);
-      return res;
     }
-   //---------------------------------------------------------------------
-    else if(table.equalsIgnoreCase("file")){
-      // "dsn", "lfn", "pfns", "guid", "bytes", "checksum" - to save lookups allow also search on vuid
-      String dsn = "";
-      String lfn = "";
-      String pfns = "";
-      String guid = "";      
-      String vuid = "";
-      String bytes = "";
-      String checksum = "";
 
-      // Construct get string
+  }
+
+  protected class FileGetQuery {
+    
+    String get;
+    String dsn = "";
+    String lfn = "";
+    String pfns = "";
+    String guid = "";      
+    String vuid = "";
+    String bytes = "";
+    String checksum = "";
+    
+    FileGetQuery(String conditions) {
+      
       get = conditions.replaceAll("(?i)\\bvuid = (\\S+)", "vuid=$1");
       get = get.replaceAll("(?i)\\bdsn = (\\S+)", "dsn=$1");
       get = get.replaceAll("(?i)\\blfn = (\\S+)", "lfn=$1");
@@ -759,6 +1022,8 @@ public class ATLASDatabase extends DBCache implements Database{
         }
       }
       
+      get = dq2Url+"ws_content/files?"+ get;
+      
       // For files, DQ2 only understands searches on vuid
       if(vuid==null || vuid.equals("")){
         error = "WARNING: could not find vuid. DQ cannot search for file on " +
@@ -767,178 +1032,61 @@ public class ATLASDatabase extends DBCache implements Database{
         logFile.addMessage(error);
       }
       
-      //get = dq2Url+"ws_content/files?"+get;
-      //Debug.debug(">>> get string was : "+get, 3);
+      Debug.debug(">>> get string is : "+get, 3);
       
-      /*URL url = null;
-      try{
-        url = new URL(get);
-      }
-      catch(MalformedURLException e){
-        error = "Could not construct "+get;
-        Debug.debug(error, 2);
-        return null;
-      }
-
-      // Get the DQ result
-      String str = readGetUrl(url);*/
-      String str;
-      try{
-        str = dq2ReadAccess.getDatasetFiles("['"+vuid+"']");
-        // get rid of time stamp.
-        str = str.replaceFirst("\\((.*),[^,]+\\)", "$1").trim();
-        Debug.debug("Found files : "+str, 3);
-      }
-      catch(Exception e1){
-        error = "Could not get file names for "+vuid;
-        Debug.debug(error, 2);
-        return null;
-      }
-      // Discard html
-      str = str.replaceFirst("(?i)(?s)<html>.*</html>", "");
-      // Check if the result is of the form {...}
-      if(!str.matches("^\\{.*\\}$")){
-        Debug.debug("ERROR: cannot parse search result "+str, 1);
-        return new DBResult(fields, new String[0][fields.length]);
-      }
-      // Now parse the DQ string and construct DBRecords
-      str = str.replaceFirst("^\\{", "");
-      str = str.replaceFirst("\\}$", "");
-      String [] records = MyUtil.split(str, "\\}, ");
-      if(records==null || records.length==0){
-        Debug.debug("WARNING: no records found with "+str, 2);
-        return new DBResult(fields, new String[0][fields.length]);
-      }    
-      Vector<String[]> valuesVector = new Vector<String[]>();
-      String [] record = null;
-      GridPilot.getClassMgr().getStatusBar().stopAnimation();
-      if(!GridPilot.getClassMgr().getStatusBar().isCenterComponentSet()){
-        pb = MyUtil.setProgressBar(records.length, dbName);
-      }
-      for(int i=0; i<records.length; ++i){
-        if(getStop()){
-          break;
-        }
-        GridPilot.getClassMgr().getStatusBar().setLabel("Record "+(i+1)+" : "+records.length);
-        try{
-          if(pb!=null){
-            pb.setValue(i+1);
-          }
-        }
-        catch(Exception ee){
-        }
-        Vector<String> recordVector = new Vector<String>();
-        boolean exCheck = true;
-        record = MyUtil.split(records[i], ": \\{");
-        if(record==null || record.length==0){
-          Debug.debug("WARNING: could not parse record "+record, 2);
-          continue;
-        }
-        // If the string is the result of a vuid=... request, the
-        // split went ok and this should work:
-        guid = record[0].replaceAll("'", "").trim();
-        lfn = record[1].replaceAll(".*'lfn': '([^']*)'.*", "$1").trim();
-        bytes = record[1].replaceAll(".*'filesize': '([^']*)'.*", "$1").trim();
-        if(bytes.equals(record[1])){
-          bytes = record[1].replaceAll(".*'filesize': (\\w+)[\\W]*.*", "$1").trim();
-          if(bytes.equals(record[1])){
-            bytes = "";
-          }
-        }
-        checksum = record[1].replaceAll(".*'checksum': '([^']*)'.*", "$1").trim();
-        if(checksum.equals(record[1])){
-          checksum = "";
-        }
-        String catalogs = "";
-        Debug.debug("Finding PFNs "+lookupPFNs(), 2);
-        Debug.debug("Using guid "+guid+" extracted from "+MyUtil.arrayToString(record), 2);
-        if(lookupPFNs()){
-          PFNResult pfnRes = null;
-          try{
-            pfnRes = findPFNs(vuid, dsn, guid, lfn, findAll?Database.LOOKUP_PFNS_ALL:Database.LOOKUP_PFNS_ONE);
-            catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
-            bytes = (bytes.equals("")&&pfnRes.getBytes()!=null&&
-               !pfnRes.getBytes().equals("")?pfnRes.getBytes():bytes);
-            checksum = (checksum.equals("")&&pfnRes.getChecksum()!=null&&
-               !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
-          }
-          catch(Exception e){
-            e.printStackTrace();
-          }
-          pfns = MyUtil.arrayToString(pfnRes.getPfns().toArray(new String[pfnRes.getPfns().size()]));
-        }
-        else{
-          pfns = "";
-        }
- 
-        recordVector = new Vector<String>();
-        exCheck = true;
-        for(int k=0; k<fields.length; ++k){
-          if(fields[k].equalsIgnoreCase("lfn")){
-            //recordVector.add(lfn);
-            recordVector.add(/*(lfn.startsWith("/")?"":"/")+*//*makeAtlasPath(lfn)*/lfn);
-          }
-          else if(fields[k].equalsIgnoreCase("dsn")){
-            recordVector.add(dsn);
-          }
-          else if(fields[k].equalsIgnoreCase("pfns")){
-            recordVector.add(pfns);
-          }
-          else if(fields[k].equalsIgnoreCase("guid")){
-            recordVector.add(guid);
-          }
-          else if(fields[k].equalsIgnoreCase("vuid")){
-            recordVector.add(vuid);
-          }
-          else if(fields[k].equalsIgnoreCase("catalogs")){
-            recordVector.add(catalogs);
-          }
-          else if(fields[k].equalsIgnoreCase("bytes")){
-            recordVector.add(bytes);
-          }
-          else if(fields[k].equalsIgnoreCase("checksum")){
-            recordVector.add(checksum);
-          }
-          else{
-            recordVector.add("");
-          }
-          if(excludeMap.containsKey(fields[k]) &&
-              recordVector.get(k).toString().matches(
-                  excludeMap.get(fields[k]).toString())){
-            exCheck = false;
-          }
-        }
-        if(exCheck){
-          Debug.debug("Adding record "+MyUtil.arrayToString(recordVector.toArray(new String[recordVector.size()])), 3);
-          valuesVector.add(recordVector.toArray(new String[recordVector.size()]));
-        }
-        else{
-          Debug.debug("Excluding record ", 2);
-        }       
-
-      }
-      //setFindPFNs(true);
-      if(pb!=null){
-        GridPilot.getClassMgr().getStatusBar().removeProgressBar(pb);
-        GridPilot.getClassMgr().getStatusBar().clearCenterComponent();
-      }
-      values = new String[valuesVector.size()][fields.length];
-      for(int i=0; i<valuesVector.size(); ++i){
-        for(int j=0; j<fields.length; ++j){
-          values[i][j] = valuesVector.get(i)[j];
-        }
-        Debug.debug("Adding record "+MyUtil.arrayToString(values[i]), 3);
-      }
-      DBResult res = new DBResult(fields, values, idField);
-      queryResults.put(selectRequest, res);
-      return res;
     }
-    else{
-      Debug.debug("WARNING: table "+table+" not supported", 1);
-      return null;
+
+    public FileGetQuery(String _vuid, String _dsn, String _guid, String _lfn) {
+      vuid = _vuid;
+      dsn = _dsn;
+      guid = _guid;
+      lfn = _lfn;
     }
+
   }
-    
+
+  private HashMap<String, String> constructExcludeMap(String conditions) {
+    HashMap<String, String> excludeMap = new HashMap<String, String>();
+    String pattern = null;
+    String conditions1 = conditions;
+    while(conditions1.matches(".+ (\\S+) != (\\S+)\\s*.*")){
+      Debug.debug("Constructing exclude map, "+conditions1, 3);
+      pattern = conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "$2");
+      pattern = pattern.replaceAll("\\*", "\\.\\*");
+      excludeMap.put(conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "$1"),
+          pattern);
+      conditions1 = conditions1.replaceFirst(".+ (\\S+) != (\\S+)\\s*.*", "");
+    }
+    return excludeMap;
+  }
+
+  private String sanitizeRequest(String selectRequest, String idField) {
+    String req = selectRequest;
+    Pattern patt;
+    Matcher matcher;
+    // *, row1, row2 -> *
+    if(selectRequest.matches("SELECT \\*\\,.*") ||
+        selectRequest.matches("SELECT \\* FROM .+")){
+      Debug.debug("Correcting non-valid select pattern", 3);
+      patt = Pattern.compile("SELECT \\*\\, (.+) FROM", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceAll("SELECT * FROM");
+    }
+    // Make sure we have identifier as last column.
+    else{
+      patt = Pattern.compile(", "+idField+", ", Pattern.CASE_INSENSITIVE);
+      matcher = patt.matcher(req);
+      req = matcher.replaceAll(", ");
+      patt = Pattern.compile(" "+idField+" FROM", Pattern.CASE_INSENSITIVE);
+      if(!patt.matcher(req).find()){
+        patt = Pattern.compile(" FROM (\\w+)", Pattern.CASE_INSENSITIVE);
+        matcher = patt.matcher(req);
+        req = matcher.replaceAll(", "+idField+" FROM "+"$1");
+      }
+    }
+    return req;
+  }
+
   /**
    * Returns the locations of a set of vuids.
    */
@@ -1053,7 +1201,9 @@ public class ATLASDatabase extends DBCache implements Database{
     DataInputStream dis = null;
     StringBuffer str = new StringBuffer("");
     try{
-      is = url.openStream();
+      URLConnection c = url.openConnection();
+      c.setRequestProperty("User-Agent", "dqcurl");
+      is = c.getInputStream();
       dis = new DataInputStream(new BufferedInputStream(is));
       for(;;){
         int data = dis.read();
@@ -1732,12 +1882,12 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
   }
   
-  private PFNResult findPFNs(String vuid, String dsn, String guid, String lfn, int findAll){
-    if(dsn.endsWith("/")){
-      return findPFNsOfContainer(vuid, dsn, guid, lfn, findAll);
+  private PFNResult findPFNs(FileGetQuery fq, int findAll){
+    if(fq.dsn.endsWith("/")){
+      return findPFNsOfContainer(fq.vuid, fq.dsn, fq.guid, fq.lfn, findAll);
     }
     else{
-      return doFindPFNs(vuid, dsn, guid, lfn, findAll);
+      return doFindPFNs(fq, findAll);
     }
   }
   
@@ -1754,7 +1904,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           return res;
         }
         childVuid = getDatasetID(childrenDsns[i]);
-        partRes = doFindPFNs(childVuid, childrenDsns[i], guid, lfn, findAll);
+        partRes = doFindPFNs(new FileGetQuery(childVuid, childrenDsns[i], guid, lfn), findAll);
         res.getCatalogs().addAll(partRes.getCatalogs());
         if(res.getBytes()==null || res.getBytes().trim().equals("")){
           res.setBytes(partRes.getBytes());
@@ -1779,14 +1929,12 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     return res;
   }
   
-  private PFNResult doFindPFNs(String vuid, String dsn, String _guid, String lfn, int findAll){
+  private PFNResult doFindPFNs(FileGetQuery fq, int findAll){
     // Query all with a timeout of 5 seconds.    
     // First try the home server if configured.
     // Next try the locations with complete datasets, then the incomplete.
     // For each LRC catalog try both the mysql and the http interface.
-    String lfName = lfn;
-    String guid = _guid;
-    Vector<String> locations = getOrderedLocations(vuid);
+    Vector<String> locations = getOrderedLocations(fq.vuid);
     String [] locationsArray = locations.toArray(new String[locations.size()]);
     PFNResult res = new PFNResult();
     if(getStop() || !lookupPFNs()){
@@ -1795,99 +1943,8 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     try{
       Debug.debug("Checking locations "+MyUtil.arrayToString(locationsArray), 3);
       for(int i=0; i<locationsArray.length; ++i){
-        Debug.debug("Checking location "+locationsArray[i], 3);
-        if(locationsArray[i]==null || locationsArray[i].matches("\\s*")){
-          continue;
-        }
-        if(getStop() || !lookupPFNs()){
+        if(findPfnsOnLocation(locationsArray[i], res, findAll, fq)){
           return res;
-        }
-        String [] pfns = null;
-        try{
-          Debug.debug("Querying TOA for "+i+":"+locationsArray[i], 2);
-          String catalogServer = null;
-          String fallbackServer = null;
-          if(homeSite!=null && 
-              locationsArray[i].equalsIgnoreCase(homeSite)){
-            catalogServer = toa.getFileCatalogServer(locationsArray[i], false); 
-          }
-          else{
-            if(!httpSwitches.contains(locationsArray[i])){
-              catalogServer = toa.getFileCatalogServer(locationsArray[i], false);
-              fallbackServer = toa.getFileCatalogServer(locationsArray[i], true);
-            }
-            else{
-              catalogServer = toa.getFileCatalogServer(locationsArray[i], true);
-              fallbackServer = toa.getFileCatalogServer(locationsArray[i], false);
-            }
-          }
-          if(catalogServer==null || catalogServer.trim().equals("")){
-            logFile.addMessage("WARNING: could not find catalog server for "+
-                locationsArray[i]);
-            continue;
-          }
-          if(findAll==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
-            res.getCatalogs().add(catalogServer);
-            continue;
-          }
-          Debug.debug("Querying "+i+"-->"+catalogServer+" for "+lfName, 2);
-          GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
-          try{
-            try{
-              pfns = lookupPFNs(catalogServer, dsn, guid, lfName, findAll==Database.LOOKUP_PFNS_ALL);
-            }
-            catch(Exception e){
-              e.printStackTrace();
-            }
-            if(fallbackServer!=null && (pfns==null || pfns.length==0)){
-              Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
-              pfns = lookupPFNs(fallbackServer, dsn, guid, lfName, findAll==Database.LOOKUP_PFNS_ALL);
-              catalogServer = fallbackServer;
-              if(pfns!=null && pfns.length>2){
-                Debug.debug("Switching to http for "+locationsArray[i], 2);
-                httpSwitches.add(locationsArray[i]);
-              }
-            }
-            if(pfns!=null && pfns.length>2){
-              res.getCatalogs().add(catalogServer);
-              res.setBytes(pfns[0]);
-              res.setChecksum(pfns[1]);
-              for(int n=2; n<pfns.length; ++n){
-                res.getPfns().add(pfns[n]);
-              }
-            }
-          }
-          catch(Throwable t){
-            t.printStackTrace();
-            logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
-                               " from plugin " + dbName, t);
-          }
-        }
-        catch(Exception e){
-          e.printStackTrace();
-        }
-        Debug.debug("Found PFNs "+MyUtil.arrayToString(pfns, "-->")+". All PFNs now "+res.getPfns(), 2);
-        // break out after first location, if "Find all" is not checked
-        if(findAll!=Database.LOOKUP_PFNS_ALL && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
-          break;
-        }
-        // if we did not find anything on this location, put it last in the
-        // HashMap of locations
-        if(pfns==null || pfns.length<3 || pfns[2]==null || pfns[2].equals("")){
-          Vector<String> tl = dqLocationsCache.get(vuid);
-          int j=0;
-          for(j=0; j<tl.size(); ++j){
-            if(tl.get(j).equals(locationsArray[i])){
-              break;
-            }
-          }
-          int len = tl.size();
-          Debug.debug("Deprecating location: "+locationsArray[i]+" -->"+
-              j+":"+len+":"+(-len+j+1)+"-->"+findAll, 2);
-          Collections.rotate(dqLocationsCache.get(vuid).subList(j, len),
-              len-j-1);
-          Debug.debug("New location cache for "+vuid+
-              ": "+MyUtil.arrayToString((dqLocationsCache.get(vuid)).toArray()), 2);
         }
       }
       if(findAll==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
@@ -1910,6 +1967,114 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
       e.printStackTrace();
     }
     return res;
+  }
+
+  private boolean findPfnsOnLocation(String location, PFNResult res, int findAll, FileGetQuery fq) {
+    Debug.debug("Checking location "+location, 3);
+    if(location==null || location.matches("\\s*")){
+      return false;
+    }
+    if(getStop() || !lookupPFNs()){
+      return true;
+    }
+    try{
+      if(queryTOA(location, findAll, res, fq)){
+        // Break out.
+        return true;
+      }
+    }
+    catch(Exception e){
+      e.printStackTrace();
+    }
+    Debug.debug("Found PFNs. All PFNs now "+res.getPfns(), 2);
+    // break out after first location, if "Find all" is not checked
+    if(findAll!=Database.LOOKUP_PFNS_ALL && !res.getPfns().isEmpty() && res.getPfns().get(0)!=null){
+      return true;
+    }
+    // if we did not find anything on this location, put it last in the
+    // HashMap of locations
+    if(res.getPfns()==null || res.getPfns().size()==0){
+      Vector<String> tl = dqLocationsCache.get(fq.vuid);
+      int j=0;
+      for(j=0; j<tl.size(); ++j){
+        if(tl.get(j).equals(location)){
+          break;
+        }
+      }
+      int len = tl.size();
+      Debug.debug("Deprecating location: "+location+" -->"+
+          j+":"+len+":"+(-len+j+1)+"-->"+findAll, 2);
+      Collections.rotate(dqLocationsCache.get(fq.vuid).subList(j, len),
+          len-j-1);
+      Debug.debug("New location cache for "+fq.vuid+
+          ": "+MyUtil.arrayToString((dqLocationsCache.get(fq.vuid)).toArray()), 2);
+    }
+    return false;
+  }
+
+  private boolean queryTOA(String location, int findAll, PFNResult res, FileGetQuery fq)
+     throws MalformedURLException, IOException {
+    String [] pfns = null;
+    Debug.debug("Querying TOA for:"+location, 2);
+    String catalogServer = null;
+    String fallbackServer = null;
+    if(homeSite!=null && 
+        location.equalsIgnoreCase(homeSite)){
+      catalogServer = toa.getFileCatalogServer(location, false); 
+    }
+    else{
+      if(!httpSwitches.contains(location)){
+        catalogServer = toa.getFileCatalogServer(location, false);
+        fallbackServer = toa.getFileCatalogServer(location, true);
+      }
+      else{
+        catalogServer = toa.getFileCatalogServer(location, true);
+        fallbackServer = toa.getFileCatalogServer(location, false);
+      }
+    }
+    if(catalogServer==null || catalogServer.trim().equals("")){
+      logFile.addMessage("WARNING: could not find catalog server for "+
+          location);
+      return false;
+    }
+    if(findAll==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
+      res.getCatalogs().add(catalogServer);
+      return false;
+    }
+    
+    Debug.debug("Querying "+catalogServer+" for "+fq.lfn, 2);
+    GridPilot.getClassMgr().getStatusBar().setLabel("Querying "+catalogServer);
+    try{
+      try{
+        pfns = lookupPFNs(catalogServer, fq.dsn, fq.guid, fq.lfn, findAll==Database.LOOKUP_PFNS_ALL);
+      }
+      catch(Exception e){
+        e.printStackTrace();
+      }
+      if(fallbackServer!=null && (pfns==null || pfns.length==0)){
+        Debug.debug("No PFNs found, trying fallback "+fallbackServer, 2);
+        pfns = lookupPFNs(fallbackServer, fq.dsn, fq.guid, fq.lfn, findAll==Database.LOOKUP_PFNS_ALL);
+        catalogServer = fallbackServer;
+        if(pfns!=null && pfns.length>2){
+          Debug.debug("Switching to http for "+location, 2);
+          httpSwitches.add(location);
+        }
+      }
+      if(pfns!=null && pfns.length>2){
+        res.getCatalogs().add(catalogServer);
+        res.setBytes(pfns[0]);
+        res.setChecksum(pfns[1]);
+        for(int n=2; n<pfns.length; ++n){
+          res.getPfns().add(pfns[n]);
+        }
+      }
+    }
+    catch(Throwable t){
+      t.printStackTrace();
+      logFile.addMessage((t instanceof Exception ? "Exception" : "Error") +
+                         " from plugin " + dbName, t);
+    }
+    return false;
   }
 
   public String getDatasetName(String datasetID){
@@ -2037,7 +2202,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     String pfns = "";
     String catalogs = "";
     if(findAllPFNs==Database.LOOKUP_PFNS_ONE || findAllPFNs==Database.LOOKUP_PFNS_ALL){
-      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, findAllPFNs);
+      PFNResult pfnRes = findPFNs(new FileGetQuery(vuid, dsn, guid, lfn), findAllPFNs);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
       for(int j=0; j<pfnRes.getPfns().size(); ++j){
         resultVector.add(pfnRes.getPfns().get(j));
@@ -2050,7 +2215,7 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
           !pfnRes.getChecksum().equals("")?pfnRes.getChecksum():checksum);
     }
     else if(findAllPFNs==Database.LOOKUP_PFNS_ONLY_CATALOG_URLS){
-      PFNResult pfnRes = findPFNs(vuid, dsn, guid, lfn, Database.LOOKUP_PFNS_ONLY_CATALOG_URLS);
+      PFNResult pfnRes = findPFNs(new FileGetQuery(vuid, dsn, guid, lfn), Database.LOOKUP_PFNS_ONLY_CATALOG_URLS);
       catalogs = MyUtil.arrayToString(pfnRes.getCatalogs().toArray());
     }
         
@@ -2625,102 +2790,108 @@ private void deleteLFNsInMySQL(String _catalogServer, String [] lfns)
     }
     DQ2Locations [] dqLocations = null;
     for(int i=0; i<values.length; ++i){
-      
       if(getStop()){
         return false;
       }
-      
-      // vuid
-      if(fields[i].equalsIgnoreCase("vuid")){
-        error = "WARNING: cannot change vuid";
-        //GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        Debug.debug(error+" "+vuid, 1);
-        //return false;
-      }
-      // dsn
-      else if(fields[i].equalsIgnoreCase("dsn")){
-        error = "WARNING: cannot change dsn";
-        //GridPilot.getClassMgr().getStatusBar().setLabel(error);
-        Debug.debug(error+" "+dsn, 1);
-        //return false;
-      }
-      // complete, incomplete
-      else if(fields[i].equalsIgnoreCase("incomplete") ||
-          fields[i].equalsIgnoreCase("complete")){
-        if(dqLocations==null){
-          try{
-            dqLocations = getLocations("'"+vuid+"'");
-          }
-          catch(IOException e){
-            error = "WARNING: could not find locations for "+vuid;
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-            e.printStackTrace();
-            logFile.addMessage(error, e);
-          }
+      updateField(fields[i], values[i], dqLocations, vuid, dsn);
+    }
+    return true;
+  }
+
+  private void updateField(String field, String value, DQ2Locations [] dqLocations, String vuid, String dsn) {
+    // vuid
+    if(field.equalsIgnoreCase("vuid")){
+      error = "WARNING: cannot change vuid";
+      //GridPilot.getClassMgr().getStatusBar().setLabel(error);
+      Debug.debug(error+" "+vuid, 1);
+      //return false;
+    }
+    // dsn
+    else if(field.equalsIgnoreCase("dsn")){
+      error = "WARNING: cannot change dsn";
+      //GridPilot.getClassMgr().getStatusBar().setLabel(error);
+      Debug.debug(error+" "+dsn, 1);
+      //return false;
+    }
+    // complete, incomplete
+    else if(field.equalsIgnoreCase("incomplete") ||
+        field.equalsIgnoreCase("complete")){
+      if(dqLocations==null){
+        try{
+          dqLocations = getLocations("'"+vuid+"'");
         }
-        if(dqLocations!=null && dqLocations.length>0){
-          try{
-            if(fields[i].equalsIgnoreCase("complete")){
-              String [] newLocations = MyUtil.split(values[i]);
-              Set<String> newLocationsSet = new HashSet<String>();
-              Collections.addAll(newLocationsSet, newLocations);
-              // Delete locations
-              for(int j=0; j<dqLocations[0].getComplete().length; ++j){
-                if(newLocationsSet.contains(dqLocations[0].getComplete()[j])){
-                  continue;
-                }
-                Debug.debug("Deleting location "+dqLocations[0].getComplete()[j]+
-                    " for vuid "+vuid, 2);
-                dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
-              }
-              // Set the new ones
-              Set<String> oldLocationsSet = new HashSet<String>();
-              Collections.addAll(oldLocationsSet, dqLocations[0].getComplete());
-              for(int j=0; j<newLocations.length; ++j){
-                if(oldLocationsSet.contains(newLocations[j])){
-                  continue;
-                }
-                Debug.debug("Registering location "+newLocations[j]+
-                    " for vuid "+vuid, 2);
-                dq2WriteAccess.registerLocation(vuid, dsn, true, newLocations[j]);
-              }
-            }
-            //BNLTAPE CERNPROD CYF LYONTAPE CSCS
-            else if(fields[i].equalsIgnoreCase("incomplete")){
-              String [] newLocations = MyUtil.split(values[i]);
-              Set<String> newLocationsSet = new HashSet<String>();
-              Collections.addAll(newLocationsSet, newLocations);
-              for(int j=0; j<dqLocations[0].getIncomplete().length; ++j){
-                if(newLocationsSet.contains(dqLocations[0].getIncomplete()[j])){
-                  continue;
-                }
-                Debug.debug("Deleting location "+dqLocations[0].getIncomplete()[j]+
-                    " for vuid "+vuid, 2);
-                dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
-              }
-              Set<String> oldLocationsSet = new HashSet<String>();
-              Collections.addAll(oldLocationsSet, dqLocations[0].getIncomplete());
-              for(int j=0; j<newLocations.length; ++j){
-                if(oldLocationsSet.contains(newLocations[j])){
-                  continue;
-                }
-                Debug.debug("Registering location "+newLocations[j]+
-                    " for vuid "+vuid, 2);
-                dq2WriteAccess.registerLocation(vuid, dsn, false, newLocations[j]);
-              }
-            }
-          }
-          catch(Exception e){
-            error = "WARNING: could not update locations for "+vuid;
-            GridPilot.getClassMgr().getStatusBar().setLabel(error);
-            e.printStackTrace();
-            logFile.addMessage(error, e);
-          }
+        catch(IOException e){
+          error = "WARNING: could not find locations for "+vuid;
+          GridPilot.getClassMgr().getStatusBar().setLabel(error);
+          e.printStackTrace();
+          logFile.addMessage(error, e);
+        }
+      }
+      if(dqLocations!=null && dqLocations.length>0){
+        try{
+          registerLocations(field, value, dqLocations, vuid, dsn);
+        }
+        catch(Exception e){
+          error = "WARNING: could not update locations for "+vuid;
+          GridPilot.getClassMgr().getStatusBar().setLabel(error);
+          e.printStackTrace();
+          logFile.addMessage(error, e);
         }
       }
     }
+  }
 
-    return true;
+  private void registerLocations(String field, String locationsStr, DQ2Locations [] dqLocations,
+      String vuid, String dsn) throws Exception {
+    if(field.equalsIgnoreCase("complete")){
+      String [] newLocations = MyUtil.split(locationsStr);
+      Set<String> newLocationsSet = new HashSet<String>();
+      Collections.addAll(newLocationsSet, newLocations);
+      // Delete locations
+      for(int j=0; j<dqLocations[0].getComplete().length; ++j){
+        if(newLocationsSet.contains(dqLocations[0].getComplete()[j])){
+          continue;
+        }
+        Debug.debug("Deleting location "+dqLocations[0].getComplete()[j]+
+            " for vuid "+vuid, 2);
+        dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getComplete()[j]);
+      }
+      // Set the new ones
+      Set<String> oldLocationsSet = new HashSet<String>();
+      Collections.addAll(oldLocationsSet, dqLocations[0].getComplete());
+      for(int j=0; j<newLocations.length; ++j){
+        if(oldLocationsSet.contains(newLocations[j])){
+          continue;
+        }
+        Debug.debug("Registering location "+newLocations[j]+
+            " for vuid "+vuid, 2);
+        dq2WriteAccess.registerLocation(vuid, dsn, true, newLocations[j]);
+      }
+    }
+    //BNLTAPE CERNPROD CYF LYONTAPE CSCS
+    else if(field.equalsIgnoreCase("incomplete")){
+      String [] newLocations = MyUtil.split(locationsStr);
+      Set<String> newLocationsSet = new HashSet<String>();
+      Collections.addAll(newLocationsSet, newLocations);
+      for(int j=0; j<dqLocations[0].getIncomplete().length; ++j){
+        if(newLocationsSet.contains(dqLocations[0].getIncomplete()[j])){
+          continue;
+        }
+        Debug.debug("Deleting location "+dqLocations[0].getIncomplete()[j]+
+            " for vuid "+vuid, 2);
+        dq2WriteAccess.deleteFromSite(vuid, dqLocations[0].getIncomplete()[j]);
+      }
+      Set<String> oldLocationsSet = new HashSet<String>();
+      Collections.addAll(oldLocationsSet, dqLocations[0].getIncomplete());
+      for(int j=0; j<newLocations.length; ++j){
+        if(oldLocationsSet.contains(newLocations[j])){
+          continue;
+        }
+        Debug.debug("Registering location "+newLocations[j]+
+            " for vuid "+vuid, 2);
+        dq2WriteAccess.registerLocation(vuid, dsn, false, newLocations[j]);
+      }
+    }
   }
 
   public boolean deleteDataset(String datasetID){
